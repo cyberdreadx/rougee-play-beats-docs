@@ -56,6 +56,7 @@ export type Database = {
           audio_cid: string
           cover_cid: string | null
           created_at: string
+          description: string | null
           duration: number | null
           genre: string | null
           id: string
@@ -70,6 +71,7 @@ export type Database = {
           audio_cid: string
           cover_cid?: string | null
           created_at?: string
+          description?: string | null
           duration?: number | null
           genre?: string | null
           id?: string
@@ -84,6 +86,7 @@ export type Database = {
           audio_cid?: string
           cover_cid?: string | null
           created_at?: string
+          description?: string | null
           duration?: number | null
           genre?: string | null
           id?: string

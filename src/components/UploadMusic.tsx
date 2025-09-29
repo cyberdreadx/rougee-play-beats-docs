@@ -13,6 +13,7 @@ export default function UploadMusic() {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
+  const [description, setDescription] = useState("");
   const [ticker, setTicker] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -58,6 +59,7 @@ export default function UploadMusic() {
         title: title || audioFile.name,
         artist,
         genre,
+        description,
         ticker
       }));
       const {
@@ -76,6 +78,7 @@ export default function UploadMusic() {
       setTitle("");
       setArtist("");
       setGenre("");
+      setDescription("");
       setTicker("");
       setAudioFile(null);
       setCoverFile(null);
@@ -151,6 +154,11 @@ export default function UploadMusic() {
           <div>
             <Label htmlFor="genre">Genre</Label>
             <Input id="genre" value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g., Hip Hop, Electronic" disabled={uploading} />
+          </div>
+
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Input id="description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe your track..." disabled={uploading} />
           </div>
 
           <div>

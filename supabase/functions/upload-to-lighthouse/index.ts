@@ -90,6 +90,7 @@ serve(async (req) => {
       title: parsedMetadata.title || file.name,
       artist: parsedMetadata.artist || 'Unknown Artist',
       genre: parsedMetadata.genre || 'Unknown',
+      description: parsedMetadata.description || null,
       ticker: parsedMetadata.ticker || null,
       duration: parsedMetadata.duration,
       audioCid: audioCid,
@@ -127,6 +128,7 @@ serve(async (req) => {
         cover_cid: coverCid,
         duration: parsedMetadata.duration,
         genre: metadataJson.genre,
+        description: metadataJson.description,
         ticker: metadataJson.ticker,
       })
       .select()
