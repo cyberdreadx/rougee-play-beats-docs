@@ -60,6 +60,7 @@ export type Database = {
           genre: string | null
           id: string
           play_count: number
+          ticker: string | null
           title: string
           updated_at: string
           wallet_address: string
@@ -73,6 +74,7 @@ export type Database = {
           genre?: string | null
           id?: string
           play_count?: number
+          ticker?: string | null
           title: string
           updated_at?: string
           wallet_address: string
@@ -86,6 +88,7 @@ export type Database = {
           genre?: string | null
           id?: string
           play_count?: number
+          ticker?: string | null
           title?: string
           updated_at?: string
           wallet_address?: string

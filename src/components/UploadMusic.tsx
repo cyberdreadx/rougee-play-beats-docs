@@ -14,6 +14,7 @@ export default function UploadMusic() {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
+  const [ticker, setTicker] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export default function UploadMusic() {
         title: title || audioFile.name,
         artist,
         genre,
+        ticker,
       }));
 
       const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
@@ -75,6 +77,7 @@ export default function UploadMusic() {
       setTitle("");
       setArtist("");
       setGenre("");
+      setTicker("");
       setAudioFile(null);
       setCoverFile(null);
       setCoverPreview(null);
@@ -164,6 +167,18 @@ export default function UploadMusic() {
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
               placeholder="e.g., Hip Hop, Electronic"
+              disabled={uploading}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="ticker">Ticker Symbol</Label>
+            <Input
+              id="ticker"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value.toUpperCase())}
+              placeholder="e.g., BEAT, MUSIC"
+              maxLength={10}
               disabled={uploading}
             />
           </div>
