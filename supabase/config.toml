@@ -1,1 +1,4 @@
 project_id = "phybdsfwycygroebrsdx"
+
+[functions.upload-to-lighthouse]
+verify_jwt = false
