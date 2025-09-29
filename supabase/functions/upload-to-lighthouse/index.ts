@@ -33,7 +33,7 @@ serve(async (req) => {
     const lighthouseFormData = new FormData();
     lighthouseFormData.append('file', file);
 
-    const uploadResponse = await fetch('https://node.lighthouse.storage/api/v0/add', {
+    const uploadResponse = await fetch('https://upload.lighthouse.storage/api/v0/add', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lighthouseApiKey}`,
