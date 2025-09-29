@@ -17,13 +17,22 @@ const queryClient = new QueryClient({
 createWeb3Modal({
   wagmiConfig: config,
   projectId,
-  enableAnalytics: false, // Disable analytics to avoid errors
+  enableAnalytics: false,
+  enableOnramp: false,
   themeMode: 'dark',
   themeVariables: {
-    '--w3m-accent': '#00FF00', // Neon green to match ROUGEE.PLAY theme
+    '--w3m-accent': '#00FF00',
     '--w3m-border-radius-master': '4px',
   },
-  enableOnramp: false, // Disable onramp to reduce complexity
+  allWallets: 'HIDE', // Hide wallet recommendation to avoid fetch errors
+  includeWalletIds: [
+    'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
+    '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0', // Trust Wallet
+  ],
+  excludeWalletIds: [], // Keep this empty to avoid issues
+  featuredWalletIds: [
+    'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96',
+  ],
 });
 
 export default function Web3Provider({ children }: { children: React.ReactNode }) {
