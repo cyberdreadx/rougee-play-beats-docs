@@ -22,51 +22,96 @@ serve(async (req) => {
     const file = formData.get('file') as File;
     const walletAddress = formData.get('walletAddress') as string;
     const metadata = formData.get('metadata') as string;
+    const coverFile = formData.get('coverFile') as File;
 
     if (!file || !walletAddress) {
       throw new Error('File and wallet address are required');
     }
 
     console.log('Uploading file to Lighthouse:', file.name);
+    const parsedMetadata = metadata ? JSON.parse(metadata) : {};
 
-    // Upload to Lighthouse
-    const lighthouseFormData = new FormData();
-    lighthouseFormData.append('file', file);
+    // Helper function to upload to Lighthouse
+    const uploadToLighthouse = async (fileToUpload: File, fileName?: string) => {
+      const lighthouseFormData = new FormData();
+      lighthouseFormData.append('file', fileToUpload, fileName);
 
-    const uploadResponse = await fetch('https://upload.lighthouse.storage/api/v0/add', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lighthouseApiKey}`,
-      },
-      body: lighthouseFormData,
-    });
+      const uploadResponse = await fetch('https://upload.lighthouse.storage/api/v0/add', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lighthouseApiKey}`,
+        },
+        body: lighthouseFormData,
+      });
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error('Lighthouse upload error:', errorText);
-      throw new Error(`Lighthouse upload failed: ${errorText}`);
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Lighthouse upload error:', errorText);
+        throw new Error(`Lighthouse upload failed: ${errorText}`);
+      }
+
+      return await uploadResponse.json();
+    };
+
+    let coverCid = null;
+    let audioCid = null;
+    let metadataCid = null;
+
+    // 1. Upload cover art if provided
+    if (coverFile) {
+      console.log('Uploading cover art to Lighthouse');
+      const coverData = await uploadToLighthouse(coverFile);
+      coverCid = coverData.Hash;
+      console.log('Cover art uploaded:', coverCid);
     }
 
-    const uploadData = await uploadResponse.json();
-    console.log('Lighthouse upload successful:', uploadData);
+    // 2. Upload main audio file
+    console.log('Uploading audio file to Lighthouse');
+    const audioData = await uploadToLighthouse(file);
+    audioCid = audioData.Hash;
+    console.log('Audio file uploaded:', audioCid);
 
-    // Save metadata to Supabase
+    // 3. Create and upload metadata JSON
+    const metadataJson = {
+      title: parsedMetadata.title || file.name,
+      artist: parsedMetadata.artist || 'Unknown Artist',
+      genre: parsedMetadata.genre || 'Unknown',
+      duration: parsedMetadata.duration,
+      audioCid: audioCid,
+      coverCid: coverCid,
+      walletAddress: walletAddress,
+      uploadedAt: new Date().toISOString(),
+      fileSize: file.size,
+      fileType: file.type
+    };
+
+    console.log('Creating metadata JSON and uploading to Lighthouse');
+    const metadataBlob = new Blob([JSON.stringify(metadataJson, null, 2)], { 
+      type: 'application/json' 
+    });
+    const metadataFile = new File([metadataBlob], `${audioCid}_metadata.json`, { 
+      type: 'application/json' 
+    });
+    
+    const metadataUploadData = await uploadToLighthouse(metadataFile);
+    metadataCid = metadataUploadData.Hash;
+    console.log('Metadata JSON uploaded:', metadataCid);
+
+    // 4. Save minimal data to Supabase for fast querying
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const parsedMetadata = metadata ? JSON.parse(metadata) : {};
     
     const { data, error } = await supabase
       .from('songs')
       .insert({
         wallet_address: walletAddress,
-        title: parsedMetadata.title || file.name,
-        artist: parsedMetadata.artist,
-        audio_cid: uploadData.Hash,
-        cover_cid: parsedMetadata.coverCid,
+        title: metadataJson.title,
+        artist: metadataJson.artist,
+        audio_cid: audioCid,
+        cover_cid: coverCid,
         duration: parsedMetadata.duration,
-        genre: parsedMetadata.genre,
+        genre: metadataJson.genre,
       })
       .select()
       .single();
@@ -81,8 +126,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        cid: uploadData.Hash,
-        song: data 
+        audioCid: audioCid,
+        coverCid: coverCid,
+        metadataCid: metadataCid,
+        song: data,
+        lighthouse: {
+          audio: `https://gateway.lighthouse.storage/ipfs/${audioCid}`,
+          cover: coverCid ? `https://gateway.lighthouse.storage/ipfs/${coverCid}` : null,
+          metadata: `https://gateway.lighthouse.storage/ipfs/${metadataCid}`
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

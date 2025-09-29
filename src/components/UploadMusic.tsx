@@ -45,29 +45,17 @@ export default function UploadMusic() {
     try {
       let coverCid = null;
 
-      // Upload cover art first if provided
-      if (coverFile) {
-        const coverFormData = new FormData();
-        coverFormData.append('file', coverFile);
-        coverFormData.append('walletAddress', address);
-
-        const { data: coverData, error: coverError } = await supabase.functions.invoke('upload-to-lighthouse', {
-          body: coverFormData,
-        });
-
-        if (coverError) throw new Error(`Cover upload failed: ${coverError.message}`);
-        coverCid = coverData.cid;
-      }
-
-      // Upload audio file
+      // Upload everything in one call
       const formData = new FormData();
       formData.append('file', audioFile);
       formData.append('walletAddress', address);
+      if (coverFile) {
+        formData.append('coverFile', coverFile);
+      }
       formData.append('metadata', JSON.stringify({
         title: title || audioFile.name,
         artist,
         genre,
-        coverCid,
       }));
 
       const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
@@ -78,7 +66,7 @@ export default function UploadMusic() {
 
       toast({
         title: "Success",
-        description: `Music uploaded to IPFS: ${data.cid}`,
+        description: `Music uploaded! Audio: ${data.audioCid}${data.coverCid ? `, Cover: ${data.coverCid}` : ''}, Metadata: ${data.metadataCid}`,
       });
 
       // Reset form
