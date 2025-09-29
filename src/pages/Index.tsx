@@ -1,5 +1,6 @@
 import React from "react";
 import Header from "@/components/Header";
+import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import SearchBar from "@/components/SearchBar";
 import LiveStream from "@/components/LiveStream";
@@ -12,6 +13,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <NetworkInfo />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       <SearchBar />
       <LiveStream />

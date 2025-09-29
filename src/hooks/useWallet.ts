@@ -1,50 +1,34 @@
-import { useState, useCallback } from "react";
-
-interface WalletState {
-  isConnected: boolean;
-  address: string | null;
-  isConnecting: boolean;
-}
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 export const useWallet = () => {
-  const [wallet, setWallet] = useState<WalletState>({
-    isConnected: true, // Mock connected state for demo
-    address: "0x5a12...26fc",
-    isConnecting: false,
-  });
+  const { address, isConnected, isConnecting } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { open } = useWeb3Modal();
 
-  const connect = useCallback(async () => {
-    setWallet(prev => ({ ...prev, isConnecting: true }));
-    
+  // Format address for display (e.g., 0x1234...5678)
+  const formattedAddress = address 
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : null;
+
+  const connect = async () => {
     try {
-      // TODO: Implement actual wallet connection logic
-      // This would typically involve calling window.ethereum.request()
-      // or similar Web3 wallet integration
-      
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate connection delay
-      
-      setWallet({
-        isConnected: true,
-        address: "0x5a12...26fc",
-        isConnecting: false,
-      });
+      await open();
     } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      setWallet(prev => ({ ...prev, isConnecting: false }));
+      console.error('Failed to connect wallet:', error);
     }
-  }, []);
+  };
 
-  const disconnect = useCallback(() => {
-    setWallet({
-      isConnected: false,
-      address: null,
-      isConnecting: false,
-    });
-  }, []);
+  const handleDisconnect = () => {
+    disconnect();
+  };
 
   return {
-    ...wallet,
+    isConnected,
+    address: formattedAddress,
+    fullAddress: address,
+    isConnecting,
     connect,
-    disconnect,
+    disconnect: handleDisconnect,
   };
 };

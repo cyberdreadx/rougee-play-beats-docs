@@ -1,16 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
+import WalletButton from "@/components/WalletButton";
 
 const Header = () => {
-  const { isConnected, address, connect, disconnect, isConnecting } = useWallet();
-
-  const handleWalletAction = () => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      connect();
-    }
-  };
+  const { isConnected, address } = useWallet();
 
   return (
     <header className="w-full p-6 console-bg">
@@ -29,16 +21,8 @@ const Header = () => {
           </div>
         </div>
 
-        {/* Connect/Disconnect button */}
-        <Button 
-          variant={isConnected ? "disconnect" : "neon"} 
-          size="sm"
-          onClick={handleWalletAction}
-          disabled={isConnecting}
-          className="font-mono"
-        >
-          {isConnecting ? "[CONNECTING...]" : isConnected ? "[DISCONNECT]" : "[CONNECT]"}
-        </Button>
+        {/* Wallet button */}
+        <WalletButton />
       </div>
     </header>
   );
