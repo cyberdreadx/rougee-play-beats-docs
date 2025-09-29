@@ -24,6 +24,13 @@ serve(async (req) => {
     const metadata = formData.get('metadata') as string;
     const coverFile = formData.get('coverFile') as File;
 
+    console.log('Form data received:', {
+      file: file?.name,
+      walletAddress,
+      coverFile: coverFile?.name || 'No cover file',
+      metadataKeys: metadata ? Object.keys(JSON.parse(metadata)) : 'No metadata'
+    });
+
     if (!file || !walletAddress) {
       throw new Error('File and wallet address are required');
     }
@@ -58,11 +65,18 @@ serve(async (req) => {
     let metadataCid = null;
 
     // 1. Upload cover art if provided
-    if (coverFile) {
-      console.log('Uploading cover art to Lighthouse');
-      const coverData = await uploadToLighthouse(coverFile);
-      coverCid = coverData.Hash;
-      console.log('Cover art uploaded:', coverCid);
+    if (coverFile && coverFile.size > 0) {
+      console.log('Uploading cover art to Lighthouse:', coverFile.name, 'Size:', coverFile.size);
+      try {
+        const coverData = await uploadToLighthouse(coverFile);
+        coverCid = coverData.Hash;
+        console.log('Cover art uploaded successfully:', coverCid);
+      } catch (error) {
+        console.error('Cover art upload failed:', error);
+        // Continue without cover art
+      }
+    } else {
+      console.log('No cover file provided or file is empty');
     }
 
     // 2. Upload main audio file
