@@ -20,10 +20,7 @@ export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
-  enableWalletConnect: true,
-  enableInjected: true,
-  enableEIP6963: true,
-  enableCoinbase: true,
+  ssr: false,
 });
 
 export { chains };
