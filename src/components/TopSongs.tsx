@@ -8,6 +8,7 @@ interface Song {
   title: string;
   artist: string | null;
   audio_cid: string;
+  cover_cid: string | null;
   play_count: number;
   created_at: string;
 }
@@ -63,6 +64,13 @@ const TopSongs = () => {
                 <span className="text-neon-green font-mono font-bold text-lg w-8">
                   #{index + 1}
                 </span>
+                {song.cover_cid && (
+                  <img 
+                    src={`https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`}
+                    alt={song.title}
+                    className="w-12 h-12 object-cover rounded border border-neon-green/20"
+                  />
+                )}
                 <div className="flex-1">
                   <div className="font-mono text-foreground font-semibold">
                     {song.title}

@@ -13,8 +13,22 @@ export default function UploadMusic() {
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const { address } = useAccount();
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCoverFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleUpload = async () => {
     if (!audioFile || !address) {
@@ -29,6 +43,23 @@ export default function UploadMusic() {
     setUploading(true);
 
     try {
+      let coverCid = null;
+
+      // Upload cover art first if provided
+      if (coverFile) {
+        const coverFormData = new FormData();
+        coverFormData.append('file', coverFile);
+        coverFormData.append('walletAddress', address);
+
+        const { data: coverData, error: coverError } = await supabase.functions.invoke('upload-to-lighthouse', {
+          body: coverFormData,
+        });
+
+        if (coverError) throw new Error(`Cover upload failed: ${coverError.message}`);
+        coverCid = coverData.cid;
+      }
+
+      // Upload audio file
       const formData = new FormData();
       formData.append('file', audioFile);
       formData.append('walletAddress', address);
@@ -36,6 +67,7 @@ export default function UploadMusic() {
         title: title || audioFile.name,
         artist,
         genre,
+        coverCid,
       }));
 
       const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
@@ -54,6 +86,8 @@ export default function UploadMusic() {
       setArtist("");
       setGenre("");
       setAudioFile(null);
+      setCoverFile(null);
+      setCoverPreview(null);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -75,6 +109,26 @@ export default function UploadMusic() {
         </div>
 
         <div className="space-y-4">
+          <div>
+            <Label htmlFor="cover-art">Cover Art (Optional)</Label>
+            <Input
+              id="cover-art"
+              type="file"
+              accept="image/*"
+              onChange={handleCoverChange}
+              disabled={uploading}
+            />
+            {coverPreview && (
+              <div className="mt-2">
+                <img 
+                  src={coverPreview} 
+                  alt="Cover preview" 
+                  className="w-32 h-32 object-cover rounded border border-border"
+                />
+              </div>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="audio-file">Audio File *</Label>
             <Input
