@@ -14,7 +14,13 @@ interface Song {
   created_at: string;
 }
 
-const TopSongs = () => {
+interface TopSongsProps {
+  onPlaySong: (song: Song) => void;
+  currentSong: Song | null;
+  isPlaying: boolean;
+}
+
+const TopSongs = ({ onPlaySong, currentSong, isPlaying }: TopSongsProps) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -59,9 +65,11 @@ const TopSongs = () => {
     }
   };
 
-  const playFromIPFS = (cid: string) => {
-    window.open(`https://gateway.lighthouse.storage/ipfs/${cid}`, '_blank');
+  const handlePlayClick = (song: Song) => {
+    onPlaySong(song);
   };
+
+  const isCurrentSong = (song: Song) => currentSong?.id === song.id;
 
   const deleteSong = async (songId: string, songTitle: string) => {
     if (!isAdmin) return;
@@ -138,10 +146,11 @@ const TopSongs = () => {
                 <Button 
                   variant="neon" 
                   size="sm"
-                  onClick={() => playFromIPFS(song.audio_cid)}
+                  onClick={() => handlePlayClick(song)}
+                  className={isCurrentSong(song) && isPlaying ? 'animate-pulse' : ''}
                 >
                   <Play className="w-4 h-4 mr-1" />
-                  [PLAY]
+                  {isCurrentSong(song) && isPlaying ? '[PLAYING]' : '[PLAY]'}
                 </Button>
                 {isAdmin && (
                   <Button 
