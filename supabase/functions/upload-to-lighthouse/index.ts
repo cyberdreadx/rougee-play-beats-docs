@@ -28,7 +28,7 @@ serve(async (req) => {
       throw new Error('File and wallet address are required');
     }
 
-    console.log('Uploading file to Lighthouse:', file.name);
+    console.log('Uploading file to Lighthouse:', file.name, '- Processing...');
     const parsedMetadata = metadata ? JSON.parse(metadata) : {};
 
     // Helper function to upload to Lighthouse
