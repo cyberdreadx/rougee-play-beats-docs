@@ -5,9 +5,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccount } from "wagmi";
+import { useNavigate } from "react-router-dom";
 import { Upload, Music } from "lucide-react";
 
 export default function UploadMusic() {
+  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -76,6 +78,11 @@ export default function UploadMusic() {
       setAudioFile(null);
       setCoverFile(null);
       setCoverPreview(null);
+      
+      // Auto-redirect to home after successful upload
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
