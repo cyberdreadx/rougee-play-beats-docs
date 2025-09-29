@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 import { Upload, Music } from "lucide-react";
-
 export default function UploadMusic() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
@@ -18,9 +17,12 @@ export default function UploadMusic() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const { toast } = useToast();
-  const { address } = useAccount();
-
+  const {
+    toast
+  } = useToast();
+  const {
+    address
+  } = useAccount();
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -32,19 +34,16 @@ export default function UploadMusic() {
       reader.readAsDataURL(file);
     }
   };
-
   const handleUpload = async () => {
     if (!audioFile || !address) {
       toast({
         title: "Error",
         description: "Please connect wallet and select an audio file",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setUploading(true);
-
     try {
       let coverCid = null;
 
@@ -59,18 +58,18 @@ export default function UploadMusic() {
         title: title || audioFile.name,
         artist,
         genre,
-        ticker,
+        ticker
       }));
-
-      const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
-        body: formData,
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('upload-to-lighthouse', {
+        body: formData
       });
-
       if (error) throw error;
-
       toast({
         title: "Success",
-        description: `Music uploaded! Audio: ${data.audioCid}${data.coverCid ? `, Cover: ${data.coverCid}` : ''}, Metadata: ${data.metadataCid}`,
+        description: `Music uploaded! Audio: ${data.audioCid}${data.coverCid ? `, Cover: ${data.coverCid}` : ''}, Metadata: ${data.metadataCid}`
       });
 
       // Reset form
@@ -81,7 +80,7 @@ export default function UploadMusic() {
       setAudioFile(null);
       setCoverFile(null);
       setCoverPreview(null);
-      
+
       // Auto-redirect to home after successful upload
       setTimeout(() => {
         navigate("/");
@@ -91,114 +90,62 @@ export default function UploadMusic() {
       toast({
         title: "Upload failed",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setUploading(false);
     }
   };
-
-  return (
-    <div className="container mx-auto px-4 py-8">
+  return <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto bg-card rounded-lg border border-border p-6">
         <div className="flex items-center gap-2 mb-6">
           <Music className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-bold">Upload Music to IPFS</h2>
+          <h2 className="text-2xl font-bold">Launch Music on ROUGEE</h2>
         </div>
 
         <div className="space-y-4">
           <div>
             <Label htmlFor="cover-art">Cover Art (Optional)</Label>
-            <Input
-              id="cover-art"
-              type="file"
-              accept="image/*"
-              onChange={handleCoverChange}
-              disabled={uploading}
-            />
-            {coverPreview && (
-              <div className="mt-2">
-                <img 
-                  src={coverPreview} 
-                  alt="Cover preview" 
-                  className="w-32 h-32 object-cover rounded border border-border"
-                />
-              </div>
-            )}
+            <Input id="cover-art" type="file" accept="image/*" onChange={handleCoverChange} disabled={uploading} />
+            {coverPreview && <div className="mt-2">
+                <img src={coverPreview} alt="Cover preview" className="w-32 h-32 object-cover rounded border border-border" />
+              </div>}
           </div>
 
           <div>
             <Label htmlFor="audio-file">Audio File *</Label>
-            <Input
-              id="audio-file"
-              type="file"
-              accept="audio/*"
-              onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-              disabled={uploading}
-            />
+            <Input id="audio-file" type="file" accept="audio/*" onChange={e => setAudioFile(e.target.files?.[0] || null)} disabled={uploading} />
           </div>
 
           <div>
             <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Song title"
-              disabled={uploading}
-            />
+            <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Song title" disabled={uploading} />
           </div>
 
           <div>
             <Label htmlFor="artist">Artist</Label>
-            <Input
-              id="artist"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-              placeholder="Artist name"
-              disabled={uploading}
-            />
+            <Input id="artist" value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name" disabled={uploading} />
           </div>
 
           <div>
             <Label htmlFor="genre">Genre</Label>
-            <Input
-              id="genre"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              placeholder="e.g., Hip Hop, Electronic"
-              disabled={uploading}
-            />
+            <Input id="genre" value={genre} onChange={e => setGenre(e.target.value)} placeholder="e.g., Hip Hop, Electronic" disabled={uploading} />
           </div>
 
           <div>
             <Label htmlFor="ticker">Ticker Symbol</Label>
-            <Input
-              id="ticker"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="e.g., BEAT, MUSIC"
-              maxLength={10}
-              disabled={uploading}
-            />
+            <Input id="ticker" value={ticker} onChange={e => setTicker(e.target.value.toUpperCase())} placeholder="e.g., BEAT, MUSIC" maxLength={10} disabled={uploading} />
           </div>
 
-          <Button
-            onClick={handleUpload}
-            disabled={uploading || !audioFile || !address}
-            className="w-full"
-          >
+          <Button onClick={handleUpload} disabled={uploading || !audioFile || !address} className="w-full">
             <Upload className="w-4 h-4 mr-2" />
             {uploading ? "Uploading to IPFS..." : "Upload to Lighthouse"}
           </Button>
 
-          {!address && (
-            <p className="text-sm text-muted-foreground text-center">
+          {!address && <p className="text-sm text-muted-foreground text-center">
               Connect your wallet to upload music
-            </p>
-          )}
+            </p>}
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
