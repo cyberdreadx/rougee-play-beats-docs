@@ -106,10 +106,31 @@ export default function UploadMusic() {
         <div className="space-y-4">
           <div>
             <Label htmlFor="cover-art">Cover Art (Optional)</Label>
-            <Input id="cover-art" type="file" accept="image/*" onChange={handleCoverChange} disabled={uploading} />
-            {coverPreview && <div className="mt-2">
-                <img src={coverPreview} alt="Cover preview" className="w-32 h-32 object-cover rounded border border-border" />
-              </div>}
+            <div className="relative">
+              <input
+                id="cover-art"
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                disabled={uploading}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="w-48 h-48 border-2 border-dashed border-tech-border rounded-lg flex flex-col items-center justify-center bg-console-bg/20 hover:bg-console-bg/40 transition-all duration-300 hover:border-neon-green">
+                {coverPreview ? (
+                  <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <>
+                    <Music className="w-12 h-12 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground text-center px-4">
+                      Drop your CD cover here or click to browse
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JPG, PNG up to 10MB
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>
