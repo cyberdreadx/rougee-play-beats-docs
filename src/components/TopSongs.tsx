@@ -1,26 +1,93 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { Play } from "lucide-react";
+
+interface Song {
+  id: string;
+  title: string;
+  artist: string | null;
+  audio_cid: string;
+  play_count: number;
+  created_at: string;
+}
 
 const TopSongs = () => {
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSongs();
+  }, []);
+
+  const fetchSongs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('songs' as any)
+        .select('*')
+        .order('play_count', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setSongs((data as any) || []);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playFromIPFS = (cid: string) => {
+    window.open(`https://gateway.lighthouse.storage/ipfs/${cid}`, '_blank');
+  };
+
   return (
     <section className="w-full px-6 py-6">
       <h2 className="text-xl font-bold font-mono mb-4 neon-text">
         TOP 10 SONGS
       </h2>
       
-      <div className="console-bg tech-border rounded p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <span className="text-neon-green font-mono font-bold text-lg">
-              #1
-            </span>
-            <span className="font-mono text-foreground">
-              No songs launched yet...
+      <div className="console-bg tech-border rounded p-4 space-y-2">
+        {loading ? (
+          <div className="text-muted-foreground font-mono">Loading songs...</div>
+        ) : songs.length === 0 ? (
+          <div className="flex items-center justify-between p-2">
+            <span className="font-mono text-muted-foreground">
+              No songs uploaded yet. Be the first to launch!
             </span>
           </div>
-          <Button variant="neon" size="sm">
-            [LAUNCH]
-          </Button>
-        </div>
+        ) : (
+          songs.map((song, index) => (
+            <div key={song.id} className="flex items-center justify-between p-2 hover:bg-accent/5 rounded">
+              <div className="flex items-center space-x-4 flex-1">
+                <span className="text-neon-green font-mono font-bold text-lg w-8">
+                  #{index + 1}
+                </span>
+                <div className="flex-1">
+                  <div className="font-mono text-foreground font-semibold">
+                    {song.title}
+                  </div>
+                  {song.artist && (
+                    <div className="font-mono text-sm text-muted-foreground">
+                      {song.artist}
+                    </div>
+                  )}
+                </div>
+                <div className="font-mono text-sm text-muted-foreground">
+                  {song.play_count} plays
+                </div>
+              </div>
+              <Button 
+                variant="neon" 
+                size="sm"
+                onClick={() => playFromIPFS(song.audio_cid)}
+              >
+                <Play className="w-4 h-4 mr-1" />
+                [PLAY]
+              </Button>
+            </div>
+          ))
+        )}
       </div>
     </section>
   );
