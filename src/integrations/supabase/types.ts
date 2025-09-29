@@ -50,6 +50,48 @@ export type Database = {
         }
         Relationships: []
       }
+      songs: {
+        Row: {
+          artist: string | null
+          audio_cid: string
+          cover_cid: string | null
+          created_at: string
+          duration: number | null
+          genre: string | null
+          id: string
+          play_count: number
+          title: string
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          artist?: string | null
+          audio_cid: string
+          cover_cid?: string | null
+          created_at?: string
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          play_count?: number
+          title: string
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          artist?: string | null
+          audio_cid?: string
+          cover_cid?: string | null
+          created_at?: string
+          duration?: number | null
+          genre?: string | null
+          id?: string
+          play_count?: number
+          title?: string
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
