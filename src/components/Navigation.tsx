@@ -19,9 +19,11 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
-    if (tab.path !== "/") {
+    if (tab.path !== "/" || location.pathname !== "/") {
+      // Always navigate if going to a different path or if we're not on home page
       navigate(tab.path);
     } else {
+      // Only use onTabChange if we're on home page and staying on home page
       onTabChange?.(tab.name);
     }
   };
