@@ -1,12 +1,22 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import React from "react";
+import Header from "@/components/Header";
+import Navigation from "@/components/Navigation";
+import SearchBar from "@/components/SearchBar";
+import LiveStream from "@/components/LiveStream";
+import TrendingArtists from "@/components/TrendingArtists";
+import TopSongs from "@/components/TopSongs";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = React.useState("DISCOVER");
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <SearchBar />
+      <LiveStream />
+      <TrendingArtists />
+      <TopSongs />
     </div>
   );
 };
