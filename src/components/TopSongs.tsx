@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Trash2 } from "lucide-react";
@@ -18,9 +18,14 @@ interface TopSongsProps {
   onPlaySong: (song: Song) => void;
   currentSong: Song | null;
   isPlaying: boolean;
+  onPlayCountUpdate?: () => void;
 }
 
-const TopSongs = ({ onPlaySong, currentSong, isPlaying }: TopSongsProps) => {
+export interface TopSongsRef {
+  refreshSongs: () => void;
+}
+
+const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSong, isPlaying, onPlayCountUpdate }, ref) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -30,6 +35,10 @@ const TopSongs = ({ onPlaySong, currentSong, isPlaying }: TopSongsProps) => {
     fetchSongs();
     checkAdminStatus();
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    refreshSongs: fetchSongs,
+  }));
 
   const checkAdminStatus = async () => {
     try {
@@ -67,6 +76,10 @@ const TopSongs = ({ onPlaySong, currentSong, isPlaying }: TopSongsProps) => {
 
   const handlePlayClick = (song: Song) => {
     onPlaySong(song);
+    // Refresh play counts after a short delay to allow the update to process
+    setTimeout(() => {
+      onPlayCountUpdate?.();
+    }, 1000);
   };
 
   const isCurrentSong = (song: Song) => currentSong?.id === song.id;
@@ -168,6 +181,8 @@ const TopSongs = ({ onPlaySong, currentSong, isPlaying }: TopSongsProps) => {
       </div>
     </section>
   );
-};
+});
+
+TopSongs.displayName = "TopSongs";
 
 export default TopSongs;
