@@ -32,20 +32,40 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(audio.duration);
+    const updateTime = () => {
+      if (!isNaN(audio.currentTime)) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    
+    const updateDuration = () => {
+      if (!isNaN(audio.duration)) {
+        setDuration(audio.duration);
+      }
+    };
+    
     const handleEnd = () => onSongEnd();
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleEnd);
+    audio.addEventListener('loadeddata', updateDuration);
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnd);
+      audio.removeEventListener('loadeddata', updateDuration);
     };
   }, [onSongEnd]);
+
+  // Reset time when song changes
+  useEffect(() => {
+    if (currentSong) {
+      setCurrentTime(0);
+      setDuration(0);
+    }
+  }, [currentSong?.id]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -67,10 +87,11 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
 
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || isNaN(value[0]) || isNaN(audio.duration)) return;
     
-    audio.currentTime = value[0];
-    setCurrentTime(value[0]);
+    const newTime = Math.min(value[0], audio.duration);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
   };
 
   const handleVolumeChange = (value: number[]) => {
