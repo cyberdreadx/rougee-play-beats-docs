@@ -1,4 +1,4 @@
-import { defaultWagmiConfig } from '@web3modal/wagmi';
+import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 import { mainnet, arbitrum, polygon, base, optimism } from 'wagmi/chains';
 
 // Your WalletConnect Project ID
