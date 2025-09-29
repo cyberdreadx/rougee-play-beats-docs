@@ -32,7 +32,12 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     if (tab.path === "/upload") {
       return location.pathname === "/upload";
     }
-    return activeTab === tab.name;
+    // For home page tabs, only show as active if we're actually on the home page
+    if (location.pathname === "/") {
+      return activeTab === tab.name;
+    }
+    // If we're not on home page, no home page tabs should be active
+    return false;
   };
 
   return (
