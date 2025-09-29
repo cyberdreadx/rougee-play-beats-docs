@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Play } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Song {
   id: string;
@@ -16,10 +17,30 @@ interface Song {
 const TopSongs = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchSongs();
+    checkAdminStatus();
   }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        setIsAdmin(profile?.role === 'admin');
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
 
   const fetchSongs = async () => {
     try {
@@ -40,6 +61,34 @@ const TopSongs = () => {
 
   const playFromIPFS = (cid: string) => {
     window.open(`https://gateway.lighthouse.storage/ipfs/${cid}`, '_blank');
+  };
+
+  const deleteSong = async (songId: string, songTitle: string) => {
+    if (!isAdmin) return;
+    
+    try {
+      const { error } = await supabase
+        .from('songs')
+        .delete()
+        .eq('id', songId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setSongs(songs.filter(song => song.id !== songId));
+      
+      toast({
+        title: "Song deleted",
+        description: `"${songTitle}" has been removed`,
+      });
+    } catch (error) {
+      console.error('Error deleting song:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete song",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -85,14 +134,25 @@ const TopSongs = () => {
                   {song.play_count} plays
                 </div>
               </div>
-              <Button 
-                variant="neon" 
-                size="sm"
-                onClick={() => playFromIPFS(song.audio_cid)}
-              >
-                <Play className="w-4 h-4 mr-1" />
-                [PLAY]
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  variant="neon" 
+                  size="sm"
+                  onClick={() => playFromIPFS(song.audio_cid)}
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  [PLAY]
+                </Button>
+                {isAdmin && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => deleteSong(song.id, song.title)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           ))
         )}
