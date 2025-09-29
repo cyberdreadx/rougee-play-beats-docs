@@ -1,11 +1,11 @@
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
-import { mainnet, arbitrum, polygon, base, optimism } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 
 // Your WalletConnect Project ID
 export const projectId = 'cd4f138cd45bcb14df400b15eb4e6e7c';
 
 // Define the chains
-const chains = [mainnet, arbitrum, polygon, base, optimism] as const;
+const chains = [base] as const;
 
 // App metadata
 const metadata = {

@@ -1,6 +1,6 @@
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { Button } from '@/components/ui/button';
-import { mainnet, arbitrum, polygon, base, optimism } from 'wagmi/chains';
+import { base } from 'wagmi/chains';
 
 const NetworkInfo = () => {
   const { isConnected } = useAccount();
@@ -10,11 +10,7 @@ const NetworkInfo = () => {
   if (!isConnected) return null;
 
   const networks = [
-    { chain: mainnet, name: 'Ethereum' },
-    { chain: arbitrum, name: 'Arbitrum' },
-    { chain: polygon, name: 'Polygon' },
     { chain: base, name: 'Base' },
-    { chain: optimism, name: 'Optimism' },
   ];
 
   const currentNetwork = networks.find(n => n.chain.id === chainId);
