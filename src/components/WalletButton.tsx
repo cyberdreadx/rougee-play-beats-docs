@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/useWallet";
 
 const WalletButton = () => {
-  const { isConnected, address, connect, disconnect, isConnecting } = useWallet();
+  const { isConnected, connect, disconnect } = useWallet();
 
   const handleWalletAction = () => {
     if (isConnected) {
@@ -17,10 +17,10 @@ const WalletButton = () => {
       variant={isConnected ? "disconnect" : "neon"} 
       size="sm"
       onClick={handleWalletAction}
-      disabled={isConnecting}
+      
       className="font-mono"
     >
-      {isConnecting ? "[CONNECTING...]" : isConnected ? "[DISCONNECT]" : "[CONNECT WALLET]"}
+      {isConnected ? "[DISCONNECT]" : "[CONNECT WALLET]"}
     </Button>
   );
 };
