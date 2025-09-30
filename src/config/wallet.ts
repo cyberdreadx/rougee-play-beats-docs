@@ -11,8 +11,8 @@ const chains = [base] as const;
 const metadata = {
   name: 'ROUGEE.PLAY',
   description: 'Blockchain Music Platform - Discover, stream, and support artists on the decentralized music platform',
-  url: 'https://rougee.play', // Update with your domain
-  icons: ['https://rougee.play/icon-192x192.png'] // Update with your icon
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://rougee.play',
+  icons: []
 };
 
 // Create wagmi config
