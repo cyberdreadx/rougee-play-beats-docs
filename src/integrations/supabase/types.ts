@@ -17,36 +17,63 @@ export type Database = {
       profiles: {
         Row: {
           artist_name: string | null
+          artist_ticker: string | null
+          avatar_cid: string | null
           avatar_url: string | null
           bio: string | null
+          cover_cid: string | null
           created_at: string
           display_name: string | null
           id: string
+          profile_metadata_cid: string | null
           role: string
+          ticker_created_at: string | null
+          total_plays: number | null
+          total_songs: number | null
           updated_at: string
           user_id: string
+          verified: boolean | null
+          wallet_address: string | null
         }
         Insert: {
           artist_name?: string | null
+          artist_ticker?: string | null
+          avatar_cid?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_cid?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          profile_metadata_cid?: string | null
           role: string
+          ticker_created_at?: string | null
+          total_plays?: number | null
+          total_songs?: number | null
           updated_at?: string
           user_id: string
+          verified?: boolean | null
+          wallet_address?: string | null
         }
         Update: {
           artist_name?: string | null
+          artist_ticker?: string | null
+          avatar_cid?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_cid?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          profile_metadata_cid?: string | null
           role?: string
+          ticker_created_at?: string | null
+          total_plays?: number | null
+          total_songs?: number | null
           updated_at?: string
           user_id?: string
+          verified?: boolean | null
+          wallet_address?: string | null
         }
         Relationships: []
       }
@@ -103,7 +130,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_ticker_available: {
+        Args: { ticker: string }
+        Returns: boolean
+      }
+      update_artist_stats: {
+        Args: { artist_wallet: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
