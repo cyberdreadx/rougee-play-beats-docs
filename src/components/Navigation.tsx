@@ -21,6 +21,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}` }]
       : [{ name: "BECOME ARTIST", path: "/become-artist" }]
     ),
+    { name: "WALLET", path: "/wallet" },
     { name: "UPLOAD", path: "/upload" },
   ];
 
@@ -40,6 +41,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
     if (tab.path === "/become-artist") {
       return location.pathname === "/become-artist";
+    }
+    if (tab.path === "/wallet") {
+      return location.pathname === "/wallet";
     }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
