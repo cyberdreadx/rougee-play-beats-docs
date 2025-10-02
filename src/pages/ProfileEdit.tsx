@@ -172,9 +172,9 @@ const ProfileEdit = () => {
                   type="file"
                   accept="image/*"
                   onChange={handleCoverChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 />
-                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/70 transition-colors flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/70 transition-colors flex items-center justify-center pointer-events-none">
                   <Upload className="h-8 w-8 text-neon-green" />
                 </div>
               </div>
