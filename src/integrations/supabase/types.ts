@@ -27,6 +27,7 @@ export type Database = {
           id: string
           profile_metadata_cid: string | null
           role: string
+          social_links: Json | null
           ticker_created_at: string | null
           total_plays: number | null
           total_songs: number | null
@@ -47,6 +48,7 @@ export type Database = {
           id?: string
           profile_metadata_cid?: string | null
           role: string
+          social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
           total_songs?: number | null
@@ -67,6 +69,7 @@ export type Database = {
           id?: string
           profile_metadata_cid?: string | null
           role?: string
+          social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
           total_songs?: number | null
