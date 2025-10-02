@@ -7,7 +7,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Wallet as WalletIcon, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useBalance } from "wagmi";
+import { useBalance, useReadContract } from "wagmi";
+
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
+
+const ERC20_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    type: "function",
+  },
+] as const;
 
 const Wallet = () => {
   const navigate = useNavigate();
@@ -16,6 +35,19 @@ const Wallet = () => {
 
   const { data: balance, isLoading: balanceLoading } = useBalance({
     address: fullAddress as `0x${string}`,
+  });
+
+  const { data: xrgeBalance, isLoading: xrgeLoading } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+  });
+
+  const { data: xrgeDecimals } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
   });
 
   useEffect(() => {
@@ -38,6 +70,13 @@ const Wallet = () => {
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const formatXrgeBalance = () => {
+    if (!xrgeBalance || !xrgeDecimals) return "0.0000";
+    const decimals = Number(xrgeDecimals);
+    const balance = Number(xrgeBalance) / Math.pow(10, decimals);
+    return balance.toFixed(4);
   };
 
   if (!isConnected) {
@@ -99,6 +138,24 @@ const Wallet = () => {
                   {balance ? parseFloat(balance.formatted).toFixed(4) : "0.0000"}
                 </span>
                 <span className="text-xl text-muted-foreground font-mono">ETH</span>
+              </div>
+            )}
+          </div>
+
+          {/* XRGE Balance */}
+          <div className="border-t border-border pt-6 mt-6">
+            <p className="text-sm text-muted-foreground font-mono mb-2">XRGE Token Balance</p>
+            {xrgeLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-neon-green" />
+                <span className="font-mono text-muted-foreground">Loading...</span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold font-mono text-neon-green">
+                  {formatXrgeBalance()}
+                </span>
+                <span className="text-xl text-muted-foreground font-mono">XRGE</span>
               </div>
             )}
           </div>
