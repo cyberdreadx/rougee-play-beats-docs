@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Helper function to upload to Lighthouse
+    // Helper function to upload file to Lighthouse
     const uploadToLighthouse = async (file: File, name: string) => {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file, name);
@@ -76,6 +76,30 @@ Deno.serve(async (req) => {
 
       const uploadResult = await uploadResponse.json();
       console.log('Uploaded to Lighthouse:', uploadResult.Hash);
+      return uploadResult.Hash;
+    };
+
+    // Helper function to upload buffer to Lighthouse
+    const uploadBufferToLighthouse = async (jsonString: string, fileName: string) => {
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const formData = new FormData();
+      formData.append('file', blob, fileName);
+
+      const uploadResponse = await fetch('https://node.lighthouse.storage/api/v0/add', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LIGHTHOUSE_API_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        throw new Error(`Lighthouse buffer upload failed: ${errorText}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      console.log('Uploaded JSON to Lighthouse:', uploadResult.Hash);
       return uploadResult.Hash;
     };
 
@@ -110,9 +134,7 @@ Deno.serve(async (req) => {
 
     // Upload metadata JSON to IPFS
     console.log('Uploading metadata JSON...');
-    const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-    const metadataFile = new File([metadataBlob], `profile-${walletAddress}.json`);
-    const metadataCid = await uploadToLighthouse(metadataFile, `profile-${walletAddress}.json`);
+    const metadataCid = await uploadBufferToLighthouse(JSON.stringify(metadata), `profile-${walletAddress}.json`);
 
     // Update Supabase profiles table
     const profileData: any = {
