@@ -15,6 +15,7 @@ interface SearchResult {
   audio_cid?: string;
   cover_cid?: string;
   avatar_cid?: string;
+  artist_ticker?: string;
 }
 
 const SearchBar = () => {
@@ -51,7 +52,7 @@ const SearchBar = () => {
         // Search artists
         const { data: artists } = await supabase
           .from("profiles")
-          .select("wallet_address, artist_name, avatar_cid")
+          .select("wallet_address, artist_name, avatar_cid, artist_ticker")
           .ilike("artist_name", searchTerm)
           .limit(5);
 
@@ -68,6 +69,7 @@ const SearchBar = () => {
           name: a.artist_name,
           wallet_address: a.wallet_address,
           avatar_cid: a.avatar_cid,
+          artist_ticker: a.artist_ticker,
         }));
 
         const songResults: SearchResult[] = (songs || []).map((s) => ({
@@ -102,6 +104,10 @@ const SearchBar = () => {
     }
     setShowDropdown(false);
     setSearchQuery("");
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   return (
@@ -147,10 +153,19 @@ const SearchBar = () => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm font-bold text-foreground truncate">
-                        {result.name}
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-sm font-bold text-foreground truncate">
+                          {result.name}
+                        </p>
+                        {result.artist_ticker && (
+                          <span className="font-mono text-xs text-neon-green border border-neon-green/30 px-1.5 py-0.5 rounded">
+                            ${result.artist_ticker}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {formatAddress(result.wallet_address || "")}
                       </p>
-                      <p className="font-mono text-xs text-muted-foreground">Artist</p>
                     </div>
                   </>
                 ) : (
