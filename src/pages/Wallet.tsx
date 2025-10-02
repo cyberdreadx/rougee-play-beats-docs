@@ -87,28 +87,28 @@ const Wallet = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold font-mono mb-2 text-neon-green">MY WALLET</h1>
-          <p className="text-muted-foreground font-mono">Manage your crypto assets and music collection</p>
+      <main className="container mx-auto px-4 py-6 max-w-3xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold font-mono mb-1 text-neon-green">MY WALLET</h1>
+          <p className="text-sm text-muted-foreground font-mono">Manage your crypto assets and music collection</p>
         </div>
 
         {/* Wallet Overview */}
-        <Card className="p-6 mb-6 bg-card/50 backdrop-blur border-neon-green/20">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-neon-green/10">
-                <WalletIcon className="h-6 w-6 text-neon-green" />
+        <Card className="p-4 mb-4 bg-card/50 backdrop-blur border-neon-green/20">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-neon-green/10">
+                <WalletIcon className="h-4 w-4 text-neon-green" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground font-mono">Connected Wallet</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="font-mono font-bold">{formatAddress(fullAddress || "")}</p>
+                <p className="text-xs text-muted-foreground font-mono">Connected Wallet</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm font-mono font-bold">{formatAddress(fullAddress || "")}</p>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={copyAddress}
-                    className="h-6 w-6 p-0"
+                    className="h-5 w-5 p-0"
                   >
                     {copied ? (
                       <Check className="h-3 w-3 text-neon-green" />
@@ -119,63 +119,63 @@ const Wallet = () => {
                 </div>
               </div>
             </div>
-            <Badge variant="outline" className="border-neon-green/50 text-neon-green">
+            <Badge variant="outline" className="border-neon-green/50 text-neon-green text-xs">
               Connected
             </Badge>
           </div>
 
           {/* ETH Balance */}
-          <div className="border-t border-border pt-6">
-            <p className="text-sm text-muted-foreground font-mono mb-2">Ethereum Balance</p>
+          <div className="border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground font-mono mb-1">Ethereum Balance</p>
             {balanceLoading ? (
               <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-neon-green" />
-                <span className="font-mono text-muted-foreground">Loading...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
+                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold font-mono text-neon-green">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold font-mono text-neon-green">
                   {balance ? parseFloat(balance.formatted).toFixed(4) : "0.0000"}
                 </span>
-                <span className="text-xl text-muted-foreground font-mono">ETH</span>
+                <span className="text-sm text-muted-foreground font-mono">ETH</span>
               </div>
             )}
           </div>
 
           {/* XRGE Balance */}
-          <div className="border-t border-border pt-6 mt-6">
-            <p className="text-sm text-muted-foreground font-mono mb-2">XRGE Token Balance</p>
+          <div className="border-t border-border pt-4 mt-4">
+            <p className="text-xs text-muted-foreground font-mono mb-1">XRGE Token Balance</p>
             {xrgeLoading ? (
               <div className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-neon-green" />
-                <span className="font-mono text-muted-foreground">Loading...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
+                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold font-mono text-neon-green">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold font-mono text-neon-green">
                   {formatXrgeBalance()}
                 </span>
-                <span className="text-xl text-muted-foreground font-mono">XRGE</span>
+                <span className="text-sm text-muted-foreground font-mono">XRGE</span>
               </div>
             )}
           </div>
         </Card>
 
         {/* Artist Tokens */}
-        <Card className="p-6 mb-6 bg-card/50 backdrop-blur border-neon-green/20">
-          <h2 className="text-xl font-bold font-mono mb-4 text-neon-green">Artist Tokens</h2>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground font-mono mb-2">No artist tokens yet</p>
-            <p className="text-5xl font-bold font-mono text-neon-green">0</p>
+        <Card className="p-4 mb-4 bg-card/50 backdrop-blur border-neon-green/20">
+          <h2 className="text-lg font-bold font-mono mb-3 text-neon-green">Artist Tokens</h2>
+          <div className="text-center py-6">
+            <p className="text-sm text-muted-foreground font-mono mb-1">No artist tokens yet</p>
+            <p className="text-3xl font-bold font-mono text-neon-green">0</p>
           </div>
         </Card>
 
         {/* Purchased Songs */}
-        <Card className="p-6 bg-card/50 backdrop-blur border-neon-green/20">
-          <h2 className="text-xl font-bold font-mono mb-4 text-neon-green">Purchased Songs</h2>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground font-mono mb-2">No songs purchased yet</p>
-            <p className="text-5xl font-bold font-mono text-neon-green">0</p>
+        <Card className="p-4 bg-card/50 backdrop-blur border-neon-green/20">
+          <h2 className="text-lg font-bold font-mono mb-3 text-neon-green">Purchased Songs</h2>
+          <div className="text-center py-6">
+            <p className="text-sm text-muted-foreground font-mono mb-1">No songs purchased yet</p>
+            <p className="text-3xl font-bold font-mono text-neon-green">0</p>
           </div>
         </Card>
       </main>
