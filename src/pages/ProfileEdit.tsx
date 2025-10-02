@@ -185,7 +185,7 @@ const ProfileEdit = () => {
               <Label htmlFor="avatar" className="font-mono">Avatar (512x512, max 2MB)</Label>
               <div className="flex items-center gap-4">
                 <Avatar className="h-24 w-24 border-2 border-neon-green cursor-pointer">
-                  <AvatarImage src={avatarPreview || undefined} />
+                  <AvatarImage src={avatarPreview || undefined} className="object-cover" />
                   <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xl">
                     {artistName.substring(0, 2).toUpperCase() || "??"}
                   </AvatarFallback>
