@@ -43,39 +43,39 @@ const BecomeArtist = () => {
 
   const features = [
     {
-      icon: Shield,
-      title: "Decentralized Ownership",
-      description: "Your music lives on IPFS forever. No platform can take it down or delete your content.",
+      icon: Coins,
+      title: "Instant Token Launch",
+      description: "Each song mints 1B tokens. You get 1.5% (15M tokens), 98.5% goes to trading pool for fans.",
       color: "text-neon-green"
     },
     {
-      icon: Coins,
+      icon: TrendingUp,
+      title: "Fan Trading & Speculation",
+      description: "Fans buy and trade your song tokens. As your music gains popularity, token value grows.",
+      color: "text-blue-500"
+    },
+    {
+      icon: Shield,
+      title: "Decentralized Ownership",
+      description: "Your music lives on IPFS forever. No platform can take it down or delete your content.",
+      color: "text-purple-500"
+    },
+    {
+      icon: Zap,
       title: "Unique Artist Ticker",
       description: "Claim your $TICKER symbol - a permanent, tradeable identity on the blockchain.",
-      color: "text-blue-500"
+      color: "text-yellow-500"
     },
     {
       icon: Globe,
       title: "Verifiable on IPFS",
       description: "Every profile, song, and image is cryptographically verified and permanently stored.",
-      color: "text-purple-500"
+      color: "text-pink-500"
     },
     {
       icon: Users,
       title: "Direct Fan Connection",
-      description: "Connect with listeners directly through your wallet address. No middleman.",
-      color: "text-yellow-500"
-    },
-    {
-      icon: TrendingUp,
-      title: "Trending Algorithm",
-      description: "Get discovered by fans through our play-count based trending system.",
-      color: "text-pink-500"
-    },
-    {
-      icon: Zap,
-      title: "Instant Publishing",
-      description: "Upload and publish music to IPFS in seconds. Your songs are live immediately.",
+      description: "Connect with listeners who are literally invested in your success through song tokens.",
       color: "text-orange-500"
     }
   ];
@@ -84,22 +84,22 @@ const BecomeArtist = () => {
     {
       number: "01",
       title: "Connect Your Wallet",
-      description: "Use any Web3 wallet to authenticate. Your wallet is your artist identity."
+      description: "Use any Web3 wallet to authenticate. Your wallet is your artist identity and receives all tokens."
     },
     {
       number: "02",
       title: "Create Your Profile",
-      description: "Upload cover art, avatar, claim your unique $TICKER, and add your bio."
+      description: "Upload cover art, avatar, claim your unique $TICKER, and add your bio to establish your brand."
     },
     {
       number: "03",
-      title: "Upload Your Music",
-      description: "Publish tracks directly to IPFS. Each song gets a permanent decentralized link."
+      title: "Upload & Tokenize Music",
+      description: "Each song drop mints 1B tokens. You get 1.5% instantly, the rest goes to fans for trading."
     },
     {
       number: "04",
-      title: "Build Your Fanbase",
-      description: "Share your artist profile, get plays, and rise in the trending charts."
+      title: "Earn as Fans Trade",
+      description: "Watch your song tokens get traded by fans. As demand grows, so does the value of your 1.5%."
     }
   ];
 
@@ -132,8 +132,8 @@ const BecomeArtist = () => {
           </h1>
           
           <p className="text-xl text-muted-foreground font-mono max-w-3xl mx-auto">
-            Launch your music career on a truly decentralized platform. 
-            Own your content, claim your ticker, and connect directly with fans.
+            Launch your music career on a truly decentralized platform where every song becomes a tradeable token.
+            Own your content, claim your ticker, and let fans invest in your success.
           </p>
 
           <div className="flex gap-4 justify-center pt-4">
@@ -187,6 +187,81 @@ const BecomeArtist = () => {
           </div>
         </div>
 
+        {/* Tokenomics Explainer - NEW FEATURED SECTION */}
+        <Card className="console-bg tech-border p-8 mb-16 border-neon-green/50">
+          <div className="text-center mb-8">
+            <Badge className="bg-neon-green/20 text-neon-green border-neon-green font-mono mb-4">
+              HOW SONG TOKENOMICS WORK
+            </Badge>
+            <h2 className="text-3xl font-mono font-bold neon-text mb-4">
+              EVERY SONG = 1 BILLION TOKENS
+            </h2>
+            <p className="text-muted-foreground font-mono max-w-2xl mx-auto">
+              When you drop a song, it automatically mints 1 billion tradeable tokens. 
+              Here&apos;s how they&apos;re distributed:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card className="console-bg tech-border p-6 border-neon-green/30">
+              <div className="flex items-start gap-4">
+                <div className="bg-neon-green/20 p-3 rounded">
+                  <Coins className="h-8 w-8 text-neon-green" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-mono font-bold text-xl mb-2 text-neon-green">
+                    1.5% TO ARTIST
+                  </h3>
+                  <p className="text-3xl font-mono font-bold mb-2">15,000,000</p>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    You receive 15 million tokens instantly when you upload. 
+                    Hold them as your song gains value or sell anytime.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="console-bg tech-border p-6 border-blue-500/30">
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-500/20 p-3 rounded">
+                  <Users className="h-8 w-8 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-mono font-bold text-xl mb-2 text-blue-500">
+                    98.5% TO TRADING POOL
+                  </h3>
+                  <p className="text-3xl font-mono font-bold mb-2">985,000,000</p>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    Goes to liquidity pool for fans to buy, sell, and trade. 
+                    More demand = higher token price = your 1.5% grows in value.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="console-bg tech-border p-4">
+              <TrendingUp className="h-6 w-6 text-neon-green mx-auto mb-2" />
+              <p className="font-mono text-xs text-muted-foreground">
+                Song goes viral → More fans buy tokens
+              </p>
+            </div>
+            <div className="console-bg tech-border p-4">
+              <Coins className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
+              <p className="font-mono text-xs text-muted-foreground">
+                Token price increases → Your 1.5% appreciates
+              </p>
+            </div>
+            <div className="console-bg tech-border p-4">
+              <Zap className="h-6 w-6 text-blue-500 mx-auto mb-2" />
+              <p className="font-mono text-xs text-muted-foreground">
+                You earn from both music and token value
+              </p>
+            </div>
+          </div>
+        </Card>
+
         {/* How It Works */}
         <div className="mb-16">
           <h2 className="text-3xl font-mono font-bold neon-text text-center mb-8">
@@ -225,9 +300,9 @@ const BecomeArtist = () => {
             <div className="flex gap-3">
               <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
               <div>
-                <h4 className="font-mono font-bold mb-1">Permanent Artist Profile</h4>
+                <h4 className="font-mono font-bold mb-1">15M Tokens Per Song</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  Cover photo, avatar, bio, and social links - all stored on IPFS
+                  Receive 1.5% of 1B tokens instantly when you upload - that&apos;s 15 million tokens in your wallet
                 </p>
               </div>
             </div>
@@ -235,9 +310,9 @@ const BecomeArtist = () => {
             <div className="flex gap-3">
               <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
               <div>
-                <h4 className="font-mono font-bold mb-1">Unique $TICKER Symbol</h4>
+                <h4 className="font-mono font-bold mb-1">Token Appreciation Rights</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  Claim your 3-10 character ticker - yours forever, tradeable later
+                  As fans trade your song tokens, the value can grow - your 1.5% supply appreciates with demand
                 </p>
               </div>
             </div>
@@ -245,9 +320,9 @@ const BecomeArtist = () => {
             <div className="flex gap-3">
               <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
               <div>
-                <h4 className="font-mono font-bold mb-1">Unlimited Music Uploads</h4>
+                <h4 className="font-mono font-bold mb-1">Tradeable Artist $TICKER</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  Upload as many tracks as you want - each stored permanently on IPFS
+                  Claim your 3-10 character ticker - unique brand identity that can become valuable
                 </p>
               </div>
             </div>
@@ -255,9 +330,19 @@ const BecomeArtist = () => {
             <div className="flex gap-3">
               <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
               <div>
-                <h4 className="font-mono font-bold mb-1">Artist Dashboard</h4>
+                <h4 className="font-mono font-bold mb-1">Unlimited Token Launches</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  Track your total plays, songs, and see your trending position
+                  Every song gets its own 1B token supply - upload unlimited tracks, get 1.5% of each
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
+              <div>
+                <h4 className="font-mono font-bold mb-1">Analytics Dashboard</h4>
+                <p className="text-sm text-muted-foreground font-mono">
+                  Track total plays, songs, token performance, and trending position
                 </p>
               </div>
             </div>
@@ -275,9 +360,9 @@ const BecomeArtist = () => {
             <div className="flex gap-3">
               <CheckCircle2 className="h-6 w-6 text-neon-green flex-shrink-0" />
               <div>
-                <h4 className="font-mono font-bold mb-1">Featured Placement</h4>
+                <h4 className="font-mono font-bold mb-1">Fan Investment Opportunities</h4>
                 <p className="text-sm text-muted-foreground font-mono">
-                  Appear in Trending Artists section based on your play count
+                  Appear in Trending Artists as fans buy and trade your song tokens
                 </p>
               </div>
             </div>
@@ -291,8 +376,8 @@ const BecomeArtist = () => {
             READY TO LAUNCH?
           </h2>
           <p className="text-lg text-muted-foreground font-mono mb-8 max-w-2xl mx-auto">
-            Join the decentralized music revolution. No gatekeepers, no platform fees, 
-            just you and your fans on the blockchain.
+            Join the music tokenization revolution. Every song becomes an investment opportunity for fans.
+            No gatekeepers, no streaming pennies - just you, your music, and fans who believe in you.
           </p>
           <Button 
             variant="neon" 
