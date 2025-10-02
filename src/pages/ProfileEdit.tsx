@@ -262,7 +262,7 @@ const ProfileEdit = () => {
 
             {/* Social Links */}
             <div className="space-y-4">
-              <h3 className="font-mono font-bold text-neon-green">Social Links</h3>
+              <h3 className="font-mono font-bold text-neon-green">Social Links (Optional)</h3>
               
               <div className="space-y-2">
                 <Label htmlFor="twitter" className="font-mono">Twitter/X</Label>
@@ -270,7 +270,7 @@ const ProfileEdit = () => {
                   id="twitter"
                   value={twitter}
                   onChange={(e) => setTwitter(e.target.value)}
-                  placeholder="https://twitter.com/..."
+                  placeholder="https://twitter.com/yourhandle"
                 />
               </div>
 
@@ -280,7 +280,7 @@ const ProfileEdit = () => {
                   id="instagram"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  placeholder="https://instagram.com/..."
+                  placeholder="https://instagram.com/yourhandle"
                 />
               </div>
 
@@ -290,7 +290,7 @@ const ProfileEdit = () => {
                   id="website"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://yourwebsite.com"
                 />
               </div>
             </div>
