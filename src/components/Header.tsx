@@ -32,7 +32,7 @@ const Header = () => {
 
         {/* Right side buttons */}
         <div className="flex items-center gap-3">
-          {isConnected && profile && profile.artist_name && (
+          {isConnected && (
             <Button
               variant="outline"
               size="sm"

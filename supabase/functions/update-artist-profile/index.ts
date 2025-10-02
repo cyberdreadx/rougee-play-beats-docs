@@ -23,15 +23,16 @@ Deno.serve(async (req) => {
     
     const formData = await req.formData();
     const walletAddress = formData.get('wallet_address') as string;
-    const artistName = formData.get('artist_name') as string;
+    const displayName = formData.get('display_name') as string;
+    const artistName = formData.get('artist_name') as string || '';
     const bio = formData.get('bio') as string || '';
     const artistTicker = formData.get('artist_ticker') as string || '';
     const socialLinks = formData.get('social_links') as string || '{}';
     const avatarFile = formData.get('avatar') as File | null;
     const coverFile = formData.get('cover') as File | null;
 
-    if (!walletAddress || !artistName) {
-      throw new Error('Wallet address and artist name are required');
+    if (!walletAddress || !displayName) {
+      throw new Error('Wallet address and display name are required');
     }
 
     console.log('Processing profile update for:', walletAddress);
@@ -129,9 +130,10 @@ Deno.serve(async (req) => {
     // Create metadata JSON
     const metadata = {
       wallet_address: walletAddress,
-      artist_name: artistName,
+      display_name: displayName,
+      artist_name: artistName || undefined,
       bio,
-      artist_ticker: artistTicker.toUpperCase(),
+      artist_ticker: artistTicker ? artistTicker.toUpperCase() : undefined,
       avatar_cid: avatarCid,
       cover_cid: coverCid,
       social_links: JSON.parse(socialLinks),
@@ -147,14 +149,15 @@ Deno.serve(async (req) => {
     // Update Supabase profiles table
     const profileData: any = {
       wallet_address: walletAddress,
-      artist_name: artistName,
+      display_name: displayName,
       bio,
       social_links: JSON.parse(socialLinks),
       profile_metadata_cid: metadataCid,
       updated_at: new Date().toISOString(),
-      role: 'artist',
+      role: artistName ? 'artist' : 'listener',
     };
 
+    if (artistName) profileData.artist_name = artistName;
     if (avatarCid) profileData.avatar_cid = avatarCid;
     if (coverCid) profileData.cover_cid = coverCid;
     if (artistTicker) {

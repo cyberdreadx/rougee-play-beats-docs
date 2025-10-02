@@ -20,6 +20,7 @@ const ProfileEdit = () => {
   const { fullAddress, isConnected } = useWallet();
   const { profile, loading, updating, updateProfile } = useCurrentUserProfile();
 
+  const [displayName, setDisplayName] = useState("");
   const [artistName, setArtistName] = useState("");
   const [artistTicker, setArtistTicker] = useState("");
   const [bio, setBio] = useState("");
@@ -30,6 +31,7 @@ const ProfileEdit = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [isArtist, setIsArtist] = useState(false);
 
   useEffect(() => {
     if (!isConnected) {
@@ -44,12 +46,14 @@ const ProfileEdit = () => {
 
   useEffect(() => {
     if (profile) {
+      setDisplayName(profile.display_name || "");
       setArtistName(profile.artist_name || "");
       setArtistTicker(profile.artist_ticker || "");
       setBio(profile.bio || "");
       setTwitter(profile.social_links?.twitter || "");
       setInstagram(profile.social_links?.instagram || "");
       setWebsite(profile.social_links?.website || "");
+      setIsArtist(!!profile.artist_name);
       if (profile.avatar_cid) {
         setAvatarPreview(getIPFSGatewayUrl(profile.avatar_cid));
       }
@@ -103,7 +107,7 @@ const ProfileEdit = () => {
       return;
     }
 
-    if (!artistName.trim()) {
+    if (isArtist && !artistName.trim()) {
       toast({
         title: "Artist name required",
         description: "Please enter your artist name",
@@ -112,11 +116,23 @@ const ProfileEdit = () => {
       return;
     }
 
+    if (!isArtist && !displayName.trim()) {
+      toast({
+        title: "Display name required",
+        description: "Please enter your display name",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append("wallet_address", fullAddress);
-    formData.append("artist_name", artistName.trim());
+    formData.append("display_name", isArtist ? artistName.trim() : displayName.trim());
+    if (isArtist) {
+      formData.append("artist_name", artistName.trim());
+      formData.append("artist_ticker", artistTicker.trim().toUpperCase());
+    }
     formData.append("bio", bio.trim());
-    formData.append("artist_ticker", artistTicker.trim().toUpperCase());
     formData.append("social_links", JSON.stringify({ twitter, instagram, website }));
 
     if (avatarFile) {
@@ -127,8 +143,12 @@ const ProfileEdit = () => {
     }
 
     const success = await updateProfile(formData);
-    if (success && fullAddress) {
-      navigate(`/artist/${fullAddress}`);
+    if (success) {
+      if (isArtist && fullAddress) {
+        navigate(`/artist/${fullAddress}`);
+      } else {
+        navigate("/");
+      }
     }
   };
 
@@ -151,11 +171,38 @@ const ProfileEdit = () => {
 
       <div className="max-w-4xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-mono font-bold neon-text mb-6">
-          {profile ? "EDIT PROFILE" : "CREATE ARTIST PROFILE"}
+          {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
         </h1>
 
         <Card className="console-bg tech-border p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Profile Type Toggle */}
+            <div className="space-y-2">
+              <Label className="font-mono">Profile Type</Label>
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant={!isArtist ? "neon" : "outline"}
+                  onClick={() => setIsArtist(false)}
+                  disabled={!!profile?.artist_name}
+                >
+                  Listener
+                </Button>
+                <Button
+                  type="button"
+                  variant={isArtist ? "neon" : "outline"}
+                  onClick={() => setIsArtist(true)}
+                  disabled={!!profile?.artist_name}
+                >
+                  Artist
+                </Button>
+              </div>
+              {profile?.artist_name && (
+                <p className="text-xs text-yellow-500 font-mono">
+                  ⚠️ Profile type cannot be changed once set as artist
+                </p>
+              )}
+            </div>
             {/* Cover Photo */}
             <div className="space-y-2">
               <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 5MB)</Label>
@@ -187,7 +234,7 @@ const ProfileEdit = () => {
                 <Avatar className="h-24 w-24 border-2 border-neon-green cursor-pointer">
                   <AvatarImage src={avatarPreview || undefined} className="object-cover" />
                   <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xl">
-                    {artistName.substring(0, 2).toUpperCase() || "??"}
+                    {(isArtist ? artistName : displayName).substring(0, 2).toUpperCase() || "??"}
                   </AvatarFallback>
                 </Avatar>
                 <input
@@ -209,40 +256,56 @@ const ProfileEdit = () => {
               </div>
             </div>
 
-            {/* Artist Name */}
-            <div className="space-y-2">
-              <Label htmlFor="artist-name" className="font-mono">Artist Name *</Label>
-              <Input
-                id="artist-name"
-                value={artistName}
-                onChange={(e) => setArtistName(e.target.value)}
-                placeholder="Your artist name"
-                required
-              />
-            </div>
-
-            {/* Artist Ticker */}
-            <div className="space-y-2">
-              <Label htmlFor="artist-ticker" className="font-mono">
-                Artist Ticker (3-10 chars, A-Z 0-9 only)
-              </Label>
-              <div className="flex gap-2">
-                <span className="text-neon-green font-mono text-lg">$</span>
+            {/* Display Name / Artist Name */}
+            {!isArtist ? (
+              <div className="space-y-2">
+                <Label htmlFor="display-name" className="font-mono">Display Name *</Label>
                 <Input
-                  id="artist-ticker"
-                  value={artistTicker}
-                  onChange={(e) => setArtistTicker(e.target.value.toUpperCase())}
-                  placeholder="ARTIST"
-                  maxLength={10}
-                  pattern="[A-Z0-9]{3,10}"
+                  id="display-name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your display name"
+                  required
                 />
               </div>
-              {profile?.artist_ticker && (
-                <p className="text-xs text-yellow-500 font-mono">
-                  ⚠️ Ticker cannot be changed once claimed
-                </p>
-              )}
-            </div>
+            ) : (
+              <>
+                {/* Artist Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="artist-name" className="font-mono">Artist Name *</Label>
+                  <Input
+                    id="artist-name"
+                    value={artistName}
+                    onChange={(e) => setArtistName(e.target.value)}
+                    placeholder="Your artist name"
+                    required
+                  />
+                </div>
+
+                {/* Artist Ticker */}
+                <div className="space-y-2">
+                  <Label htmlFor="artist-ticker" className="font-mono">
+                    Artist Ticker (3-10 chars, A-Z 0-9 only)
+                  </Label>
+                  <div className="flex gap-2">
+                    <span className="text-neon-green font-mono text-lg">$</span>
+                    <Input
+                      id="artist-ticker"
+                      value={artistTicker}
+                      onChange={(e) => setArtistTicker(e.target.value.toUpperCase())}
+                      placeholder="ARTIST"
+                      maxLength={10}
+                      pattern="[A-Z0-9]{3,10}"
+                    />
+                  </div>
+                  {profile?.artist_ticker && (
+                    <p className="text-xs text-yellow-500 font-mono">
+                      ⚠️ Ticker cannot be changed once claimed
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Bio */}
             <div className="space-y-2">

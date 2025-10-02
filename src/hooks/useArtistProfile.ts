@@ -4,7 +4,8 @@ import { fetchProfileFromIPFS } from '@/lib/ipfs';
 
 export interface ArtistProfile {
   wallet_address: string;
-  artist_name: string;
+  display_name?: string;
+  artist_name?: string;
   artist_ticker?: string;
   bio?: string;
   avatar_cid?: string;
