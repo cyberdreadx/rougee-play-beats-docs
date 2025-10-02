@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
       social_links: JSON.parse(socialLinks),
       profile_metadata_cid: metadataCid,
       updated_at: new Date().toISOString(),
+      role: 'artist',
     };
 
     if (avatarCid) profileData.avatar_cid = avatarCid;
