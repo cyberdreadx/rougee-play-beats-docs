@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
+import { useWallet } from "@/hooks/useWallet";
 
 interface NavigationProps {
   activeTab?: string;
@@ -9,11 +11,16 @@ interface NavigationProps {
 const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { fullAddress } = useWallet();
+  const { isArtist } = useCurrentUserProfile();
   
   const tabs = [
     { name: "DISCOVER", path: "/" },
     { name: "TRENDING", path: "/" },
-    { name: "BECOME ARTIST", path: "/become-artist" },
+    ...(isArtist 
+      ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}` }]
+      : [{ name: "BECOME ARTIST", path: "/become-artist" }]
+    ),
     { name: "UPLOAD", path: "/upload" },
   ];
 
@@ -33,6 +40,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
     if (tab.path === "/become-artist") {
       return location.pathname === "/become-artist";
+    }
+    if (tab.path?.startsWith("/artist/")) {
+      return location.pathname === tab.path;
     }
     // For home page tabs, only show as active if we're actually on the home page
     if (location.pathname === "/") {
