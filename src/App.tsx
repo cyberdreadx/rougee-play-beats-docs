@@ -9,6 +9,7 @@ import Artist from "./pages/Artist";
 import ProfileEdit from "./pages/ProfileEdit";
 import BecomeArtist from "./pages/BecomeArtist";
 import Wallet from "./pages/Wallet";
+import SongTrade from "./pages/SongTrade";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/artist/:walletAddress" element={<Artist />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
+          <Route path="/song/:songId" element={<SongTrade />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

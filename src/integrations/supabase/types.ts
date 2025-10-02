@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      comments: {
+        Row: {
+          comment_text: string
+          created_at: string
+          id: string
+          song_id: string
+          updated_at: string
+          user_name: string | null
+          wallet_address: string
+        }
+        Insert: {
+          comment_text: string
+          created_at?: string
+          id?: string
+          song_id: string
+          updated_at?: string
+          user_name?: string | null
+          wallet_address: string
+        }
+        Update: {
+          comment_text?: string
+          created_at?: string
+          id?: string
+          song_id?: string
+          updated_at?: string
+          user_name?: string | null
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           artist_name: string | null

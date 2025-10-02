@@ -1,4 +1,5 @@
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ export interface TopSongsRef {
 }
 
 const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSong, isPlaying, onPlayCountUpdate }, ref) => {
+  const navigate = useNavigate();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -130,7 +132,11 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
           </div>
         ) : (
           songs.map((song, index) => (
-            <div key={song.id} className="flex items-center justify-between p-2 hover:bg-accent/5 rounded">
+            <div 
+              key={song.id} 
+              onClick={() => navigate(`/song/${song.id}`)}
+              className="flex items-center justify-between p-2 hover:bg-accent/5 rounded cursor-pointer"
+            >
               <div className="flex items-center space-x-4 flex-1">
                 <span className="text-neon-green font-mono font-bold text-lg w-8">
                   #{index + 1}
