@@ -8,6 +8,7 @@ interface Song {
   id: string;
   title: string;
   artist: string | null;
+  wallet_address: string;
   audio_cid: string;
   cover_cid: string | null;
   play_count: number;
@@ -60,13 +61,13 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
   const fetchSongs = async () => {
     try {
       const { data, error } = await supabase
-        .from('songs' as any)
-        .select('*')
+        .from('songs')
+        .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, created_at')
         .order('play_count', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      setSongs((data as any) || []);
+      setSongs(data || []);
     } catch (error) {
       console.error('Error fetching songs:', error);
     } finally {
@@ -146,7 +147,10 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     {song.title}
                   </div>
                   {song.artist && (
-                    <div className="font-mono text-sm text-muted-foreground">
+                    <div 
+                      className="font-mono text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors"
+                      onClick={() => window.location.href = `/artist/${song.wallet_address}`}
+                    >
                       {song.artist}
                     </div>
                   )}

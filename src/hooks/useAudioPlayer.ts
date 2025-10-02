@@ -5,6 +5,7 @@ interface Song {
   id: string;
   title: string;
   artist: string | null;
+  wallet_address: string;
   audio_cid: string;
   cover_cid: string | null;
   play_count: number;

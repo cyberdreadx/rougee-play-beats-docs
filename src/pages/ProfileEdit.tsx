@@ -1,0 +1,344 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import Header from "@/components/Header";
+import NetworkInfo from "@/components/NetworkInfo";
+import Navigation from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
+import { useWallet } from "@/hooks/useWallet";
+import { Upload, ExternalLink, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
+
+const ProfileEdit = () => {
+  const navigate = useNavigate();
+  const { fullAddress, isConnected } = useWallet();
+  const { profile, loading, updating, updateProfile } = useCurrentUserProfile();
+
+  const [artistName, setArtistName] = useState("");
+  const [artistTicker, setArtistTicker] = useState("");
+  const [bio, setBio] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [website, setWebsite] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isConnected) {
+      navigate("/");
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet to edit your profile",
+        variant: "destructive",
+      });
+    }
+  }, [isConnected, navigate]);
+
+  useEffect(() => {
+    if (profile) {
+      setArtistName(profile.artist_name || "");
+      setArtistTicker(profile.artist_ticker || "");
+      setBio(profile.bio || "");
+      setTwitter(profile.social_links?.twitter || "");
+      setInstagram(profile.social_links?.instagram || "");
+      setWebsite(profile.social_links?.website || "");
+      if (profile.avatar_cid) {
+        setAvatarPreview(getIPFSGatewayUrl(profile.avatar_cid));
+      }
+      if (profile.cover_cid) {
+        setCoverPreview(getIPFSGatewayUrl(profile.cover_cid));
+      }
+    }
+  }, [profile]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Avatar must be less than 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Cover photo must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCoverFile(file);
+      setCoverPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!fullAddress) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!artistName.trim()) {
+      toast({
+        title: "Artist name required",
+        description: "Please enter your artist name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("wallet_address", fullAddress);
+    formData.append("artist_name", artistName.trim());
+    formData.append("bio", bio.trim());
+    formData.append("artist_ticker", artistTicker.trim().toUpperCase());
+    formData.append("social_links", JSON.stringify({ twitter, instagram, website }));
+
+    if (avatarFile) {
+      formData.append("avatar", avatarFile);
+    }
+    if (coverFile) {
+      formData.append("cover", coverFile);
+    }
+
+    const success = await updateProfile(formData);
+    if (success && fullAddress) {
+      navigate(`/artist/${fullAddress}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <Navigation />
+      <NetworkInfo />
+
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <h1 className="text-3xl font-mono font-bold neon-text mb-6">
+          {profile ? "EDIT PROFILE" : "CREATE ARTIST PROFILE"}
+        </h1>
+
+        <Card className="console-bg tech-border p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Cover Photo */}
+            <div className="space-y-2">
+              <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 5MB)</Label>
+              <div 
+                className="relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background cursor-pointer group"
+                style={coverPreview ? {
+                  backgroundImage: `url(${coverPreview})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                } : undefined}
+              >
+                <input
+                  id="cover"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/70 transition-colors flex items-center justify-center">
+                  <Upload className="h-8 w-8 text-neon-green" />
+                </div>
+              </div>
+            </div>
+
+            {/* Avatar */}
+            <div className="space-y-2">
+              <Label htmlFor="avatar" className="font-mono">Avatar (512x512, max 2MB)</Label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-24 w-24 border-2 border-neon-green cursor-pointer">
+                  <AvatarImage src={avatarPreview || undefined} />
+                  <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xl">
+                    {artistName.substring(0, 2).toUpperCase() || "??"}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  id="avatar"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById("avatar")?.click()}
+                  className="font-mono"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Avatar
+                </Button>
+              </div>
+            </div>
+
+            {/* Artist Name */}
+            <div className="space-y-2">
+              <Label htmlFor="artist-name" className="font-mono">Artist Name *</Label>
+              <Input
+                id="artist-name"
+                value={artistName}
+                onChange={(e) => setArtistName(e.target.value)}
+                placeholder="Your artist name"
+                required
+              />
+            </div>
+
+            {/* Artist Ticker */}
+            <div className="space-y-2">
+              <Label htmlFor="artist-ticker" className="font-mono">
+                Artist Ticker (3-10 chars, A-Z 0-9 only)
+              </Label>
+              <div className="flex gap-2">
+                <span className="text-neon-green font-mono text-lg">$</span>
+                <Input
+                  id="artist-ticker"
+                  value={artistTicker}
+                  onChange={(e) => setArtistTicker(e.target.value.toUpperCase())}
+                  placeholder="ARTIST"
+                  maxLength={10}
+                  pattern="[A-Z0-9]{3,10}"
+                />
+              </div>
+              {profile?.artist_ticker && (
+                <p className="text-xs text-yellow-500 font-mono">
+                  ⚠️ Ticker cannot be changed once claimed
+                </p>
+              )}
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-2">
+              <Label htmlFor="bio" className="font-mono">Bio</Label>
+              <Textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell fans about yourself..."
+                maxLength={500}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground font-mono text-right">
+                {bio.length}/500
+              </p>
+            </div>
+
+            {/* Social Links */}
+            <div className="space-y-4">
+              <h3 className="font-mono font-bold text-neon-green">Social Links</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="twitter" className="font-mono">Twitter/X</Label>
+                <Input
+                  id="twitter"
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  placeholder="https://twitter.com/..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="instagram" className="font-mono">Instagram</Label>
+                <Input
+                  id="instagram"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="website" className="font-mono">Website</Label>
+                <Input
+                  id="website"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            {/* Submit */}
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                variant="neon"
+                disabled={updating}
+                className="flex-1"
+              >
+                {updating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    UPLOADING TO IPFS...
+                  </>
+                ) : (
+                  "SAVE PROFILE"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/")}
+              >
+                CANCEL
+              </Button>
+            </div>
+
+            {profile?.profile_metadata_cid && (
+              <div className="flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
+                <ExternalLink className="h-3 w-3" />
+                <a
+                  href={getIPFSGatewayUrl(profile.profile_metadata_cid)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-neon-green transition-colors"
+                >
+                  View on IPFS
+                </a>
+              </div>
+            )}
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default ProfileEdit;

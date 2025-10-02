@@ -5,6 +5,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Web3Provider from "@/providers/Web3Provider";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
+import Artist from "./pages/Artist";
+import ProfileEdit from "./pages/ProfileEdit";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -16,6 +18,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/artist/:walletAddress" element={<Artist />} />
+          <Route path="/profile/edit" element={<ProfileEdit />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Song {
   id: string;
   title: string;
   artist: string | null;
+  wallet_address: string;
   audio_cid: string;
   cover_cid: string | null;
   play_count: number;
@@ -22,11 +25,33 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPlayerProps) => {
+  const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const [artistTicker, setArtistTicker] = useState<string | null>(null);
+
+  // Fetch artist ticker
+  useEffect(() => {
+    const fetchArtistTicker = async () => {
+      if (!currentSong?.wallet_address) {
+        setArtistTicker(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("artist_ticker")
+        .eq("wallet_address", currentSong.wallet_address)
+        .maybeSingle();
+
+      setArtistTicker(data?.artist_ticker || null);
+    };
+
+    fetchArtistTicker();
+  }, [currentSong?.wallet_address]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -130,8 +155,12 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
               {currentSong.title}
             </div>
             {currentSong.artist && (
-              <div className="font-mono text-xs text-muted-foreground truncate">
+              <div 
+                className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors"
+                onClick={() => navigate(`/artist/${currentSong.wallet_address}`)}
+              >
                 {currentSong.artist}
+                {artistTicker && <span className="text-neon-green ml-1">${artistTicker}</span>}
               </div>
             )}
           </div>
