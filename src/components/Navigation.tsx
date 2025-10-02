@@ -13,9 +13,8 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const tabs = [
     { name: "DISCOVER", path: "/" },
     { name: "TRENDING", path: "/" },
-    { name: "PLAYLISTS", path: "/" },
+    { name: "BECOME ARTIST", path: "/become-artist" },
     { name: "UPLOAD", path: "/upload" },
-    { name: "WALLET", path: "/" }
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
@@ -31,6 +30,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const isActive = (tab: typeof tabs[0]) => {
     if (tab.path === "/upload") {
       return location.pathname === "/upload";
+    }
+    if (tab.path === "/become-artist") {
+      return location.pathname === "/become-artist";
     }
     // For home page tabs, only show as active if we're actually on the home page
     if (location.pathname === "/") {

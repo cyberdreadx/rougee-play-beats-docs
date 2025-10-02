@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Artist from "./pages/Artist";
 import ProfileEdit from "./pages/ProfileEdit";
+import BecomeArtist from "./pages/BecomeArtist";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/upload" element={<Upload />} />
+          <Route path="/become-artist" element={<BecomeArtist />} />
           <Route path="/artist/:walletAddress" element={<Artist />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
