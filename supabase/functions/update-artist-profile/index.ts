@@ -36,6 +36,13 @@ Deno.serve(async (req) => {
 
     console.log('Processing profile update for:', walletAddress);
 
+    // Fetch existing profile to preserve image CIDs if not uploading new ones
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('avatar_cid, cover_cid')
+      .eq('wallet_address', walletAddress)
+      .maybeSingle();
+
     // Validate ticker if provided
     if (artistTicker) {
       const tickerRegex = /^[A-Z0-9]{3,10}$/;
@@ -103,8 +110,9 @@ Deno.serve(async (req) => {
       return uploadResult.Hash;
     };
 
-    let avatarCid = null;
-    let coverCid = null;
+    // Start with existing CIDs or null
+    let avatarCid = existingProfile?.avatar_cid || null;
+    let coverCid = existingProfile?.cover_cid || null;
 
     // Upload avatar if provided
     if (avatarFile) {
