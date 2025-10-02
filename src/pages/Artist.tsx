@@ -11,7 +11,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Twitter, Instagram, Globe } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe } from "lucide-react";
+import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -210,7 +211,7 @@ const Artist = () => {
                     rel="noopener noreferrer"
                     className="text-muted-foreground hover:text-neon-green transition-colors"
                   >
-                    <Twitter className="h-5 w-5" />
+                    <FaXTwitter className="h-5 w-5" />
                   </a>
                 )}
                 {profile.social_links.instagram && (
