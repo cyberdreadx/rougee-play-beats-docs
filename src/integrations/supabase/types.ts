@@ -32,7 +32,7 @@ export type Database = {
           total_plays: number | null
           total_songs: number | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           verified: boolean | null
           wallet_address: string | null
         }
@@ -53,7 +53,7 @@ export type Database = {
           total_plays?: number | null
           total_songs?: number | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           verified?: boolean | null
           wallet_address?: string | null
         }
@@ -74,7 +74,7 @@ export type Database = {
           total_plays?: number | null
           total_songs?: number | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           verified?: boolean | null
           wallet_address?: string | null
         }
