@@ -89,7 +89,10 @@ const StoriesBar = () => {
           {fullAddress && (
             <div className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0">
               <div
-                onClick={() => setShowUpload(true)}
+                onClick={() => {
+                  const hasStories = stories[fullAddress!]?.length > 0;
+                  hasStories ? setSelectedWallet(fullAddress!) : setShowUpload(true);
+                }}
                 className="relative w-16 h-16"
               >
                 <div className="w-full h-full rounded-full p-[2px] bg-gradient-to-tr from-neon-green/50 via-primary/50 to-neon-green/50">
@@ -110,7 +113,12 @@ const StoriesBar = () => {
                   </div>
                 </div>
                 {/* Plus Badge */}
-                <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center">
+                <div
+                  className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center"
+                  onClick={(e) => { e.stopPropagation(); setShowUpload(true); }}
+                  aria-label="Add story"
+                  role="button"
+                >
                   <Plus className="w-3 h-3 text-background" />
                 </div>
               </div>
