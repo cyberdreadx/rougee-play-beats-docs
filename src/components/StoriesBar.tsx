@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StoryViewer from "./StoryViewer";
 import { Plus } from "lucide-react";
@@ -10,7 +9,7 @@ import { useWallet } from "@/hooks/useWallet";
 interface Story {
   id: string;
   wallet_address: string;
-  media_cid: string;
+  media_path: string;
   media_type: string;
   caption: string | null;
   created_at: string;
@@ -113,11 +112,11 @@ const StoriesBar = () => {
                   }`}
                 >
                   <div className="w-full h-full rounded-full bg-background p-[2px]">
-                    <Avatar className="w-full h-full">
+            <Avatar className="w-full h-full">
                       <AvatarImage
                         src={
                           profile?.avatar_cid
-                            ? getIPFSGatewayUrl(profile.avatar_cid)
+                            ? supabase.storage.from('avatars').getPublicUrl(profile.avatar_cid).data.publicUrl
                             : undefined
                         }
                       />

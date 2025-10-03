@@ -12,13 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const LIGHTHOUSE_API_KEY = Deno.env.get('LIGHTHOUSE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!LIGHTHOUSE_API_KEY) {
-      throw new Error('LIGHTHOUSE_API_KEY not configured');
-    }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Supabase credentials not configured');
@@ -42,33 +37,33 @@ serve(async (req) => {
       throw new Error('File size exceeds 50MB limit');
     }
 
-    // Upload to Lighthouse
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', file);
+    // Generate unique filename
+    const timestamp = Date.now();
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${walletAddress}/${timestamp}.${fileExt}`;
 
-    const uploadResponse = await fetch('https://node.lighthouse.storage/api/v0/add', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LIGHTHOUSE_API_KEY}`,
-      },
-      body: uploadFormData,
-    });
+    // Upload to Supabase Storage
+    const fileBuffer = await file.arrayBuffer();
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('stories')
+      .upload(fileName, fileBuffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    if (!uploadResponse.ok) {
-      throw new Error(`Lighthouse upload failed: ${uploadResponse.statusText}`);
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Failed to upload to storage: ${uploadError.message}`);
     }
 
-    const uploadData = await uploadResponse.json();
-    const mediaCid = uploadData.Hash;
-
-    console.log('Media uploaded to Lighthouse:', mediaCid);
+    console.log('Media uploaded to storage:', fileName);
 
     // Save story to database
     const { data: story, error: dbError } = await supabaseAdmin
       .from('stories')
       .insert({
         wallet_address: walletAddress,
-        media_cid: mediaCid,
+        media_path: fileName,
         media_type: mediaType,
         caption: caption || null,
         file_size: file.size,
@@ -78,16 +73,23 @@ serve(async (req) => {
 
     if (dbError) {
       console.error('Database error:', dbError);
+      // Cleanup uploaded file if database insert fails
+      await supabaseAdmin.storage.from('stories').remove([fileName]);
       throw new Error(`Failed to save story: ${dbError.message}`);
     }
 
     console.log('Story saved to database:', story.id);
 
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('stories')
+      .getPublicUrl(fileName);
+
     return new Response(
       JSON.stringify({
         success: true,
         story,
-        mediaUrl: `https://gateway.lighthouse.storage/ipfs/${mediaCid}`,
+        mediaUrl: urlData.publicUrl,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

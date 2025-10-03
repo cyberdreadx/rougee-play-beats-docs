@@ -173,7 +173,7 @@ export type Database = {
           expires_at: string
           file_size: number
           id: string
-          media_cid: string
+          media_path: string
           media_type: string
           updated_at: string
           wallet_address: string
@@ -184,7 +184,7 @@ export type Database = {
           expires_at?: string
           file_size: number
           id?: string
-          media_cid: string
+          media_path?: string
           media_type: string
           updated_at?: string
           wallet_address: string
@@ -195,7 +195,7 @@ export type Database = {
           expires_at?: string
           file_size?: number
           id?: string
-          media_cid?: string
+          media_path?: string
           media_type?: string
           updated_at?: string
           wallet_address?: string
@@ -207,6 +207,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_stories: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       increment_play_count: {
         Args: { song_id: string }
         Returns: undefined

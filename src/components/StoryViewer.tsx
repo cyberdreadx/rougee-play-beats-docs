@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { supabase } from "@/integrations/supabase/client";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 interface Story {
   id: string;
   wallet_address: string;
-  media_cid: string;
+  media_path: string;
   media_type: string;
   caption: string | null;
   created_at: string;
@@ -102,7 +102,7 @@ const StoryViewer = ({
             <AvatarImage
               src={
                 currentProfile?.avatar_cid
-                  ? getIPFSGatewayUrl(currentProfile.avatar_cid)
+                  ? supabase.storage.from('avatars').getPublicUrl(currentProfile.avatar_cid).data.publicUrl
                   : undefined
               }
             />
@@ -130,13 +130,13 @@ const StoryViewer = ({
       <div className="relative w-full h-full flex items-center justify-center">
         {currentStory.media_type === "image" ? (
           <img
-            src={getIPFSGatewayUrl(currentStory.media_cid)}
+            src={supabase.storage.from('stories').getPublicUrl(currentStory.media_path).data.publicUrl}
             alt="Story"
             className="max-h-full max-w-full object-contain"
           />
         ) : (
           <video
-            src={getIPFSGatewayUrl(currentStory.media_cid)}
+            src={supabase.storage.from('stories').getPublicUrl(currentStory.media_path).data.publicUrl}
             autoPlay
             muted
             className="max-h-full max-w-full object-contain"
