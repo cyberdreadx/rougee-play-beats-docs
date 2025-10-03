@@ -84,7 +84,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-neon-green/20">
-        <div className="flex justify-around items-center h-14">
+        <div className="flex justify-around items-center h-16">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -93,13 +93,12 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                 variant="ghost"
                 size="sm"
                 className={`
-                  flex-1 h-full flex flex-col items-center justify-center gap-0.5
+                  flex-1 h-full flex items-center justify-center
                   ${isActive(tab) ? 'text-neon-green' : 'text-muted-foreground'}
                 `}
                 onClick={() => handleTabClick(tab)}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-[10px] font-mono uppercase">{tab.name.split(' ')[0]}</span>
+                <Icon className="h-6 w-6" />
               </Button>
             );
           })}
