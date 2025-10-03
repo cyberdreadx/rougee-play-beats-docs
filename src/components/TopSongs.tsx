@@ -79,10 +79,11 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
 
   const handlePlayClick = (song: Song) => {
     onPlaySong(song);
-    // Refresh play counts after a short delay to allow the update to process
+    // Refresh play counts immediately and after a delay to allow the database update
+    onPlayCountUpdate?.();
     setTimeout(() => {
       onPlayCountUpdate?.();
-    }, 1000);
+    }, 1500);
   };
 
   const isCurrentSong = (song: Song) => currentSong?.id === song.id;
@@ -132,10 +133,10 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
           </div>
         ) : (
           songs.map((song, index) => (
-              <div 
+            <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group"
+              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-4"
             >
               <div className="flex items-center space-x-4 flex-1">
                 <span className="text-neon-green font-mono font-bold text-lg w-8">
@@ -163,7 +164,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     </div>
                   )}
                 </div>
-                <div className="font-mono text-sm text-muted-foreground">
+                <div className="font-mono text-sm text-muted-foreground whitespace-nowrap ml-4">
                   {song.play_count} plays
                 </div>
               </div>

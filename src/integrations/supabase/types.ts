@@ -171,6 +171,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      increment_play_count: {
+        Args: { song_id: string }
+        Returns: undefined
+      }
       is_ticker_available: {
         Args: { ticker: string }
         Returns: boolean
