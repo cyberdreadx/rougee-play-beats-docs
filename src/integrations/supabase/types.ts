@@ -157,6 +157,41 @@ export type Database = {
         }
         Relationships: []
       }
+      song_purchases: {
+        Row: {
+          artist_wallet_address: string
+          buyer_wallet_address: string
+          created_at: string
+          id: string
+          purchased_at: string
+          song_id: string
+        }
+        Insert: {
+          artist_wallet_address: string
+          buyer_wallet_address: string
+          created_at?: string
+          id?: string
+          purchased_at?: string
+          song_id: string
+        }
+        Update: {
+          artist_wallet_address?: string
+          buyer_wallet_address?: string
+          created_at?: string
+          id?: string
+          purchased_at?: string
+          song_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_purchases_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       songs: {
         Row: {
           artist: string | null
@@ -249,6 +284,14 @@ export type Database = {
       cleanup_expired_stories: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_holders_count: {
+        Args: { artist_wallet: string }
+        Returns: number
+      }
+      get_holdings_count: {
+        Args: { buyer_wallet: string }
+        Returns: number
       }
       increment_play_count: {
         Args: { song_id: string }

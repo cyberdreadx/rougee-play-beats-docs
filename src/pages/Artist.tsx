@@ -10,7 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,9 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const { profile, loading, error } = useArtistProfile(walletAddress || null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
+  const [holdersCount, setHoldersCount] = useState<number>(0);
+  const [holdingsCount, setHoldingsCount] = useState<number>(0);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   const isOwnProfile = fullAddress?.toLowerCase() === walletAddress?.toLowerCase();
 
@@ -70,6 +73,36 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
     };
 
     fetchArtistSongs();
+  }, [walletAddress]);
+
+  useEffect(() => {
+    const fetchSocialStats = async () => {
+      if (!walletAddress) return;
+
+      try {
+        setLoadingStats(true);
+        
+        // Get holders count (people who bought this artist's songs)
+        const { data: holdersData, error: holdersError } = await supabase
+          .rpc('get_holders_count', { artist_wallet: walletAddress });
+
+        if (holdersError) throw holdersError;
+        setHoldersCount(holdersData || 0);
+
+        // Get holdings count (artists whose songs this wallet bought)
+        const { data: holdingsData, error: holdingsError } = await supabase
+          .rpc('get_holdings_count', { buyer_wallet: walletAddress });
+
+        if (holdingsError) throw holdingsError;
+        setHoldingsCount(holdingsData || 0);
+      } catch (err) {
+        console.error("Error fetching social stats:", err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchSocialStats();
   }, [walletAddress]);
 
   if (loading) {
@@ -166,7 +199,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <Card className="console-bg tech-border p-4 text-center">
             <Music className="h-6 w-6 mx-auto mb-2 text-neon-green" />
             <p className="text-2xl font-mono font-bold">{profile.total_songs || 0}</p>
@@ -176,6 +209,20 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
             <Play className="h-6 w-6 mx-auto mb-2 text-neon-green" />
             <p className="text-2xl font-mono font-bold">{profile.total_plays || 0}</p>
             <p className="text-xs font-mono text-muted-foreground">PLAYS</p>
+          </Card>
+          <Card className="console-bg tech-border p-4 text-center">
+            <Users className="h-6 w-6 mx-auto mb-2 text-neon-green" />
+            <p className="text-2xl font-mono font-bold">
+              {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : holdersCount}
+            </p>
+            <p className="text-xs font-mono text-muted-foreground">HOLDERS</p>
+          </Card>
+          <Card className="console-bg tech-border p-4 text-center">
+            <Wallet className="h-6 w-6 mx-auto mb-2 text-neon-green" />
+            <p className="text-2xl font-mono font-bold">
+              {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : holdingsCount}
+            </p>
+            <p className="text-xs font-mono text-muted-foreground">HOLDINGS</p>
           </Card>
           <Card className="console-bg tech-border p-4 text-center">
             <Calendar className="h-6 w-6 mx-auto mb-2 text-neon-green" />
