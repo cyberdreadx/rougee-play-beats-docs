@@ -4,7 +4,6 @@ import Footer from "@/components/Footer";
 import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import SearchBar from "@/components/SearchBar";
-import LiveStream from "@/components/LiveStream";
 import TrendingArtists from "@/components/TrendingArtists";
 import TopSongs, { TopSongsRef } from "@/components/TopSongs";
 import StoriesBar from "@/components/StoriesBar";
@@ -42,9 +41,8 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
       <div className="flex-1 w-full overflow-x-hidden">
         <SearchBar />
         <StoriesBar />
-        <LiveStream />
         <TrendingArtists />
-        <TopSongs 
+        <TopSongs
           ref={topSongsRef}
           onPlaySong={playSong}
           currentSong={currentSong}
