@@ -260,30 +260,55 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
               <p className="font-mono text-muted-foreground">No songs uploaded yet</p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {songs.map((song) => (
-                <Card
-                  key={song.id}
-                  className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors"
-                  onClick={() => playSong(song)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded tech-border bg-primary/20 flex items-center justify-center">
-                      {currentSong?.id === song.id && isPlaying ? (
-                        <Loader2 className="h-6 w-6 text-neon-green animate-spin" />
-                      ) : (
-                        <Play className="h-6 w-6 text-neon-green" />
-                      )}
+            <div className="space-y-4">
+              {songs.map((song) => {
+                const coverUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : null;
+                
+                return (
+                  <Card
+                    key={song.id}
+                    className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors group"
+                    onClick={() => playSong(song)}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Album Artwork */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-16 h-16 rounded tech-border overflow-hidden bg-primary/20">
+                          {coverUrl ? (
+                            <img 
+                              src={coverUrl} 
+                              alt={song.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Music className="h-6 w-6 text-neon-green" />
+                            </div>
+                          )}
+                        </div>
+                        {/* Play Icon Overlay */}
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {currentSong?.id === song.id && isPlaying ? (
+                            <Loader2 className="h-6 w-6 text-neon-green animate-spin" />
+                          ) : (
+                            <Play className="h-6 w-6 text-neon-green" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Song Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors">
+                          {song.title}
+                        </p>
+                        <p className="text-sm font-mono text-muted-foreground">
+                          {song.play_count} plays
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono font-bold truncate">{song.title}</p>
-                      <p className="text-xs font-mono text-muted-foreground">
-                        {song.play_count} plays
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
