@@ -5,6 +5,7 @@ import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useWallet } from "@/hooks/useWallet";
+import StoriesBar from "@/components/StoriesBar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,6 +133,8 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
       {/* Profile Info */}
       <div className="max-w-6xl mx-auto px-6 py-8 pt-20">
+        <StoriesBar />
+        
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">

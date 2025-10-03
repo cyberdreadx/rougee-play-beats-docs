@@ -166,6 +166,42 @@ export type Database = {
         }
         Relationships: []
       }
+      stories: {
+        Row: {
+          caption: string | null
+          created_at: string
+          expires_at: string
+          file_size: number
+          id: string
+          media_cid: string
+          media_type: string
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          file_size: number
+          id?: string
+          media_cid: string
+          media_type: string
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          file_size?: number
+          id?: string
+          media_cid?: string
+          media_type?: string
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

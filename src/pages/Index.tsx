@@ -7,6 +7,7 @@ import SearchBar from "@/components/SearchBar";
 import LiveStream from "@/components/LiveStream";
 import TrendingArtists from "@/components/TrendingArtists";
 import TopSongs, { TopSongsRef } from "@/components/TopSongs";
+import StoriesBar from "@/components/StoriesBar";
 
 interface Song {
   id: string;
@@ -40,6 +41,7 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="flex-1 w-full overflow-x-hidden">
         <SearchBar />
+        <StoriesBar />
         <LiveStream />
         <TrendingArtists />
         <TopSongs 
