@@ -20,11 +20,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col">
+    <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col overflow-x-hidden">
       <Header />
       <NetworkInfo />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="px-2 md:px-0 flex-1">
+      <div className="flex-1 w-full overflow-x-hidden">
         <SearchBar />
         <LiveStream />
         <TrendingArtists />

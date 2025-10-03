@@ -77,7 +77,11 @@
   }
 
   body {
-    @apply bg-background text-foreground font-mono;
+    @apply bg-background text-foreground font-mono overflow-x-hidden;
+  }
+  
+  #root {
+    @apply overflow-x-hidden;
   }
 }
 

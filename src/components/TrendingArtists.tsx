@@ -76,12 +76,12 @@ const TrendingArtists = () => {
   }
 
   return (
-    <section className="w-full px-2 md:px-6 py-6">
-      <h2 className="text-xl font-bold font-mono mb-4 neon-text">
+    <section className="w-full py-6 overflow-x-hidden">
+      <h2 className="text-xl font-bold font-mono mb-4 neon-text px-2 md:px-6">
         TRENDING ARTISTS
       </h2>
       
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-2 md:px-6">
         {artists.map((artist) => (
           <ArtistCard
             key={artist.wallet_address}

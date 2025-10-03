@@ -117,12 +117,12 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
   };
 
   return (
-    <section className="w-full px-2 md:px-6 py-6">
-      <h2 className="text-xl font-bold font-mono mb-4 neon-text">
+    <section className="w-full py-6 overflow-x-hidden">
+      <h2 className="text-xl font-bold font-mono mb-4 neon-text px-2 md:px-6">
         TOP 10 SONGS
       </h2>
       
-      <div className="glass-card p-4 space-y-2">
+      <div className="glass-card p-4 space-y-2 mx-2 md:mx-6">
         {loading ? (
           <div className="text-muted-foreground font-mono">Loading songs...</div>
         ) : songs.length === 0 ? (
@@ -136,14 +136,14 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-4"
+              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-2 overflow-hidden"
             >
-              <div className="flex items-center space-x-4 flex-1">
-                <span className="text-neon-green font-mono font-bold text-lg w-8">
+              <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0 overflow-hidden">
+                <span className="text-neon-green font-mono font-bold text-lg w-6 md:w-8 flex-shrink-0">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
-                  <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-md group-hover:shadow-neon-green/20 transition-shadow">
+                  <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-md group-hover:shadow-neon-green/20 transition-shadow flex-shrink-0">
                     <img 
                       src={`https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`}
                       alt={song.title}
@@ -151,7 +151,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     />
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="font-mono text-foreground font-semibold">
                     {song.title}
                   </div>
@@ -164,11 +164,11 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     </div>
                   )}
                 </div>
-                <div className="font-mono text-sm text-muted-foreground whitespace-nowrap ml-4">
+                <div className="font-mono text-xs md:text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
                   {song.play_count} plays
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 <Button 
                   variant="ghost"
                   size="icon"
