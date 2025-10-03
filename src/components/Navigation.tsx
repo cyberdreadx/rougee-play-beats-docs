@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
+import { Compass, TrendingUp, User, Wallet, Upload } from "lucide-react";
 
 interface NavigationProps {
   activeTab?: string;
@@ -15,14 +16,14 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const { isArtist } = useCurrentUserProfile();
   
   const tabs = [
-    { name: "DISCOVER", path: "/" },
-    { name: "TRENDING", path: "/" },
+    { name: "DISCOVER", path: "/", icon: Compass },
+    { name: "TRENDING", path: "/", icon: TrendingUp },
     ...(isArtist 
-      ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}` }]
-      : [{ name: "BECOME ARTIST", path: "/become-artist" }]
+      ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
+      : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
     ),
-    { name: "WALLET", path: "/wallet" },
-    { name: "UPLOAD", path: "/upload" },
+    { name: "WALLET", path: "/wallet", icon: Wallet },
+    { name: "UPLOAD", path: "/upload", icon: Upload },
   ];
 
   const handleTabClick = (tab: typeof tabs[0]) => {
@@ -80,21 +81,25 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 console-bg tech-border border-t">
-        <div className="flex justify-around items-center h-16 px-2">
-          {tabs.map((tab) => (
-            <Button
-              key={tab.name}
-              variant="ghost"
-              size="sm"
-              className={`
-                flex-1 h-full flex flex-col items-center justify-center gap-1
-                ${isActive(tab) ? 'text-neon-green' : 'text-muted-foreground'}
-              `}
-              onClick={() => handleTabClick(tab)}
-            >
-              <span className="text-xs font-mono">{tab.name}</span>
-            </Button>
-          ))}
+        <div className="flex justify-around items-center h-14">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <Button
+                key={tab.name}
+                variant="ghost"
+                size="sm"
+                className={`
+                  flex-1 h-full flex flex-col items-center justify-center gap-0.5
+                  ${isActive(tab) ? 'text-neon-green' : 'text-muted-foreground'}
+                `}
+                onClick={() => handleTabClick(tab)}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-[10px] font-mono uppercase">{tab.name.split(' ')[0]}</span>
+              </Button>
+            );
+          })}
         </div>
       </nav>
     </>
