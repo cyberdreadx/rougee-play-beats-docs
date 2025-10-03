@@ -15,6 +15,7 @@ import ProfileEdit from "./pages/ProfileEdit";
 import BecomeArtist from "./pages/BecomeArtist";
 import Wallet from "./pages/Wallet";
 import SongTrade from "./pages/SongTrade";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -31,6 +32,7 @@ const AppContent = () => {
         <Route path="/artist/:walletAddress" element={<Artist playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
         <Route path="/song/:songId" element={<SongTrade playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />} />
+        <Route path="/admin" element={<Admin />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

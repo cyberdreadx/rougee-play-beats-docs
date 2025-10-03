@@ -4,7 +4,7 @@ import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
-import { User } from "lucide-react";
+import { User, Shield } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const Header = () => {
@@ -40,6 +40,17 @@ const Header = () => {
         {/* Right side buttons */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeSwitcher />
+          {isConnected && profile?.role === "admin" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              className="font-mono hidden md:flex border-neon-green/50 text-neon-green hover:bg-neon-green/10"
+            >
+              <Shield className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">ADMIN</span>
+            </Button>
+          )}
           {isConnected && (
             <Button
               variant="outline"
