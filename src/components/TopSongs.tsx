@@ -2,7 +2,7 @@ import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Trash2 } from "lucide-react";
+import { Play, Trash2, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Song {
@@ -169,16 +169,19 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
               </div>
               <div className="flex items-center space-x-2">
                 <Button 
-                  variant="neon" 
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePlayClick(song);
                   }}
-                  className={isCurrentSong(song) && isPlaying ? 'animate-pulse' : ''}
+                  className={`h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110 ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-lg shadow-neon-green/50' : ''}`}
                 >
-                  <Play className="w-4 h-4 mr-1" />
-                  {isCurrentSong(song) && isPlaying ? '[PLAYING]' : '[PLAY]'}
+                  {isCurrentSong(song) && isPlaying ? (
+                    <Pause className="w-5 h-5 text-neon-green" />
+                  ) : (
+                    <Play className="w-5 h-5 text-neon-green fill-neon-green" />
+                  )}
                 </Button>
                 {isAdmin && (
                   <Button 

@@ -58,13 +58,11 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
     if (!audio) return;
 
     const updateTime = () => {
-      if (!isNaN(audio.currentTime)) {
-        setCurrentTime(audio.currentTime);
-      }
+      setCurrentTime(audio.currentTime || 0);
     };
     
     const updateDuration = () => {
-      if (!isNaN(audio.duration)) {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
         setDuration(audio.duration);
       }
     };
@@ -74,15 +72,22 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateDuration);
     audio.addEventListener('ended', handleEnd);
-    audio.addEventListener('loadeddata', updateDuration);
+    audio.addEventListener('durationchange', updateDuration);
+    audio.addEventListener('canplay', updateDuration);
+
+    // Force initial duration update
+    if (audio.duration && !isNaN(audio.duration)) {
+      updateDuration();
+    }
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime);
       audio.removeEventListener('loadedmetadata', updateDuration);
       audio.removeEventListener('ended', handleEnd);
-      audio.removeEventListener('loadeddata', updateDuration);
+      audio.removeEventListener('durationchange', updateDuration);
+      audio.removeEventListener('canplay', updateDuration);
     };
-  }, [onSongEnd]);
+  }, [onSongEnd, currentSong?.id]);
 
   // Reset time when song changes
   useEffect(() => {
@@ -97,11 +102,16 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
     if (!audio) return;
 
     if (isPlaying) {
-      audio.play().catch(console.error);
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("Playback error:", error);
+        });
+      }
     } else {
       audio.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentSong?.id]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -112,9 +122,9 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
 
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
-    if (!audio || isNaN(value[0]) || isNaN(audio.duration)) return;
+    if (!audio || !duration || isNaN(value[0])) return;
     
-    const newTime = Math.min(value[0], audio.duration);
+    const newTime = Math.min(value[0], duration);
     audio.currentTime = newTime;
     setCurrentTime(newTime);
   };
@@ -184,14 +194,15 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
           )}
         </div>
         <Button
-          variant="neon"
+          variant="ghost"
           size="sm"
           onClick={onPlayPause}
+          className="h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
         >
           {isPlaying ? (
-            <Pause className="w-4 h-4" />
+            <Pause className="w-5 h-5 text-neon-green" />
           ) : (
-            <Play className="w-4 h-4" />
+            <Play className="w-5 h-5 text-neon-green fill-neon-green" />
           )}
         </Button>
       </div>
@@ -231,14 +242,15 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
         {/* Controls */}
         <div className="flex items-center gap-4 flex-1 max-w-md">
           <Button
-            variant="neon"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={onPlayPause}
+            className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border-2 border-neon-green/50 transition-all hover:scale-110 shadow-lg shadow-neon-green/20"
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4" />
+              <Pause className="w-6 h-6 text-neon-green" />
             ) : (
-              <Play className="w-4 h-4" />
+              <Play className="w-6 h-6 text-neon-green fill-neon-green" />
             )}
           </Button>
 

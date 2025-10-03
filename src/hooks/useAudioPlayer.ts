@@ -18,28 +18,40 @@ export const useAudioPlayer = () => {
 
   const incrementPlayCount = useCallback(async (songId: string) => {
     try {
-      // First get current play count
+      // First get current song data
       const { data: currentData, error: fetchError } = await supabase
         .from('songs')
-        .select('play_count')
+        .select('play_count, wallet_address')
         .eq('id', songId)
         .single();
 
       if (fetchError) {
-        console.error('Failed to fetch current play count:', fetchError);
+        console.error('Failed to fetch current song data:', fetchError);
         return;
       }
 
-      // Then increment it
-      const { error } = await supabase
+      // Increment play count
+      const { error: updateError } = await supabase
         .from('songs')
         .update({ 
           play_count: (currentData?.play_count || 0) + 1
         })
         .eq('id', songId);
 
-      if (error) {
-        console.error('Failed to increment play count:', error);
+      if (updateError) {
+        console.error('Failed to increment play count:', updateError);
+        return;
+      }
+
+      // Update artist stats if wallet address exists
+      if (currentData?.wallet_address) {
+        const { error: statsError } = await supabase.rpc('update_artist_stats', {
+          artist_wallet: currentData.wallet_address
+        });
+
+        if (statsError) {
+          console.error('Failed to update artist stats:', statsError);
+        }
       }
     } catch (error) {
       console.error('Error incrementing play count:', error);
