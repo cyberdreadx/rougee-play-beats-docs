@@ -7,12 +7,26 @@ import SearchBar from "@/components/SearchBar";
 import LiveStream from "@/components/LiveStream";
 import TrendingArtists from "@/components/TrendingArtists";
 import TopSongs, { TopSongsRef } from "@/components/TopSongs";
-import AudioPlayer from "@/components/AudioPlayer";
-import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 
-const Index = () => {
+interface Song {
+  id: string;
+  title: string;
+  artist: string | null;
+  wallet_address: string;
+  audio_cid: string;
+  cover_cid: string | null;
+  play_count: number;
+  created_at: string;
+}
+
+interface IndexProps {
+  playSong: (song: Song) => void;
+  currentSong: Song | null;
+  isPlaying: boolean;
+}
+
+const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
   const [activeTab, setActiveTab] = React.useState("DISCOVER");
-  const { currentSong, isPlaying, playSong, togglePlayPause, onSongEnd } = useAudioPlayer();
   const topSongsRef = useRef<TopSongsRef>(null);
 
   const handlePlayCountUpdate = () => {
@@ -38,14 +52,6 @@ const Index = () => {
       </div>
       
       <Footer />
-      
-      {/* Audio Player */}
-      <AudioPlayer
-        currentSong={currentSong}
-        isPlaying={isPlaying}
-        onPlayPause={togglePlayPause}
-        onSongEnd={onSongEnd}
-      />
     </div>
   );
 };

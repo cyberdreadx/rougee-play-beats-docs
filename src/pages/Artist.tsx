@@ -3,10 +3,8 @@ import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
-import AudioPlayer from "@/components/AudioPlayer";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,12 +26,17 @@ interface Song {
   created_at: string;
 }
 
-const Artist = () => {
+interface ArtistProps {
+  playSong: (song: Song) => void;
+  currentSong: Song | null;
+  isPlaying: boolean;
+}
+
+const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const { walletAddress } = useParams<{ walletAddress: string }>();
   const navigate = useNavigate();
   const { fullAddress } = useWallet();
   const { profile, loading, error } = useArtistProfile(walletAddress || null);
-  const { currentSong, isPlaying, playSong, togglePlayPause, onSongEnd } = useAudioPlayer();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
 
@@ -282,13 +285,6 @@ const Artist = () => {
           )}
         </div>
       </div>
-
-      <AudioPlayer
-        currentSong={currentSong}
-        isPlaying={isPlaying}
-        onPlayPause={togglePlayPause}
-        onSongEnd={onSongEnd}
-      />
     </div>
   );
 };

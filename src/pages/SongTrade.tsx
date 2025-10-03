@@ -35,7 +35,13 @@ interface Comment {
   created_at: string;
 }
 
-const SongTrade = () => {
+interface SongTradeProps {
+  playSong: (song: Song) => void;
+  currentSong: Song | null;
+  isPlaying: boolean;
+}
+
+const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
@@ -160,7 +166,9 @@ const SongTrade = () => {
           song_id: songId,
           wallet_address: fullAddress,
           comment_text: commentText.trim(),
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -245,9 +253,13 @@ const SongTrade = () => {
                   </Badge>
                 </div>
 
-                <Button variant="neon" className="w-full sm:w-auto">
+                <Button 
+                  variant="neon" 
+                  className="w-full sm:w-auto"
+                  onClick={() => song && playSong(song)}
+                >
                   <Play className="h-4 w-4 mr-2" />
-                  PLAY SONG
+                  {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY SONG"}
                 </Button>
               </div>
             </div>
