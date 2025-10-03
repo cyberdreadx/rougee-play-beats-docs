@@ -169,7 +169,10 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                 <Button 
                   variant="neon" 
                   size="sm"
-                  onClick={() => handlePlayClick(song)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlayClick(song);
+                  }}
                   className={isCurrentSong(song) && isPlaying ? 'animate-pulse' : ''}
                 >
                   <Play className="w-4 h-4 mr-1" />
@@ -179,7 +182,10 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                   <Button 
                     variant="destructive" 
                     size="sm"
-                    onClick={() => deleteSong(song.id, song.title)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSong(song.id, song.title);
+                    }}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
