@@ -80,16 +80,36 @@ const StoriesBar = () => {
     <>
       <div className="w-full overflow-x-auto pb-4 mb-6">
         <div className="flex gap-4 px-4">
-          {/* Add Story Button */}
-          {fullAddress && (
+          {/* Current User's Story/Add Button */}
+          {fullAddress && profiles[fullAddress] && (
             <div className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0">
               <div
                 onClick={() => setShowUpload(true)}
-                className="w-16 h-16 rounded-full border-2 border-dashed border-neon-green flex items-center justify-center bg-background/50 hover:bg-background transition-all"
+                className="relative w-16 h-16"
               >
-                <Plus className="w-6 h-6 text-neon-green" />
+                <div className="w-full h-full rounded-full p-[2px] bg-gradient-to-tr from-neon-green/50 via-primary/50 to-neon-green/50">
+                  <div className="w-full h-full rounded-full bg-background p-[2px]">
+                    <Avatar className="w-full h-full">
+                      <AvatarImage
+                        src={
+                          profiles[fullAddress]?.avatar_cid
+                            ? supabase.storage.from('avatars').getPublicUrl(profiles[fullAddress].avatar_cid).data.publicUrl
+                            : undefined
+                        }
+                      />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {profiles[fullAddress]?.display_name?.[0]?.toUpperCase() ||
+                          fullAddress.slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+                {/* Plus Badge */}
+                <div className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center">
+                  <Plus className="w-3 h-3 text-background" />
+                </div>
               </div>
-              <span className="text-xs font-mono">Add Story</span>
+              <span className="text-xs font-mono">Your Story</span>
             </div>
           )}
 
