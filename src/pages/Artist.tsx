@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useWallet } from "@/hooks/useWallet";
 import StoriesBar from "@/components/StoriesBar";
+import LikeButton from "@/components/LikeButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -355,6 +356,11 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         <p className="text-sm font-mono text-muted-foreground">
                           {song.play_count} plays
                         </p>
+                      </div>
+
+                      {/* Like Button */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <LikeButton songId={song.id} size="sm" showCount={false} />
                       </div>
                     </div>
                   </Card>

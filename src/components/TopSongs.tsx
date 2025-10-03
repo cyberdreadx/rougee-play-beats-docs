@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Trash2, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import LikeButton from "@/components/LikeButton";
 
 interface Song {
   id: string;
@@ -174,6 +175,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                 </div>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
+                <LikeButton songId={song.id} size="sm" showCount={false} />
                 <Button 
                   variant="ghost"
                   size="icon"

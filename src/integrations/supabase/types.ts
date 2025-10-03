@@ -157,6 +157,35 @@ export type Database = {
         }
         Relationships: []
       }
+      song_likes: {
+        Row: {
+          created_at: string
+          id: string
+          song_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          song_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          song_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_likes_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       song_purchases: {
         Row: {
           artist_wallet_address: string
@@ -292,6 +321,14 @@ export type Database = {
       get_holdings_count: {
         Args: { buyer_wallet: string }
         Returns: number
+      }
+      get_song_like_count: {
+        Args: { p_song_id: string }
+        Returns: number
+      }
+      has_user_liked_song: {
+        Args: { p_song_id: string; p_wallet_address: string }
+        Returns: boolean
       }
       increment_play_count: {
         Args: { song_id: string }

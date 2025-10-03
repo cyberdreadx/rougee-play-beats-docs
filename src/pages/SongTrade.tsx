@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
+import LikeButton from "@/components/LikeButton";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
@@ -253,14 +254,17 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </Badge>
                 </div>
 
-                <Button 
-                  variant="neon" 
-                  className="w-full sm:w-auto"
-                  onClick={() => song && playSong(song)}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY SONG"}
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="neon" 
+                    className="flex-1"
+                    onClick={() => song && playSong(song)}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY SONG"}
+                  </Button>
+                  <LikeButton songId={song.id} size="lg" />
+                </div>
               </div>
             </div>
           </Card>
