@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import WalletButton from "@/components/WalletButton";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 
@@ -32,6 +33,7 @@ const Header = () => {
 
         {/* Right side buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          <ThemeSwitcher />
           {isConnected && (
             <Button
               variant="outline"
