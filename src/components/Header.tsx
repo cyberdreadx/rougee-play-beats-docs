@@ -7,7 +7,7 @@ import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
 import { User, Shield } from "lucide-react";
-import logo from "@/assets/logo.png";
+
 
 const Header = () => {
   const navigate = useNavigate();
@@ -42,11 +42,6 @@ const Header = () => {
           className="flex items-center gap-2 md:gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <img 
-            src={logo} 
-            alt="ROUGEE.PLAY Logo" 
-            className="h-8 w-8 md:h-10 md:w-10 object-contain animate-pulse"
-          />
           <h1 className="text-lg md:text-2xl font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
             ROUGEE.PLAY
           </h1>

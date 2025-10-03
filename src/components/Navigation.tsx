@@ -83,22 +83,23 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       </nav>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-neon-green/20">
-        <div className="flex justify-around items-center h-16">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="flex justify-around items-center h-14 px-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <Button
                 key={tab.name}
                 variant="ghost"
-                size="sm"
+                size="icon"
                 className={`
-                  flex-1 h-full flex items-center justify-center
-                  ${isActive(tab) ? 'text-neon-green' : 'text-muted-foreground'}
+                  h-10 w-10
+                  ${isActive(tab) ? 'text-primary' : 'text-muted-foreground'}
+                  hover:text-primary hover:bg-transparent
                 `}
                 onClick={() => handleTabClick(tab)}
               >
-                <Icon className="h-6 w-6" />
+                <Icon className="h-5 w-5" />
               </Button>
             );
           })}

@@ -11,9 +11,7 @@ export default function LandingHero() {
       {/* Hero Section */}
       <div className="text-center max-w-4xl mx-auto mb-16">
         <div className="mb-6 flex justify-center">
-          <div className="p-4 bg-primary/10 rounded-full">
-            <img src={logo} alt="ROUGEE.PLAY Logo" className="w-16 h-16" />
-          </div>
+          <img src={logo} alt="ROUGEE.PLAY Logo" className="w-24 h-24 rounded-full object-cover border-2 border-primary/20" />
         </div>
         
         <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
