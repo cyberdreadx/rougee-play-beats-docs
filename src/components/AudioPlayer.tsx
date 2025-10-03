@@ -173,7 +173,10 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       <div className="md:hidden relative z-10">
         <div className="flex items-center gap-3 p-3 pb-2">
           {currentSong.cover_cid && (
-            <div className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0">
+            <div 
+              className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
+              onClick={() => navigate(`/trade/${currentSong.id}`)}
+            >
               <img 
                 src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
                 alt={currentSong.title}
@@ -258,7 +261,10 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
         {/* Song Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {currentSong.cover_cid && (
-            <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20">
+            <div 
+              className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20 cursor-pointer hover:border-neon-green/60 transition-all hover:scale-105"
+              onClick={() => navigate(`/trade/${currentSong.id}`)}
+            >
               <img 
                 src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
                 alt={currentSong.title}
