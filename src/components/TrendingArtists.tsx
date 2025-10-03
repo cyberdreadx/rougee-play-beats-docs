@@ -47,7 +47,7 @@ const TrendingArtists = () => {
         <h2 className="text-xl font-bold font-mono mb-4 neon-text">
           TRENDING ARTISTS
         </h2>
-        <div className="console-bg tech-border rounded p-6 flex justify-center">
+        <div className="glass-card p-6 flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
         </div>
       </section>
@@ -61,7 +61,7 @@ const TrendingArtists = () => {
           TRENDING ARTISTS
         </h2>
         
-        <div className="console-bg tech-border rounded p-6">
+        <div className="glass-card p-6">
           <div className="text-center">
             <h3 className="text-lg font-mono text-muted-foreground mb-2">
               NO ARTISTS YET

@@ -80,7 +80,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       </nav>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 console-bg tech-border border-t">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-neon-green/20">
         <div className="flex justify-around items-center h-14">
           {tabs.map((tab) => {
             const Icon = tab.icon;

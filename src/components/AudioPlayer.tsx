@@ -139,16 +139,40 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
   }
 
   return (
-    <Card className="fixed bottom-0 md:bottom-0 left-0 right-0 z-50 tech-border bg-background/95 backdrop-blur-sm mb-0 md:mb-0">
+    <Card className="fixed bottom-0 md:bottom-0 left-0 right-0 z-50 glass border-0 mb-0 md:mb-0 overflow-hidden">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-neon-green/5 via-transparent to-neon-green/5 animate-pulse opacity-50" />
+      
+      {/* Visualizer bars */}
+      {isPlaying && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 flex items-end gap-0.5 px-2 opacity-30">
+          {[...Array(50)].map((_, i) => (
+            <div
+              key={i}
+              className="flex-1 bg-neon-green rounded-t visualizer-bar"
+              style={{
+                animationDelay: `${i * 0.05}s`,
+                animationDuration: `${0.5 + Math.random() * 0.5}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
+      
       {/* Mobile Compact Player */}
-      <div className="md:hidden flex items-center gap-3 p-3">
-        {currentSong.cover_cid && (
-          <img 
-            src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
-            alt={currentSong.title}
-            className="w-10 h-10 object-cover rounded border border-neon-green/20"
-          />
-        )}
+      <div className="md:hidden flex items-center gap-3 p-3 relative z-10">
+          {currentSong.cover_cid && (
+            <div className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg">
+              <img 
+                src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
+                alt={currentSong.title}
+                className="w-full h-full object-cover"
+              />
+              {isPlaying && (
+                <div className="absolute inset-0 bg-neon-green/20 animate-pulse" />
+              )}
+            </div>
+          )}
         <div className="flex-1 min-w-0">
           <div className="font-mono text-sm font-semibold text-foreground truncate">
             {currentSong.title}
@@ -173,15 +197,20 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       </div>
 
       {/* Desktop Full Player */}
-      <div className="hidden md:flex items-center gap-4 p-4">
+      <div className="hidden md:flex items-center gap-4 p-4 relative z-10">
         {/* Song Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {currentSong.cover_cid && (
-            <img 
-              src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
-              alt={currentSong.title}
-              className="w-12 h-12 object-cover rounded border border-neon-green/20"
-            />
+            <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20">
+              <img 
+                src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
+                alt={currentSong.title}
+                className="w-full h-full object-cover"
+              />
+              {isPlaying && (
+                <div className="absolute inset-0 bg-gradient-to-t from-neon-green/30 to-transparent animate-pulse" />
+              )}
+            </div>
           )}
           <div className="min-w-0">
             <div className="font-mono text-sm font-semibold text-foreground truncate">

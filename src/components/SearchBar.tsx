@@ -119,7 +119,7 @@ const SearchBar = () => {
             placeholder="Search artists, songs, albums..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 console-bg tech-border text-foreground placeholder:text-muted-foreground font-mono"
+            className="flex-1 glass text-foreground placeholder:text-muted-foreground font-mono border-neon-green/30"
           />
           <Button variant="neon" className="px-6">
             {isSearching ? (
@@ -132,7 +132,7 @@ const SearchBar = () => {
 
         {/* Dropdown Results */}
         {showDropdown && results.length > 0 && (
-          <div className="absolute top-full left-0 right-16 mt-2 bg-card border border-neon-green/20 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="absolute top-full left-0 right-16 mt-2 glass-card shadow-lg z-50 max-h-96 overflow-y-auto">
             {results.map((result) => (
               <button
                 key={`${result.type}-${result.id}`}
@@ -197,7 +197,7 @@ const SearchBar = () => {
         )}
 
         {showDropdown && results.length === 0 && searchQuery.trim().length >= 2 && !isSearching && (
-          <div className="absolute top-full left-0 right-16 mt-2 bg-card border border-neon-green/20 rounded-lg shadow-lg z-50 p-4">
+          <div className="absolute top-full left-0 right-16 mt-2 glass-card shadow-lg z-50 p-4">
             <p className="font-mono text-sm text-muted-foreground text-center">
               No results found
             </p>

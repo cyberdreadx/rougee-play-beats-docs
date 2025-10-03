@@ -121,7 +121,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
         TOP 10 SONGS
       </h2>
       
-      <div className="console-bg tech-border rounded p-4 space-y-2">
+      <div className="glass-card p-4 space-y-2">
         {loading ? (
           <div className="text-muted-foreground font-mono">Loading songs...</div>
         ) : songs.length === 0 ? (
@@ -132,21 +132,23 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
           </div>
         ) : (
           songs.map((song, index) => (
-            <div 
+              <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-2 hover:bg-accent/5 rounded cursor-pointer"
+              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group"
             >
               <div className="flex items-center space-x-4 flex-1">
                 <span className="text-neon-green font-mono font-bold text-lg w-8">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
-                  <img 
-                    src={`https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`}
-                    alt={song.title}
-                    className="w-12 h-12 object-cover rounded border border-neon-green/20"
-                  />
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-md group-hover:shadow-neon-green/20 transition-shadow">
+                    <img 
+                      src={`https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`}
+                      alt={song.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
                 )}
                 <div className="flex-1">
                   <div className="font-mono text-foreground font-semibold">

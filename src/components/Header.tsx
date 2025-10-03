@@ -11,7 +11,7 @@ const Header = () => {
   const { profile } = useCurrentUserProfile();
 
   return (
-    <header className="w-full p-4 md:p-6 console-bg sticky top-0 z-40">
+    <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10">
       <div className="flex items-center justify-between">
         {/* Brand */}
         <div 
