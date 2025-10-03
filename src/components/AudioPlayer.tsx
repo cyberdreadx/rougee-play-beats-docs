@@ -171,7 +171,7 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       
       {/* Mobile Compact Player */}
       <div className="md:hidden relative z-10">
-        <div className="flex items-center gap-3 p-3">
+        <div className="flex items-center gap-3 p-3 pb-2">
           {currentSong.cover_cid && (
             <div className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0">
               <img 
@@ -219,6 +219,25 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
                 <Play className="w-5 h-5 text-neon-green fill-neon-green" />
               )}
             </Button>
+          </div>
+        </div>
+        
+        {/* Mobile progress slider */}
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
+              {formatTime(currentTime)}
+            </span>
+            <Slider
+              value={[currentTime]}
+              max={duration || 100}
+              step={1}
+              className="flex-1"
+              onValueChange={handleSeek}
+            />
+            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
+              {formatTime(duration)}
+            </span>
           </div>
         </div>
         
