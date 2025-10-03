@@ -170,9 +170,10 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       )}
       
       {/* Mobile Compact Player */}
-      <div className="md:hidden flex items-center gap-3 p-3 relative z-10">
+      <div className="md:hidden relative z-10">
+        <div className="flex items-center gap-3 p-3">
           {currentSong.cover_cid && (
-            <div className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg">
+            <div className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0">
               <img 
                 src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
                 alt={currentSong.title}
@@ -183,28 +184,54 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
               )}
             </div>
           )}
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-sm font-semibold text-foreground truncate">
-            {currentSong.title}
-          </div>
-          {currentSong.artist && (
-            <div className="font-mono text-xs text-muted-foreground truncate">
-              {currentSong.artist}
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-sm font-semibold text-foreground truncate">
+              {currentSong.title}
             </div>
-          )}
+            {currentSong.artist && (
+              <div className="font-mono text-xs text-muted-foreground truncate">
+                {currentSong.artist}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMute}
+              className="h-8 w-8"
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-neon-green" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onPlayPause}
+              className="h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 text-neon-green" />
+              ) : (
+                <Play className="w-5 h-5 text-neon-green fill-neon-green" />
+              )}
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onPlayPause}
-          className="h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
-        >
-          {isPlaying ? (
-            <Pause className="w-5 h-5 text-neon-green" />
-          ) : (
-            <Play className="w-5 h-5 text-neon-green fill-neon-green" />
-          )}
-        </Button>
+        
+        {/* Mobile volume slider */}
+        <div className="px-3 pb-2">
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            max={1}
+            step={0.1}
+            className="w-full"
+            onValueChange={handleVolumeChange}
+          />
+        </div>
       </div>
 
       {/* Desktop Full Player */}
