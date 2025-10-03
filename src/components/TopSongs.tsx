@@ -51,13 +51,14 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
+        const { data } = await supabase
+          .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
-          .single();
+          .eq('role', 'admin')
+          .maybeSingle();
         
-        setIsAdmin(profile?.role === 'admin');
+        setIsAdmin(!!data);
       }
     } catch (error) {
       console.error('Error checking admin status:', error);

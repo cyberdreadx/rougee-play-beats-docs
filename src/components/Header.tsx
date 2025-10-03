@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
+import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
@@ -11,6 +13,27 @@ const Header = () => {
   const navigate = useNavigate();
   const { isConnected, address } = useWallet();
   const { profile } = useCurrentUserProfile();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        
+        setIsAdmin(!!data);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [isConnected]);
 
   return (
     <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10">
@@ -40,7 +63,7 @@ const Header = () => {
         {/* Right side buttons */}
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeSwitcher />
-          {isConnected && profile?.role === "admin" && (
+          {isConnected && isAdmin && (
             <Button
               variant="outline"
               size="sm"
