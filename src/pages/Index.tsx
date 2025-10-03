@@ -24,7 +24,7 @@ const Index = () => {
       <Header />
       <NetworkInfo />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="px-4 md:px-0 flex-1">
+      <div className="px-2 md:px-0 flex-1">
         <SearchBar />
         <LiveStream />
         <TrendingArtists />

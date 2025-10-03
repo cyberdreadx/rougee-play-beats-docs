@@ -117,7 +117,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
   };
 
   return (
-    <section className="w-full px-6 py-6">
+    <section className="w-full px-2 md:px-6 py-6">
       <h2 className="text-xl font-bold font-mono mb-4 neon-text">
         TOP 10 SONGS
       </h2>

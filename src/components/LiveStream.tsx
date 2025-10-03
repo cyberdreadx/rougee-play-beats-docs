@@ -12,7 +12,7 @@ const LiveStream = () => {
   const liveUsers: LiveStreamUser[] = [];
 
   return (
-    <section className="w-full px-6 py-4">
+    <section className="w-full px-2 md:px-6 py-4">
       {liveUsers.length > 0 ? (
         <div className="space-y-2">
           {liveUsers.map((user) => (
@@ -36,7 +36,7 @@ const LiveStream = () => {
         </div>
       ) : (
         // Empty state
-        <div className="text-center py-8">
+        <div className="text-center py-6 md:py-8">
           <div className="text-muted-foreground font-mono text-sm">
             No live streams active
           </div>

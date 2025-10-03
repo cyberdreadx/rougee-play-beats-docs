@@ -111,9 +111,9 @@ const SearchBar = () => {
   };
 
   return (
-    <div className="w-full px-6 py-4" ref={dropdownRef}>
+    <div className="w-full px-2 md:px-6 py-4" ref={dropdownRef}>
       <div className="relative max-w-4xl">
-        <div className="flex space-x-4">
+        <div className="flex space-x-2 md:space-x-4">
           <Input
             type="text"
             placeholder="Search artists, songs, albums..."
@@ -121,7 +121,7 @@ const SearchBar = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 glass text-foreground placeholder:text-muted-foreground font-mono border-neon-green/30"
           />
-          <Button variant="neon" className="px-6">
+          <Button variant="neon" className="px-4 md:px-6">
             {isSearching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
