@@ -109,19 +109,36 @@ const StoriesBar = () => {
               >
                 <div className="w-full h-full rounded-full p-[2px] bg-gradient-to-tr from-neon-green/50 via-primary/50 to-neon-green/50">
                   <div className="w-full h-full rounded-full bg-background p-[2px]">
-                    <Avatar className="w-full h-full">
-                      <AvatarImage
-                        src={
-                          profiles[fullAddress]?.avatar_cid
-                            ? supabase.storage.from('avatars').getPublicUrl(profiles[fullAddress].avatar_cid).data.publicUrl
-                            : undefined
-                        }
-                      />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {profiles[fullAddress]?.display_name?.[0]?.toUpperCase() ||
-                          fullAddress.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="w-full h-full rounded-full overflow-hidden relative">
+                      {stories[fullAddress]?.length > 0 ? (
+                        stories[fullAddress][0].media_type.startsWith('image') ? (
+                          <img 
+                            src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
+                            alt="Story preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <video 
+                            src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <Avatar className="w-full h-full">
+                          <AvatarImage
+                            src={
+                              profiles[fullAddress]?.avatar_cid
+                                ? supabase.storage.from('avatars').getPublicUrl(profiles[fullAddress].avatar_cid).data.publicUrl
+                                : undefined
+                            }
+                          />
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {profiles[fullAddress]?.display_name?.[0]?.toUpperCase() ||
+                              fullAddress.slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {/* Plus Badge */}
@@ -159,19 +176,20 @@ const StoriesBar = () => {
                   }`}
                 >
                   <div className="w-full h-full rounded-full bg-background p-[2px]">
-            <Avatar className="w-full h-full">
-                      <AvatarImage
-                        src={
-                          profile?.avatar_cid
-                            ? supabase.storage.from('avatars').getPublicUrl(profile.avatar_cid).data.publicUrl
-                            : undefined
-                        }
-                      />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {profile?.display_name?.[0]?.toUpperCase() ||
-                          walletAddress.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="w-full h-full rounded-full overflow-hidden">
+                      {userStories[0].media_type.startsWith('image') ? (
+                        <img 
+                          src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
+                          alt="Story preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <video 
+                          src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
                 <span className="text-xs font-mono max-w-[80px] truncate">
