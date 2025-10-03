@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Music, Zap, Shield, TrendingUp } from "lucide-react";
+import { Zap, Shield, TrendingUp, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 export default function LandingHero() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function LandingHero() {
       <div className="text-center max-w-4xl mx-auto mb-16">
         <div className="mb-6 flex justify-center">
           <div className="p-4 bg-primary/10 rounded-full">
-            <Music className="w-16 h-16 text-primary" />
+            <img src={logo} alt="ROUGEE.PLAY Logo" className="w-16 h-16" />
           </div>
         </div>
         
