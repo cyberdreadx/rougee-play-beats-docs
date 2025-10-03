@@ -14,6 +14,8 @@ interface Song {
   cover_cid: string | null;
   play_count: number;
   created_at: string;
+  ticker?: string | null;
+  genre?: string | null;
 }
 
 interface TopSongsProps {
@@ -64,7 +66,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
     try {
       const { data, error } = await supabase
         .from('songs')
-        .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, created_at')
+        .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at')
         .order('play_count', { ascending: false })
         .limit(10);
 
@@ -152,8 +154,11 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                   </div>
                 )}
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="font-mono text-foreground font-semibold">
-                    {song.title}
+                  <div className="font-mono text-foreground font-semibold flex items-center gap-2">
+                    <span className="truncate">{song.title}</span>
+                    {song.ticker && (
+                      <span className="text-neon-green text-xs flex-shrink-0">${song.ticker}</span>
+                    )}
                   </div>
                   {song.artist && (
                     <div 

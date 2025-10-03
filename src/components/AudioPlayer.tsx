@@ -15,6 +15,7 @@ interface Song {
   cover_cid: string | null;
   play_count: number;
   created_at: string;
+  ticker?: string | null;
 }
 
 interface AudioPlayerProps {
@@ -188,8 +189,11 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-sm font-semibold text-foreground truncate">
-              {currentSong.title}
+            <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-1">
+              <span className="truncate">{currentSong.title}</span>
+              {currentSong.ticker && (
+                <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
+              )}
             </div>
             {currentSong.artist && (
               <div className="font-mono text-xs text-muted-foreground truncate">
@@ -276,8 +280,11 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
             </div>
           )}
           <div className="min-w-0">
-            <div className="font-mono text-sm font-semibold text-foreground truncate">
-              {currentSong.title}
+            <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-2">
+              <span className="truncate">{currentSong.title}</span>
+              {currentSong.ticker && (
+                <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
+              )}
             </div>
             {currentSong.artist && (
               <div 

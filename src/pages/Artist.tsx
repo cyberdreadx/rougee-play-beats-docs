@@ -25,6 +25,7 @@ interface Song {
   cover_cid: string | null;
   play_count: number;
   created_at: string;
+  ticker?: string | null;
 }
 
 interface ArtistProps {
@@ -54,7 +55,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         setLoadingSongs(true);
         const { data, error } = await supabase
           .from("songs")
-          .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, created_at")
+          .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at")
           .eq("wallet_address", walletAddress)
           .order("created_at", { ascending: false });
 
@@ -345,8 +346,11 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                       
                       {/* Song Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors">
-                          {song.title}
+                        <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
+                          <span className="truncate">{song.title}</span>
+                          {song.ticker && (
+                            <span className="text-neon-green text-sm flex-shrink-0">${song.ticker}</span>
+                          )}
                         </p>
                         <p className="text-sm font-mono text-muted-foreground">
                           {song.play_count} plays
