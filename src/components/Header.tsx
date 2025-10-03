@@ -5,6 +5,7 @@ import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -16,15 +17,20 @@ const Header = () => {
       <div className="flex items-center justify-between">
         {/* Brand */}
         <div 
-          className="flex items-center space-x-2 md:space-x-8 cursor-pointer"
+          className="flex items-center gap-2 md:gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
+          <img 
+            src={logo} 
+            alt="ROUGEE.PLAY Logo" 
+            className="h-8 w-8 md:h-10 md:w-10 object-contain animate-pulse"
+          />
           <h1 className="text-lg md:text-2xl font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
             ROUGEE.PLAY
           </h1>
           
           {/* User wallet info - hidden on mobile */}
-          <div className="hidden md:block text-sm text-muted-foreground font-mono">
+          <div className="hidden lg:block text-sm text-muted-foreground font-mono ml-6">
             USER: <span className="text-foreground">
               {isConnected ? address : "Not Connected"}
             </span>
