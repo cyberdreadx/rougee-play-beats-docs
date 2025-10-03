@@ -180,7 +180,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
               <div className="flex items-center space-x-2 flex-shrink-0">
                 <LikeButton songId={song.id} size="sm" showCount={false} />
                 <ReportButton songId={song.id} />
-                <Button
+                <Button 
                   variant="ghost"
                   size="icon"
                   onClick={(e) => {
