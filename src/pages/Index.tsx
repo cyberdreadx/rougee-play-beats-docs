@@ -42,7 +42,7 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
         <SearchBar />
         <StoriesBar />
         <TrendingArtists />
-        <TopSongs
+        <TopSongs 
           ref={topSongsRef}
           onPlaySong={playSong}
           currentSong={currentSong}
@@ -50,8 +50,6 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
           onPlayCountUpdate={handlePlayCountUpdate}
         />
       </div>
-      
-      <Footer />
     </div>
   );
 };

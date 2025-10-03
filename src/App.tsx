@@ -6,6 +6,7 @@ import Web3Provider from "@/providers/Web3Provider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import AudioPlayer from "@/components/AudioPlayer";
+import Footer from "@/components/Footer";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Artist from "./pages/Artist";
@@ -31,6 +32,7 @@ const AppContent = () => {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <Footer />
       <AudioPlayer 
         currentSong={currentSong}
         isPlaying={isPlaying}
