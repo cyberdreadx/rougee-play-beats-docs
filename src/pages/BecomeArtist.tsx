@@ -115,7 +115,7 @@ const BecomeArtist = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 md:pb-0">
       <Header />
       <Navigation />
       <NetworkInfo />
