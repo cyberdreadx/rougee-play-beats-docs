@@ -7,6 +7,7 @@ import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useWallet } from "@/hooks/useWallet";
 import StoriesBar from "@/components/StoriesBar";
 import LikeButton from "@/components/LikeButton";
+import { ReportButton } from "@/components/ReportButton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -358,9 +359,10 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         </p>
                       </div>
 
-                      {/* Like Button */}
-                      <div onClick={(e) => e.stopPropagation()}>
+                      {/* Action Buttons */}
+                      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
                         <LikeButton songId={song.id} size="sm" showCount={false} />
+                        <ReportButton songId={song.id} />
                       </div>
                     </div>
                   </Card>

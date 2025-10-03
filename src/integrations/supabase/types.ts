@@ -221,6 +221,41 @@ export type Database = {
           },
         ]
       }
+      song_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          report_type: Database["public"]["Enums"]["report_type"]
+          song_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          report_type: Database["public"]["Enums"]["report_type"]
+          song_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          report_type?: Database["public"]["Enums"]["report_type"]
+          song_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_reports_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       songs: {
         Row: {
           artist: string | null
@@ -344,7 +379,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      report_type: "copyright" | "hate_speech" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -471,6 +506,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      report_type: ["copyright", "hate_speech", "other"],
+    },
   },
 } as const

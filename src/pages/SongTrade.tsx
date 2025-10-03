@@ -13,6 +13,7 @@ import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import LikeButton from "@/components/LikeButton";
+import { ReportButton } from "@/components/ReportButton";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
@@ -264,6 +265,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY SONG"}
                   </Button>
                   <LikeButton songId={song.id} size="lg" />
+                  <ReportButton songId={song.id} />
                 </div>
               </div>
             </div>
