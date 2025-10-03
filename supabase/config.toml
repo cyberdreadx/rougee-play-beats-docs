@@ -2,3 +2,6 @@ project_id = "phybdsfwycygroebrsdx"
 
 [functions.upload-to-lighthouse]
 verify_jwt = false
+
+[functions.check-copyright]
+verify_jwt = false

@@ -52,6 +52,45 @@ export type Database = {
           },
         ]
       }
+      copyright_violations: {
+        Row: {
+          acr_response: Json | null
+          album: string | null
+          artist_name: string | null
+          created_at: string
+          detected_at: string
+          file_name: string | null
+          id: string
+          label: string | null
+          song_title: string | null
+          wallet_address: string
+        }
+        Insert: {
+          acr_response?: Json | null
+          album?: string | null
+          artist_name?: string | null
+          created_at?: string
+          detected_at?: string
+          file_name?: string | null
+          id?: string
+          label?: string | null
+          song_title?: string | null
+          wallet_address: string
+        }
+        Update: {
+          acr_response?: Json | null
+          album?: string | null
+          artist_name?: string | null
+          created_at?: string
+          detected_at?: string
+          file_name?: string | null
+          id?: string
+          label?: string | null
+          song_title?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           artist_name: string | null
