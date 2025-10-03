@@ -31,6 +31,18 @@ const StoriesBar = () => {
     fetchStories();
   }, [fullAddress]);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('stories-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stories' }, () => fetchStories())
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'stories' }, () => fetchStories())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchStories = async () => {
     const { data, error } = await supabase
       .from("stories")
@@ -114,7 +126,7 @@ const StoriesBar = () => {
                 </div>
                 {/* Plus Badge */}
                 <div
-                  className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center"
+                  className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center z-10"
                   onClick={(e) => { e.stopPropagation(); setShowUpload(true); }}
                   aria-label="Add story"
                   role="button"
