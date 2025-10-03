@@ -139,8 +139,41 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
   }
 
   return (
-    <Card className="fixed bottom-0 left-0 right-0 z-50 tech-border bg-background/95 backdrop-blur-sm">
-      <div className="flex items-center gap-4 p-4">
+    <Card className="fixed bottom-0 md:bottom-0 left-0 right-0 z-50 tech-border bg-background/95 backdrop-blur-sm mb-0 md:mb-0">
+      {/* Mobile Compact Player */}
+      <div className="md:hidden flex items-center gap-3 p-3">
+        {currentSong.cover_cid && (
+          <img 
+            src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
+            alt={currentSong.title}
+            className="w-10 h-10 object-cover rounded border border-neon-green/20"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-sm font-semibold text-foreground truncate">
+            {currentSong.title}
+          </div>
+          {currentSong.artist && (
+            <div className="font-mono text-xs text-muted-foreground truncate">
+              {currentSong.artist}
+            </div>
+          )}
+        </div>
+        <Button
+          variant="neon"
+          size="sm"
+          onClick={onPlayPause}
+        >
+          {isPlaying ? (
+            <Pause className="w-4 h-4" />
+          ) : (
+            <Play className="w-4 h-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Desktop Full Player */}
+      <div className="hidden md:flex items-center gap-4 p-4">
         {/* Song Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {currentSong.cover_cid && (

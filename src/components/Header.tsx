@@ -11,19 +11,19 @@ const Header = () => {
   const { profile } = useCurrentUserProfile();
 
   return (
-    <header className="w-full p-6 console-bg">
+    <header className="w-full p-4 md:p-6 console-bg sticky top-0 z-40">
       <div className="flex items-center justify-between">
         {/* Brand */}
         <div 
-          className="flex items-center space-x-8 cursor-pointer"
+          className="flex items-center space-x-2 md:space-x-8 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <h1 className="text-2xl font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
+          <h1 className="text-lg md:text-2xl font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
             ROUGEE.PLAY
           </h1>
           
-          {/* User wallet info */}
-          <div className="text-sm text-muted-foreground font-mono">
+          {/* User wallet info - hidden on mobile */}
+          <div className="hidden md:block text-sm text-muted-foreground font-mono">
             USER: <span className="text-foreground">
               {isConnected ? address : "Not Connected"}
             </span>
@@ -31,16 +31,16 @@ const Header = () => {
         </div>
 
         {/* Right side buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {isConnected && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/profile/edit")}
-              className="font-mono"
+              className="font-mono hidden md:flex"
             >
-              <User className="h-4 w-4 mr-2" />
-              MY PROFILE
+              <User className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">MY PROFILE</span>
             </Button>
           )}
           <WalletButton />

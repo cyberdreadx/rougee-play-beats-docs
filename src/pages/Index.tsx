@@ -19,20 +19,22 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 md:pb-0">
       <Header />
       <NetworkInfo />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-      <SearchBar />
-      <LiveStream />
-      <TrendingArtists />
-      <TopSongs 
-        ref={topSongsRef}
-        onPlaySong={playSong}
-        currentSong={currentSong}
-        isPlaying={isPlaying}
-        onPlayCountUpdate={handlePlayCountUpdate}
-      />
+      <div className="px-4 md:px-0">
+        <SearchBar />
+        <LiveStream />
+        <TrendingArtists />
+        <TopSongs 
+          ref={topSongsRef}
+          onPlaySong={playSong}
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          onPlayCountUpdate={handlePlayCountUpdate}
+        />
+      </div>
       
       {/* Audio Player */}
       <AudioPlayer

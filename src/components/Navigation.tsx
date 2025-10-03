@@ -57,24 +57,47 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   };
 
   return (
-    <nav className="w-full px-6 py-4">
-      <div className="flex space-x-2">
-        {tabs.map((tab) => (
-          <Button
-            key={tab.name}
-            variant="tab"
-            size="sm"
-            className={`
-              ${isActive(tab) ? 'text-neon-green border-neon-green' : ''}
-              hover:text-neon-green hover:border-neon-green
-            `}
-            onClick={() => handleTabClick(tab)}
-          >
-            [{tab.name}]
-          </Button>
-        ))}
-      </div>
-    </nav>
+    <>
+      {/* Desktop Navigation */}
+      <nav className="hidden md:block w-full px-6 py-4">
+        <div className="flex space-x-2">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.name}
+              variant="tab"
+              size="sm"
+              className={`
+                ${isActive(tab) ? 'text-neon-green border-neon-green' : ''}
+                hover:text-neon-green hover:border-neon-green
+              `}
+              onClick={() => handleTabClick(tab)}
+            >
+              [{tab.name}]
+            </Button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 console-bg tech-border border-t">
+        <div className="flex justify-around items-center h-16 px-2">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.name}
+              variant="ghost"
+              size="sm"
+              className={`
+                flex-1 h-full flex flex-col items-center justify-center gap-1
+                ${isActive(tab) ? 'text-neon-green' : 'text-muted-foreground'}
+              `}
+              onClick={() => handleTabClick(tab)}
+            >
+              <span className="text-xs font-mono">{tab.name}</span>
+            </Button>
+          ))}
+        </div>
+      </nav>
+    </>
   );
 };
 
