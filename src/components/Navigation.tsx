@@ -17,7 +17,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   
   const tabs = [
     { name: "DISCOVER", path: "/", icon: Compass },
-    { name: "TRENDING", path: "/", icon: TrendingUp },
+    { name: "TRENDING", path: "/trending", icon: TrendingUp },
     ...(isArtist 
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
@@ -37,6 +37,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   };
 
   const isActive = (tab: typeof tabs[0]) => {
+    if (tab.path === "/trending") {
+      return location.pathname === "/trending";
+    }
     if (tab.path === "/upload") {
       return location.pathname === "/upload";
     }

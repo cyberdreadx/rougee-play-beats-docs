@@ -8,6 +8,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import AudioPlayer from "@/components/AudioPlayer";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
+import Trending from "./pages/Trending";
 import Upload from "./pages/Upload";
 import Artist from "./pages/Artist";
 import ProfileEdit from "./pages/ProfileEdit";
@@ -23,6 +24,7 @@ const AppContent = () => {
     <>
       <Routes>
         <Route path="/" element={<Index playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />} />
+        <Route path="/trending" element={<Trending />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/become-artist" element={<BecomeArtist />} />
         <Route path="/wallet" element={<Wallet />} />
