@@ -345,19 +345,19 @@ export type Database = {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          wallet_address: string
         }
         Insert: {
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
-          user_id: string
+          wallet_address: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
+          wallet_address?: string
         }
         Relationships: []
       }
@@ -386,6 +386,13 @@ export type Database = {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role_by_wallet: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _wallet_address: string
         }
         Returns: boolean
       }

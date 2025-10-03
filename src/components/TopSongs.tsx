@@ -1,5 +1,6 @@
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWallet } from "@/hooks/useWallet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Trash2, Pause } from "lucide-react";
@@ -34,6 +35,7 @@ export interface TopSongsRef {
 const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSong, isPlaying, onPlayCountUpdate }, ref) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { address } = useWallet();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -49,12 +51,11 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
 
   const checkAdminStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (address) {
         const { data } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
+          .eq('wallet_address', address)
           .eq('role', 'admin')
           .maybeSingle();
         

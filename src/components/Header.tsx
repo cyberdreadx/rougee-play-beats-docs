@@ -17,12 +17,11 @@ const Header = () => {
 
   useEffect(() => {
     const checkAdminStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (isConnected && address) {
         const { data } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", user.id)
+          .eq("wallet_address", address)
           .eq("role", "admin")
           .maybeSingle();
         
@@ -33,7 +32,7 @@ const Header = () => {
     };
 
     checkAdminStatus();
-  }, [isConnected]);
+  }, [isConnected, address]);
 
   return (
     <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10">

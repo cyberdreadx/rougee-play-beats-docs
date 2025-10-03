@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, Music, Trash2, ExternalLink } from "lucide-react";
@@ -29,6 +30,7 @@ interface SongReport {
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { fullAddress, isConnected } = useWallet();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reports, setReports] = useState<SongReport[]>([]);
@@ -40,26 +42,24 @@ const Admin = () => {
 
   const checkAdminAccess = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      if (!isConnected || !fullAddress) {
         toast({
           title: "Access Denied",
-          description: "You must be logged in to access this page",
+          description: "Please connect your wallet",
           variant: "destructive",
         });
         navigate("/");
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
+        .eq("wallet_address", fullAddress)
         .eq("role", "admin")
         .maybeSingle();
 
-      if (!profile) {
+      if (!data) {
         toast({
           title: "Access Denied",
           description: "You don't have admin privileges",
