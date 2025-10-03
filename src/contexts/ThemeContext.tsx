@@ -65,12 +65,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     const themeColors = themes[theme];
     
+    // Update all theme-related CSS variables
     root.style.setProperty('--neon-green', themeColors.primary);
     root.style.setProperty('--neon-green-dim', themeColors.primaryDim);
     root.style.setProperty('--primary', themeColors.primary);
+    root.style.setProperty('--primary-foreground', '0 0% 0%');
     root.style.setProperty('--accent', themeColors.accent);
+    root.style.setProperty('--ring', themeColors.primary);
     root.style.setProperty('--shadow-neon', themeColors.glow);
     root.style.setProperty('--glass-border', `${themeColors.primary} / 0.2`);
+    root.style.setProperty('--tech-border', `${themeColors.primary} / 0.2`);
+    root.style.setProperty('--live-indicator', themeColors.primary);
+    
+    // Update foreground for contrast
+    if (theme === 'white') {
+      root.style.setProperty('--foreground', themeColors.primary);
+      root.style.setProperty('--primary-foreground', '0 0% 0%');
+    } else {
+      root.style.setProperty('--foreground', '120 100% 50%');
+      root.style.setProperty('--primary-foreground', '0 0% 0%');
+    }
   }, [theme]);
 
   return (

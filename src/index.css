@@ -128,10 +128,32 @@
   
   .visualizer-bar {
     animation: visualize 0.8s ease-in-out infinite;
+    background: hsl(var(--neon-green));
   }
   
   @keyframes visualize {
     0%, 100% { height: 20%; }
     50% { height: 100%; }
+  }
+  
+  /* Dynamic theme-aware utilities */
+  .text-neon-green {
+    color: hsl(var(--neon-green)) !important;
+  }
+  
+  .bg-neon-green {
+    background-color: hsl(var(--neon-green)) !important;
+  }
+  
+  .border-neon-green {
+    border-color: hsl(var(--neon-green)) !important;
+  }
+  
+  .fill-neon-green {
+    fill: hsl(var(--neon-green)) !important;
+  }
+  
+  .shadow-neon-green {
+    box-shadow: var(--shadow-neon) !important;
   }
 }
