@@ -29,7 +29,7 @@ const StoriesBar = () => {
 
   useEffect(() => {
     fetchStories();
-  }, []);
+  }, [fullAddress]);
 
   const fetchStories = async () => {
     const { data, error } = await supabase
@@ -57,6 +57,11 @@ const StoriesBar = () => {
 
     setStories(grouped);
 
+    // Add current user's wallet to fetch their profile even if they have no stories
+    if (fullAddress) {
+      walletAddresses.add(fullAddress);
+    }
+
     // Fetch profiles for these wallets
     if (walletAddresses.size > 0) {
       const { data: profileData } = await supabase
@@ -81,7 +86,7 @@ const StoriesBar = () => {
       <div className="w-full overflow-x-auto pb-4 mb-6">
         <div className="flex gap-4 px-4">
           {/* Current User's Story/Add Button */}
-          {fullAddress && profiles[fullAddress] && (
+          {fullAddress && (
             <div className="flex flex-col items-center gap-2 cursor-pointer flex-shrink-0">
               <div
                 onClick={() => setShowUpload(true)}
@@ -113,8 +118,10 @@ const StoriesBar = () => {
             </div>
           )}
 
-          {/* Stories */}
-          {Object.entries(stories).map(([walletAddress, userStories]) => {
+          {/* Other Users' Stories */}
+          {Object.entries(stories)
+            .filter(([walletAddress]) => walletAddress !== fullAddress)
+            .map(([walletAddress, userStories]) => {
             const profile = profiles[walletAddress];
             const hasUnviewed = true; // Could track viewed stories in localStorage
             
