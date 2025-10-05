@@ -4,10 +4,11 @@ export const useWallet = () => {
   const { ready, authenticated, user, login, logout } = usePrivy();
 
   // Get smart wallet address from Privy
-  const smartWallet = user?.linkedAccounts?.find((account: any) => 
-    account.type === 'wallet'
+  // Get wallet address from Privy (supports smart/embedded)
+  const walletAccount = user?.linkedAccounts?.find((account: any) =>
+    ['wallet', 'smart_wallet', 'embedded_wallet'].includes(account.type)
   ) as any;
-  const address = smartWallet?.address as string | undefined;
+  const address = walletAccount?.address as string | undefined;
 
   // Format address for display (e.g., 0x1234...5678)
   const formattedAddress = address 

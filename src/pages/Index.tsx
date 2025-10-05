@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/hooks/useWallet";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NetworkInfo from "@/components/NetworkInfo";
@@ -30,14 +30,14 @@ interface IndexProps {
 const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
   const [activeTab, setActiveTab] = React.useState("DISCOVER");
   const topSongsRef = useRef<TopSongsRef>(null);
-  const { address } = useAccount();
+  const { isConnected } = useWallet();
 
   const handlePlayCountUpdate = () => {
     topSongsRef.current?.refreshSongs();
   };
 
   // Show landing page for non-connected wallets
-  if (!address) {
+  if (!isConnected) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
