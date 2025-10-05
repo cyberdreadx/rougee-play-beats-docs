@@ -3,12 +3,17 @@ import { usePrivy } from '@privy-io/react-auth';
 export const useWallet = () => {
   const { ready, authenticated, user, login, logout } = usePrivy();
 
-  // Get smart wallet address from Privy
   // Get wallet address from Privy (supports smart/embedded)
   const walletAccount = user?.linkedAccounts?.find((account: any) =>
     ['wallet', 'smart_wallet', 'embedded_wallet'].includes(account.type)
   ) as any;
   const address = walletAccount?.address as string | undefined;
+
+  // Debug logging
+  console.log('Privy user:', user);
+  console.log('Linked accounts:', user?.linkedAccounts);
+  console.log('Wallet account:', walletAccount);
+  console.log('Address:', address);
 
   // Format address for display (e.g., 0x1234...5678)
   const formattedAddress = address 
