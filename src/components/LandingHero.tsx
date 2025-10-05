@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Shield, TrendingUp, Music } from "lucide-react";
+import { Shield, TrendingUp, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
+import WalletButton from "@/components/WalletButton";
 
 export default function LandingHero() {
   const navigate = useNavigate();
@@ -23,10 +24,9 @@ export default function LandingHero() {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
-            <Zap className="w-5 h-5 mr-2" />
-            Connect Wallet
-          </Button>
+          <div className="w-full sm:w-auto">
+            <WalletButton />
+          </div>
           <Button 
             size="lg" 
             variant="outline" 
