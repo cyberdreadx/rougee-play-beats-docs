@@ -23,7 +23,7 @@ import { useEffect } from "react";
 
 const BecomeArtist = () => {
   const navigate = useNavigate();
-  const { isConnected, connectExternalWallet } = useWallet();
+  const { isConnected, connect } = useWallet();
   const { profile, loading } = useCurrentUserProfile();
 
   useEffect(() => {
@@ -35,7 +35,7 @@ const BecomeArtist = () => {
 
   const handleGetStarted = () => {
     if (!isConnected) {
-      connectExternalWallet();
+      connect();
     } else {
       navigate("/profile/edit");
     }

@@ -4,21 +4,16 @@ import { useWallet } from "@/hooks/useWallet";
 import LoginModal from "@/components/LoginModal";
 
 const WalletButton = () => {
-  const { isConnected, connectExternalWallet, connectEmailWallet, disconnect } = useWallet();
+  const { isConnected, connect, disconnect } = useWallet();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const handleLogin = () => {
     setShowLoginModal(true);
   };
 
-  const handleExternalWallet = () => {
+  const handleConnect = () => {
     setShowLoginModal(false);
-    connectExternalWallet();
-  };
-
-  const handleEmailLogin = () => {
-    setShowLoginModal(false);
-    connectEmailWallet();
+    connect();
   };
 
   return (
@@ -35,8 +30,7 @@ const WalletButton = () => {
       <LoginModal
         open={showLoginModal}
         onOpenChange={setShowLoginModal}
-        onExternalWallet={handleExternalWallet}
-        onEmailLogin={handleEmailLogin}
+        onLogin={handleConnect}
       />
     </>
   );

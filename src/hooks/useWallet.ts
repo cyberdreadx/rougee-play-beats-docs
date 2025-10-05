@@ -1,60 +1,34 @@
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { usePrivy } from '@privy-io/react-auth';
 
 export const useWallet = () => {
-  const { address: wagmiAddress, isConnected: wagmiConnected, isConnecting } = useAccount();
-  const { disconnect: wagmiDisconnect } = useDisconnect();
-  const { open } = useWeb3Modal();
-  const { ready, authenticated, user, login: privyLogin, logout: privyLogout } = usePrivy();
+  const { ready, authenticated, user, login, logout } = usePrivy();
 
-  // Determine the active address and connection status
-  // Privy stores wallets in user.linkedAccounts array
-  const privyWallet = user?.linkedAccounts?.find((account: any) => 
-    account.type === 'wallet' && account.walletClientType === 'privy'
+  // Get smart wallet address from Privy
+  const smartWallet = user?.linkedAccounts?.find((account: any) => 
+    account.type === 'wallet'
   ) as any;
-  const privyWalletAddress = privyWallet?.address as string | undefined;
-  const address = wagmiAddress || privyWalletAddress;
-  const isConnected = wagmiConnected || authenticated;
+  const address = smartWallet?.address as string | undefined;
 
   // Format address for display (e.g., 0x1234...5678)
   const formattedAddress = address 
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : null;
 
-  const connectExternalWallet = async () => {
+  const connect = async () => {
     try {
-      await open();
+      await login();
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
-    }
-  };
-
-  const connectEmailWallet = async () => {
-    try {
-      await privyLogin();
-    } catch (error) {
-      console.error('Failed to login with email:', error);
-    }
-  };
-
-  const handleDisconnect = () => {
-    if (wagmiConnected) {
-      wagmiDisconnect();
-    }
-    if (authenticated) {
-      privyLogout();
+      console.error('Failed to login:', error);
     }
   };
 
   return {
-    isConnected,
+    isConnected: authenticated,
     address: formattedAddress,
     fullAddress: address,
-    isConnecting,
-    connectExternalWallet,
-    connectEmailWallet,
-    disconnect: handleDisconnect,
+    isConnecting: !ready,
+    connect,
+    disconnect: logout,
     isPrivyReady: ready,
   };
 };
