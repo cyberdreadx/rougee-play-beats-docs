@@ -12,7 +12,6 @@ const WalletButton = () => {
   };
 
   const handleConnect = () => {
-    setShowLoginModal(false);
     connect();
   };
 

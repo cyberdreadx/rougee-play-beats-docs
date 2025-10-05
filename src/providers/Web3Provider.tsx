@@ -18,7 +18,7 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
     <PrivyProvider
       appId={privyAppId}
       config={{
-        loginMethods: ['email'],
+        loginMethods: ['email', 'wallet'],
         appearance: {
           theme: 'dark',
           accentColor: '#00FF00',
