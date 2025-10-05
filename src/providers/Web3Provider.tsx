@@ -19,6 +19,11 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
       appId={privyAppId}
       config={{
         loginMethods: ['email', 'wallet'],
+        embeddedWallets: {
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
+        },
         appearance: {
           theme: 'dark',
           accentColor: '#00FF00',
