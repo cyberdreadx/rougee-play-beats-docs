@@ -1,6 +1,7 @@
 import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
+import { PrivyProvider } from '@privy-io/react-auth';
 
 import { config, projectId } from '@/config/wallet';
 
@@ -31,11 +32,24 @@ createWeb3Modal({
 });
 
 export default function Web3Provider({ children }: { children: React.ReactNode }) {
+  const privyAppId = import.meta.env.VITE_PRIVY_APP_ID || '';
+  
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </WagmiProvider>
+    <PrivyProvider
+      appId={privyAppId}
+      config={{
+        loginMethods: ['email'],
+        appearance: {
+          theme: 'dark',
+          accentColor: '#00FF00',
+        },
+      }}
+    >
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </WagmiProvider>
+    </PrivyProvider>
   );
 }
