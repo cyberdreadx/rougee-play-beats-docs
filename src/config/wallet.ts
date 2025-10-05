@@ -4,6 +4,9 @@ import { base } from 'wagmi/chains';
 // Your WalletConnect Project ID
 export const projectId = 'cd4f138cd45bcb14df400b15eb4e6e7c';
 
+// Your Privy App ID (publishable key)
+export const privyAppId = 'YOUR_PRIVY_APP_ID_HERE';
+
 // Define the chains
 const chains = [base] as const;
 
