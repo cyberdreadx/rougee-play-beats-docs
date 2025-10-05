@@ -18,15 +18,17 @@ export default function LikeButton({
   size = "md",
   showCount = true 
 }: LikeButtonProps) {
-  const { fullAddress: address } = useWallet();
+  const { isConnected, fullAddress: address, connect } = useWallet();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    checkIfLiked();
-    fetchLikeCount();
-  }, [songId, address]);
+    if (isConnected) {
+      checkIfLiked();
+      fetchLikeCount();
+    }
+  }, [songId, isConnected, address]);
 
   const checkIfLiked = async () => {
     if (!address) return;
@@ -63,8 +65,14 @@ export default function LikeButton({
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    if (!isConnected) {
+      toast.error("Log in to like songs");
+      connect();
+      return;
+    }
+
     if (!address) {
-      toast.error("Connect your wallet to like songs");
+      toast.error("Setting up your wallet... please try again in a moment");
       return;
     }
 
