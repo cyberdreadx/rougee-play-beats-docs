@@ -9,7 +9,11 @@ export const useWallet = () => {
   const { ready, authenticated, user, login: privyLogin, logout: privyLogout } = usePrivy();
 
   // Determine the active address and connection status
-  const privyWalletAddress = user?.wallet?.address;
+  // Privy stores wallets in user.linkedAccounts array
+  const privyWallet = user?.linkedAccounts?.find((account: any) => 
+    account.type === 'wallet' && account.walletClientType === 'privy'
+  ) as any;
+  const privyWalletAddress = privyWallet?.address as string | undefined;
   const address = wagmiAddress || privyWalletAddress;
   const isConnected = wagmiConnected || authenticated;
 

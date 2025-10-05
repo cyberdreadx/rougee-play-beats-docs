@@ -41,6 +41,11 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
           theme: 'dark',
           accentColor: '#00FF00',
         },
+        embeddedWallets: {
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
+        },
       }}
     >
       <WagmiProvider config={config}>
