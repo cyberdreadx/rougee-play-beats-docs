@@ -404,6 +404,10 @@ export type Database = {
         Args: { song_id: string }
         Returns: undefined
       }
+      is_admin: {
+        Args: { check_wallet: string }
+        Returns: boolean
+      }
       is_ticker_available: {
         Args: { ticker: string }
         Returns: boolean

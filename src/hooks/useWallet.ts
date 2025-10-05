@@ -9,12 +9,6 @@ export const useWallet = () => {
   ) as any;
   const address = walletAccount?.address as string | undefined;
 
-  // Debug logging
-  console.log('Privy user:', user);
-  console.log('Linked accounts:', user?.linkedAccounts);
-  console.log('Wallet account:', walletAccount);
-  console.log('Address:', address);
-
   // Format address for display (e.g., 0x1234...5678)
   const formattedAddress = address 
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
