@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/hooks/useWallet";
 
 interface LikeButtonProps {
   songId: string;
@@ -18,7 +18,7 @@ export default function LikeButton({
   size = "md",
   showCount = true 
 }: LikeButtonProps) {
-  const { address } = useAccount();
+  const { fullAddress: address } = useWallet();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
