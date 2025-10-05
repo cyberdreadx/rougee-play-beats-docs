@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
+import { useFundWallet } from "@privy-io/react-auth";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet as WalletIcon, Copy, Check } from "lucide-react";
+import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBalance, useReadContract } from "wagmi";
 
@@ -32,6 +33,7 @@ const ERC20_ABI = [
 const Wallet = () => {
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
+  const { fundWallet } = useFundWallet();
   const [copied, setCopied] = useState(false);
 
   const { data: balance, isLoading: balanceLoading } = useBalance({
@@ -78,6 +80,12 @@ const Wallet = () => {
     const decimals = Number(xrgeDecimals);
     const balance = Number(xrgeBalance) / Math.pow(10, decimals);
     return balance.toFixed(4);
+  };
+
+  const handleFundWallet = () => {
+    if (fullAddress) {
+      fundWallet({ address: fullAddress as `0x${string}` });
+    }
   };
 
   if (!isConnected) {
@@ -160,6 +168,31 @@ const Wallet = () => {
                 <span className="text-sm text-muted-foreground font-mono">XRGE</span>
               </div>
             )}
+          </div>
+
+          {/* Funding Actions */}
+          <div className="border-t border-border pt-4 mt-4">
+            <p className="text-xs text-muted-foreground font-mono mb-3">Add Funds</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="neon"
+                size="sm"
+                onClick={handleFundWallet}
+                className="font-mono text-xs"
+              >
+                <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                BUY CRYPTO
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFundWallet}
+                className="font-mono text-xs border-neon-green/50"
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5 mr-1.5" />
+                RECEIVE
+              </Button>
+            </div>
           </div>
         </Card>
 
