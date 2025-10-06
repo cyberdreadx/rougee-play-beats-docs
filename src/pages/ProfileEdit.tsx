@@ -191,22 +191,34 @@ const ProfileEdit = () => {
     }
   };
 
-  const handleCoverDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCoverDrag = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!isDragging) return;
     
+    e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
+    
+    let y: number;
+    if ('touches' in e) {
+      // Touch event
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      // Mouse event
+      y = e.clientY - rect.top;
+    }
+    
     const percentage = Math.max(0, Math.min(100, (y / rect.height) * 100));
     setCoverPosition(percentage);
   };
 
-  const handleCoverDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCoverDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(true);
     handleCoverDrag(e);
   };
 
-  const handleCoverDragEnd = () => {
+  const handleCoverDragEnd = (e?: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    e?.preventDefault();
     setIsDragging(false);
   };
 
@@ -331,7 +343,7 @@ const ProfileEdit = () => {
               <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 5MB)</Label>
               <div className="relative">
                 <div 
-                  className={`relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background ${coverPreview ? 'cursor-move' : 'cursor-pointer'} group`}
+                  className={`relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background ${coverPreview ? 'cursor-move select-none' : 'cursor-pointer'} group`}
                   style={coverPreview ? {
                     backgroundImage: `url(${coverPreview})`,
                     backgroundSize: 'cover',
@@ -339,8 +351,11 @@ const ProfileEdit = () => {
                   } : undefined}
                   onMouseDown={coverPreview ? handleCoverDragStart : undefined}
                   onMouseMove={coverPreview ? handleCoverDrag : undefined}
-                  onMouseUp={handleCoverDragEnd}
-                  onMouseLeave={handleCoverDragEnd}
+                  onMouseUp={coverPreview ? handleCoverDragEnd : undefined}
+                  onMouseLeave={coverPreview ? handleCoverDragEnd : undefined}
+                  onTouchStart={coverPreview ? handleCoverDragStart : undefined}
+                  onTouchMove={coverPreview ? handleCoverDrag : undefined}
+                  onTouchEnd={coverPreview ? handleCoverDragEnd : undefined}
                 >
                   {!coverPreview && (
                     <>
