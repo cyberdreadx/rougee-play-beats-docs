@@ -33,7 +33,8 @@ const ProfileEdit = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [coverPosition, setCoverPosition] = useState<string>("center");
+  const [coverPosition, setCoverPosition] = useState<number>(50); // 0-100 percentage
+  const [isDragging, setIsDragging] = useState(false);
   const [isArtist, setIsArtist] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -67,8 +68,9 @@ const ProfileEdit = () => {
       if (profile.cover_cid) {
         setCoverPreview(getIPFSGatewayUrl(profile.cover_cid));
       }
-      // Load cover position from social_links if exists
-      setCoverPosition(profile.social_links?.coverPosition || "center");
+      // Load cover position from social_links if exists (default to center = 50%)
+      const savedPosition = profile.social_links?.coverPosition;
+      setCoverPosition(typeof savedPosition === 'number' ? savedPosition : 50);
       
       // Check verification status
       if (profile.verified) {
@@ -160,7 +162,27 @@ const ProfileEdit = () => {
       }
       setCoverFile(file);
       setCoverPreview(URL.createObjectURL(file));
+      setCoverPosition(50); // Reset to center on new upload
     }
+  };
+
+  const handleCoverDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const percentage = Math.max(0, Math.min(100, (y / rect.height) * 100));
+    setCoverPosition(percentage);
+  };
+
+  const handleCoverDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+    handleCoverDrag(e);
+  };
+
+  const handleCoverDragEnd = () => {
+    setIsDragging(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -274,50 +296,62 @@ const ProfileEdit = () => {
             {/* Cover Photo */}
             <div className="space-y-2">
               <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 5MB)</Label>
-              <div 
-                className="relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background cursor-pointer group"
-                style={coverPreview ? {
-                  backgroundImage: `url(${coverPreview})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: coverPosition
-                } : undefined}
-              >
-                <input
-                  id="cover"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                />
-                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/70 transition-colors flex items-center justify-center pointer-events-none">
-                  <Upload className="h-8 w-8 text-neon-green" />
+              <div className="relative">
+                <div 
+                  className={`relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background ${coverPreview ? 'cursor-move' : 'cursor-pointer'} group`}
+                  style={coverPreview ? {
+                    backgroundImage: `url(${coverPreview})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: `center ${coverPosition}%`
+                  } : undefined}
+                  onMouseDown={coverPreview ? handleCoverDragStart : undefined}
+                  onMouseMove={coverPreview ? handleCoverDrag : undefined}
+                  onMouseUp={handleCoverDragEnd}
+                  onMouseLeave={handleCoverDragEnd}
+                >
+                  {!coverPreview && (
+                    <>
+                      <input
+                        id="cover"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="absolute inset-0 bg-black/50 group-hover:bg-black/70 transition-colors flex items-center justify-center pointer-events-none">
+                        <Upload className="h-8 w-8 text-neon-green" />
+                      </div>
+                    </>
+                  )}
+                  
+                  {coverPreview && (
+                    <>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center pointer-events-none">
+                        <div className={`text-white font-mono text-sm bg-black/60 px-3 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isDragging ? '!opacity-100' : ''}`}>
+                          {isDragging ? 'Release to set' : 'Drag to adjust position'}
+                        </div>
+                      </div>
+                      <input
+                        id="cover"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCoverChange}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('cover')?.click()}
+                        className="absolute top-2 right-2 z-10 text-xs"
+                      >
+                        <Upload className="h-3 w-3 mr-1" />
+                        Change
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
-              
-              {/* Cover Position Controls */}
-              {coverPreview && (
-                <div className="space-y-2 p-3 bg-background/50 rounded border border-border">
-                  <Label className="text-xs font-mono text-muted-foreground">Adjust Position</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { value: 'top', label: 'Top' },
-                      { value: 'center', label: 'Center' },
-                      { value: 'bottom', label: 'Bottom' },
-                    ].map((pos) => (
-                      <Button
-                        key={pos.value}
-                        type="button"
-                        variant={coverPosition === pos.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCoverPosition(pos.value)}
-                        className="text-xs"
-                      >
-                        {pos.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Avatar */}

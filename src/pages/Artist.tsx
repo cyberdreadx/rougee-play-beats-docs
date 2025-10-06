@@ -135,7 +135,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
   const coverUrl = profile.cover_cid ? getIPFSGatewayUrl(profile.cover_cid) : null;
   const avatarUrl = profile.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
-  const coverPosition = profile.social_links?.coverPosition || 'center';
+  const coverPosition = profile.social_links?.coverPosition || 50; // Default to center (50%)
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pb-0">
@@ -149,7 +149,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         style={coverUrl ? {
           backgroundImage: `url(${coverUrl})`,
           backgroundSize: 'cover',
-          backgroundPosition: coverPosition
+          backgroundPosition: `center ${coverPosition}%`
         } : undefined}
       >
         {!coverUrl && (
