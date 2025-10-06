@@ -160,9 +160,9 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         {/* Avatar Overlapping Cover */}
         <div className="absolute bottom-0 left-8 transform translate-y-1/2">
           <Avatar className="h-32 w-32 border-4 border-background shadow-2xl">
-            <AvatarImage src={avatarUrl || undefined} alt={profile.artist_name} className="object-cover" />
+            <AvatarImage src={avatarUrl || undefined} alt={profile.artist_name || profile.display_name || 'Profile avatar'} className="object-cover" />
             <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-4xl">
-              {profile.artist_name.substring(0, 2).toUpperCase()}
+              {(profile.artist_name || profile.display_name || profile.wallet_address || '??').substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </div>

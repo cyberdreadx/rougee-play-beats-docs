@@ -60,9 +60,9 @@ const ArtistCard = ({
       <div className="relative h-full p-4 flex flex-col justify-between">
         <div className="flex items-start justify-between">
           <Avatar className="h-12 w-12 border-2 border-neon-green">
-            <AvatarImage src={avatarUrl || undefined} alt={artistName} />
+            <AvatarImage src={avatarUrl || undefined} alt={artistName || 'Artist'} />
             <AvatarFallback className="bg-primary/20 text-neon-green font-mono">
-              {artistName.substring(0, 2).toUpperCase()}
+              {(artistName || '??').substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           {verified && (

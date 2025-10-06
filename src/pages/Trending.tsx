@@ -163,12 +163,12 @@ const Trending = () => {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 border border-neon-green/20">
-                              <AvatarImage
+                          <AvatarImage
                                 src={artist.avatar_cid ? `https://gateway.lighthouse.storage/ipfs/${artist.avatar_cid}` : undefined}
-                                alt={artist.artist_name}
+                                alt={artist.artist_name || 'Artist'}
                               />
                               <AvatarFallback className="bg-neon-green/10 text-neon-green font-mono">
-                                {artist.artist_name.substring(0, 2).toUpperCase()}
+                                {(artist.artist_name || '??').substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex items-center gap-2">
@@ -247,10 +247,10 @@ const Trending = () => {
                             <Avatar className="h-10 w-10 border border-neon-green/20 rounded-sm">
                               <AvatarImage
                                 src={song.cover_cid ? `https://gateway.lighthouse.storage/ipfs/${song.cover_cid}` : undefined}
-                                alt={song.title}
+                                alt={song.title || 'Song'}
                               />
                               <AvatarFallback className="bg-neon-green/10 text-neon-green font-mono rounded-sm">
-                                {song.title.substring(0, 2).toUpperCase()}
+                                {(song.title || '??').substring(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div>
