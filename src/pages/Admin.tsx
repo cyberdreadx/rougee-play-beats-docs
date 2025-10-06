@@ -7,10 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, Music, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, AlertTriangle, Music, Trash2, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface SongReport {
@@ -27,6 +29,20 @@ interface SongReport {
   };
 }
 
+interface VerificationRequest {
+  id: string;
+  wallet_address: string;
+  status: 'pending' | 'approved' | 'rejected';
+  message: string | null;
+  admin_notes: string | null;
+  requested_at: string;
+  profiles: {
+    artist_name: string | null;
+    display_name: string | null;
+    avatar_cid: string | null;
+  } | null;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -35,6 +51,9 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [reports, setReports] = useState<SongReport[]>([]);
   const [deletingReports, setDeletingReports] = useState<Set<string>>(new Set());
+  const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
+  const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
+  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isPrivyReady) {
@@ -76,6 +95,7 @@ const Admin = () => {
 
       setIsAdmin(true);
       fetchReports();
+      fetchVerificationRequests();
     } catch (error) {
       console.error("Error checking admin access:", error);
       navigate("/");
@@ -171,6 +191,94 @@ const Admin = () => {
     }
   };
 
+  const fetchVerificationRequests = async () => {
+    try {
+      const { data: requests, error: requestsError } = await supabase
+        .from('verification_requests')
+        .select('*')
+        .order('requested_at', { ascending: false });
+
+      if (requestsError) throw requestsError;
+
+      // Fetch profiles separately
+      if (requests && requests.length > 0) {
+        const walletAddresses = requests.map(r => r.wallet_address);
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('wallet_address, artist_name, display_name, avatar_cid')
+          .in('wallet_address', walletAddresses);
+
+        if (profilesError) throw profilesError;
+
+        // Map profiles to requests
+        const requestsWithProfiles = requests.map(request => ({
+          ...request,
+          profiles: profiles?.find(p => p.wallet_address === request.wallet_address) || null
+        }));
+
+        setVerificationRequests(requestsWithProfiles);
+      } else {
+        setVerificationRequests([]);
+      }
+    } catch (error) {
+      console.error('Error fetching verification requests:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load verification requests",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVerificationDecision = async (requestId: string, walletAddress: string, approved: boolean) => {
+    setProcessingRequests(new Set(processingRequests).add(requestId));
+    
+    try {
+      // Update verification request
+      const { error: requestError } = await supabase
+        .from('verification_requests')
+        .update({
+          status: approved ? 'approved' : 'rejected',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: fullAddress,
+          admin_notes: adminNotes[requestId] || null
+        })
+        .eq('id', requestId);
+
+      if (requestError) throw requestError;
+
+      // If approved, update profile
+      if (approved) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ verified: true })
+          .eq('wallet_address', walletAddress);
+
+        if (profileError) throw profileError;
+      }
+
+      toast({
+        title: approved ? "Request Approved" : "Request Rejected",
+        description: approved 
+          ? "User has been verified successfully"
+          : "Verification request has been rejected",
+      });
+
+      fetchVerificationRequests();
+    } catch (error) {
+      console.error('Error processing verification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process request",
+        variant: "destructive",
+      });
+    } finally {
+      const newSet = new Set(processingRequests);
+      newSet.delete(requestId);
+      setProcessingRequests(newSet);
+    }
+  };
+
   const getReportTypeBadge = (type: string) => {
     const variants = {
       copyright: "destructive",
@@ -215,8 +323,14 @@ const Admin = () => {
           <h1 className="text-3xl font-mono font-bold neon-text">ADMIN PANEL</h1>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+        <Tabs defaultValue="reports" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsTrigger value="reports">
+              REPORTS ({reports.length})
+            </TabsTrigger>
+            <TabsTrigger value="verification">
+              VERIFICATION ({verificationRequests.filter(r => r.status === 'pending').length})
+            </TabsTrigger>
             <TabsTrigger value="all">
               ALL ({reports.length})
             </TabsTrigger>
@@ -230,6 +344,27 @@ const Admin = () => {
               OTHER ({groupedReports.other.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="reports">
+            <ReportsList 
+              reports={reports}
+              onDeleteSong={handleDeleteSong}
+              onDismissReport={handleDismissReport}
+              deletingReports={deletingReports}
+              getReportTypeBadge={getReportTypeBadge}
+            />
+          </TabsContent>
+
+          <TabsContent value="verification">
+            <VerificationRequests
+              requests={verificationRequests.filter(r => r.status === 'pending')}
+              onApprove={(id, wallet) => handleVerificationDecision(id, wallet, true)}
+              onReject={(id, wallet) => handleVerificationDecision(id, wallet, false)}
+              processingRequests={processingRequests}
+              adminNotes={adminNotes}
+              setAdminNotes={setAdminNotes}
+            />
+          </TabsContent>
 
           <TabsContent value="all">
             <ReportsList 
@@ -387,6 +522,129 @@ const ReportsList = ({
                   >
                     DISMISS REPORT
                   </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
+
+interface VerificationRequestsProps {
+  requests: VerificationRequest[];
+  onApprove: (id: string, walletAddress: string) => void;
+  onReject: (id: string, walletAddress: string) => void;
+  processingRequests: Set<string>;
+  adminNotes: Record<string, string>;
+  setAdminNotes: (notes: Record<string, string>) => void;
+}
+
+const VerificationRequests = ({
+  requests,
+  onApprove,
+  onReject,
+  processingRequests,
+  adminNotes,
+  setAdminNotes
+}: VerificationRequestsProps) => {
+  if (requests.length === 0) {
+    return (
+      <Card className="console-bg tech-border p-8 text-center">
+        <p className="font-mono text-muted-foreground">No pending verification requests</p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {requests.map((request) => {
+        const avatarUrl = request.profiles?.avatar_cid 
+          ? getIPFSGatewayUrl(request.profiles.avatar_cid) 
+          : null;
+        const displayName = request.profiles?.artist_name || request.profiles?.display_name || 'Unknown';
+
+        return (
+          <Card key={request.id} className="console-bg tech-border p-6">
+            <div className="flex items-start gap-4">
+              {/* Artist Avatar */}
+              <div className="flex-shrink-0">
+                <div className="w-16 h-16 rounded-full tech-border overflow-hidden bg-primary/20">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-mono text-neon-green">
+                      {displayName.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Request Details */}
+              <div className="flex-1 min-w-0">
+                <div className="mb-3">
+                  <h3 className="font-mono font-bold text-lg mb-1">{displayName}</h3>
+                  <p className="text-sm font-mono text-muted-foreground">
+                    {request.wallet_address}
+                  </p>
+                  <p className="text-xs font-mono text-muted-foreground mt-1">
+                    Requested: {new Date(request.requested_at).toLocaleString()}
+                  </p>
+                </div>
+
+                {request.message && (
+                  <div className="mb-4 p-3 bg-background/50 rounded border border-border">
+                    <p className="text-xs text-muted-foreground mb-1 font-mono">Message:</p>
+                    <p className="text-sm font-mono">{request.message}</p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-mono text-muted-foreground">Admin Notes (optional)</Label>
+                    <Textarea
+                      value={adminNotes[request.id] || ''}
+                      onChange={(e) => setAdminNotes({ ...adminNotes, [request.id]: e.target.value })}
+                      placeholder="Add internal notes about this decision..."
+                      rows={2}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onApprove(request.id, request.wallet_address)}
+                      disabled={processingRequests.has(request.id)}
+                      className="bg-neon-green text-black hover:bg-neon-green/80"
+                    >
+                      {processingRequests.has(request.id) ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                      )}
+                      APPROVE
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onReject(request.id, request.wallet_address)}
+                      disabled={processingRequests.has(request.id)}
+                    >
+                      {processingRequests.has(request.id) ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <XCircle className="h-4 w-4 mr-2" />
+                      )}
+                      REJECT
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

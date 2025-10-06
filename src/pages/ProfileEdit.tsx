@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Upload, ExternalLink, Loader2 } from "lucide-react";
+import { Upload, ExternalLink, Loader2, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
@@ -32,6 +34,9 @@ const ProfileEdit = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [isArtist, setIsArtist] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [requestingVerification, setRequestingVerification] = useState(false);
 
   useEffect(() => {
     // Only redirect if Privy is ready and user is not connected
@@ -61,8 +66,67 @@ const ProfileEdit = () => {
       if (profile.cover_cid) {
         setCoverPreview(getIPFSGatewayUrl(profile.cover_cid));
       }
+      
+      // Check verification status
+      if (profile.verified) {
+        setVerificationStatus('approved');
+      } else if (fullAddress) {
+        checkVerificationRequest();
+      }
     }
-  }, [profile]);
+  }, [profile, fullAddress]);
+
+  const checkVerificationRequest = async () => {
+    if (!fullAddress) return;
+    
+    try {
+      const { data } = await supabase
+        .from('verification_requests')
+        .select('status')
+        .eq('wallet_address', fullAddress)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data) {
+        setVerificationStatus(data.status as 'pending' | 'approved' | 'rejected');
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+    }
+  };
+
+  const handleRequestVerification = async () => {
+    if (!fullAddress || !isArtist) return;
+    
+    setRequestingVerification(true);
+    try {
+      const { error } = await supabase
+        .from('verification_requests')
+        .insert({
+          wallet_address: fullAddress,
+          message: verificationMessage,
+          status: 'pending'
+        });
+      
+      if (error) throw error;
+      
+      setVerificationStatus('pending');
+      toast({
+        title: "Verification Requested",
+        description: "Your request has been submitted for review",
+      });
+    } catch (error: any) {
+      console.error('Error requesting verification:', error);
+      toast({
+        title: "Request Failed",
+        description: error.message || "Failed to submit verification request",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingVerification(false);
+    }
+  };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -323,6 +387,76 @@ const ProfileEdit = () => {
                 {bio.length}/500
               </p>
             </div>
+
+            {/* Verification Section for Artists */}
+            {isArtist && (
+              <Card className="p-4 bg-primary/5 border-neon-green/30">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-neon-green" />
+                    <h3 className="font-mono font-bold text-neon-green">Verification Status</h3>
+                  </div>
+                  
+                  {verificationStatus === 'approved' ? (
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-neon-green text-black">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        VERIFIED
+                      </Badge>
+                      <p className="text-sm font-mono text-muted-foreground">
+                        Your account is verified
+                      </p>
+                    </div>
+                  ) : verificationStatus === 'pending' ? (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        <Clock className="h-3 w-3 mr-1" />
+                        PENDING REVIEW
+                      </Badge>
+                      <p className="text-sm font-mono text-muted-foreground">
+                        Your request is being reviewed by admins
+                      </p>
+                    </div>
+                  ) : verificationStatus === 'rejected' ? (
+                    <div>
+                      <Badge variant="destructive">REJECTED</Badge>
+                      <p className="text-sm font-mono text-muted-foreground mt-2">
+                        Your previous request was not approved. You can submit a new request.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm font-mono text-muted-foreground">
+                        Get a blue checkmark to show your authenticity
+                      </p>
+                      <Textarea
+                        value={verificationMessage}
+                        onChange={(e) => setVerificationMessage(e.target.value)}
+                        placeholder="Why should you be verified? Include links to your social profiles, music platforms, etc."
+                        rows={3}
+                        maxLength={500}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleRequestVerification}
+                        disabled={!verificationMessage.trim() || requestingVerification}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {requestingVerification ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          'Request Verification'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
 
             {/* Social Links */}
             <div className="space-y-4">
