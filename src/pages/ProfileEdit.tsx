@@ -409,7 +409,7 @@ const ProfileEdit = () => {
                 <Avatar className="h-24 w-24 border-2 border-neon-green cursor-pointer">
                   <AvatarImage src={avatarPreview || undefined} className="object-cover" />
                   <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xl">
-                    {(isArtist ? artistName : displayName).substring(0, 2).toUpperCase() || "??"}
+                    {((isArtist ? artistName : displayName) || "??").substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <input
