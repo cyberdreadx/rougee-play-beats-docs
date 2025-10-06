@@ -33,6 +33,7 @@ const ProfileEdit = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverPosition, setCoverPosition] = useState<string>("center");
   const [isArtist, setIsArtist] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -66,6 +67,8 @@ const ProfileEdit = () => {
       if (profile.cover_cid) {
         setCoverPreview(getIPFSGatewayUrl(profile.cover_cid));
       }
+      // Load cover position from social_links if exists
+      setCoverPosition(profile.social_links?.coverPosition || "center");
       
       // Check verification status
       if (profile.verified) {
@@ -198,7 +201,7 @@ const ProfileEdit = () => {
       formData.append("artist_ticker", artistTicker.trim().toUpperCase());
     }
     formData.append("bio", bio.trim());
-    formData.append("social_links", JSON.stringify({ twitter, instagram, website }));
+    formData.append("social_links", JSON.stringify({ twitter, instagram, website, coverPosition }));
 
     if (avatarFile) {
       formData.append("avatar", avatarFile);
@@ -276,7 +279,7 @@ const ProfileEdit = () => {
                 style={coverPreview ? {
                   backgroundImage: `url(${coverPreview})`,
                   backgroundSize: 'cover',
-                  backgroundPosition: 'center'
+                  backgroundPosition: coverPosition
                 } : undefined}
               >
                 <input
@@ -290,6 +293,31 @@ const ProfileEdit = () => {
                   <Upload className="h-8 w-8 text-neon-green" />
                 </div>
               </div>
+              
+              {/* Cover Position Controls */}
+              {coverPreview && (
+                <div className="space-y-2 p-3 bg-background/50 rounded border border-border">
+                  <Label className="text-xs font-mono text-muted-foreground">Adjust Position</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { value: 'top', label: 'Top' },
+                      { value: 'center', label: 'Center' },
+                      { value: 'bottom', label: 'Bottom' },
+                    ].map((pos) => (
+                      <Button
+                        key={pos.value}
+                        type="button"
+                        variant={coverPosition === pos.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCoverPosition(pos.value)}
+                        className="text-xs"
+                      >
+                        {pos.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Avatar */}
