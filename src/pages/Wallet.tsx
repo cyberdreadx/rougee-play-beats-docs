@@ -7,7 +7,7 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine } from "lucide-react";
+import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBalance, useReadContract } from "wagmi";
 
@@ -35,12 +35,13 @@ const Wallet = () => {
   const { fullAddress, isConnected } = useWallet();
   const { fundWallet } = useFundWallet();
   const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: balance, isLoading: balanceLoading } = useBalance({
+  const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({
     address: fullAddress as `0x${string}`,
   });
 
-  const { data: xrgeBalance, isLoading: xrgeLoading } = useReadContract({
+  const { data: xrgeBalance, isLoading: xrgeLoading, refetch: refetchXrge } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -88,6 +89,16 @@ const Wallet = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetchBalance(), refetchXrge()]);
+    toast({
+      title: "Balances refreshed",
+      description: "Your wallet balances have been updated",
+    });
+    setTimeout(() => setRefreshing(false), 500);
+  };
+
   if (!isConnected) {
     return null;
   }
@@ -98,9 +109,21 @@ const Wallet = () => {
       <Navigation />
       
       <main className="container mx-auto px-4 py-6 max-w-3xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold font-mono mb-1 text-neon-green">MY WALLET</h1>
-          <p className="text-sm text-muted-foreground font-mono">Manage your crypto assets and music collection</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold font-mono mb-1 text-neon-green">MY WALLET</h1>
+            <p className="text-sm text-muted-foreground font-mono">Manage your crypto assets and music collection</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="font-mono border-neon-green/50"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+            REFRESH
+          </Button>
         </div>
 
         {/* Wallet Overview */}
