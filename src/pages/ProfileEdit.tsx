@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
 import { Upload, ExternalLink, Loader2, CheckCircle2, Clock } from "lucide-react";
@@ -39,6 +40,8 @@ const ProfileEdit = () => {
   const [verificationStatus, setVerificationStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
   const [verificationMessage, setVerificationMessage] = useState("");
   const [requestingVerification, setRequestingVerification] = useState(false);
+  const [showAvatarCrop, setShowAvatarCrop] = useState(false);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     // Only redirect if Privy is ready and user is not connected
@@ -144,8 +147,30 @@ const ProfileEdit = () => {
         });
         return;
       }
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
+      // Show crop modal
+      const url = URL.createObjectURL(file);
+      setTempAvatarUrl(url);
+      setShowAvatarCrop(true);
+    }
+  };
+
+  const handleAvatarCropComplete = (croppedBlob: Blob) => {
+    // Convert blob to file
+    const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    setAvatarFile(croppedFile);
+    setAvatarPreview(URL.createObjectURL(croppedBlob));
+    setShowAvatarCrop(false);
+    if (tempAvatarUrl) {
+      URL.revokeObjectURL(tempAvatarUrl);
+      setTempAvatarUrl(null);
+    }
+  };
+
+  const handleAvatarCropCancel = () => {
+    setShowAvatarCrop(false);
+    if (tempAvatarUrl) {
+      URL.revokeObjectURL(tempAvatarUrl);
+      setTempAvatarUrl(null);
     }
   };
 
@@ -260,6 +285,14 @@ const ProfileEdit = () => {
       <NetworkInfo />
 
       <div className="max-w-4xl mx-auto px-6 py-8">
+        {showAvatarCrop && tempAvatarUrl && (
+          <AvatarCropModal
+            imageUrl={tempAvatarUrl}
+            onComplete={handleAvatarCropComplete}
+            onCancel={handleAvatarCropCancel}
+          />
+        )}
+
         <h1 className="text-3xl font-mono font-bold neon-text mb-6">
           {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
         </h1>
