@@ -30,17 +30,22 @@ interface SongReport {
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { fullAddress, isConnected } = useWallet();
+  const { fullAddress, isConnected, isPrivyReady } = useWallet();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reports, setReports] = useState<SongReport[]>([]);
   const [deletingReports, setDeletingReports] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    checkAdminAccess();
-  }, []);
+    if (isPrivyReady) {
+      checkAdminAccess();
+    }
+  }, [fullAddress, isPrivyReady]);
 
   const checkAdminAccess = async () => {
+    // Wait for Privy to be ready
+    if (!isPrivyReady) return;
+    
     try {
       if (!isConnected || !fullAddress) {
         toast({

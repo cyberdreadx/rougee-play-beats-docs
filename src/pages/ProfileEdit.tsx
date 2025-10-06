@@ -17,7 +17,7 @@ import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
-  const { fullAddress, isConnected } = useWallet();
+  const { fullAddress, isConnected, isPrivyReady } = useWallet();
   const { profile, loading, updating, updateProfile } = useCurrentUserProfile();
 
   const [displayName, setDisplayName] = useState("");
@@ -34,7 +34,8 @@ const ProfileEdit = () => {
   const [isArtist, setIsArtist] = useState(false);
 
   useEffect(() => {
-    if (!isConnected) {
+    // Only redirect if Privy is ready and user is not connected
+    if (isPrivyReady && !isConnected) {
       navigate("/");
       toast({
         title: "Wallet not connected",
@@ -42,7 +43,7 @@ const ProfileEdit = () => {
         variant: "destructive",
       });
     }
-  }, [isConnected, navigate]);
+  }, [isConnected, isPrivyReady, navigate]);
 
   useEffect(() => {
     if (profile) {

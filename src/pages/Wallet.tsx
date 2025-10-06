@@ -32,7 +32,7 @@ const ERC20_ABI = [
 
 const Wallet = () => {
   const navigate = useNavigate();
-  const { fullAddress, isConnected } = useWallet();
+  const { fullAddress, isConnected, isPrivyReady } = useWallet();
   const { fundWallet } = useFundWallet();
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,11 +54,13 @@ const Wallet = () => {
     functionName: "decimals",
   });
 
+
   useEffect(() => {
-    if (!isConnected) {
+    // Only redirect if Privy is ready and user is not connected
+    if (isPrivyReady && !isConnected) {
       navigate("/");
     }
-  }, [isConnected, navigate]);
+  }, [isConnected, isPrivyReady, navigate]);
 
   const copyAddress = async () => {
     if (fullAddress) {
