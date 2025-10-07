@@ -5,6 +5,7 @@ import StoryViewer from "./StoryViewer";
 import { Plus } from "lucide-react";
 import StoryUpload from "./StoryUpload";
 import { useWallet } from "@/hooks/useWallet";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface Story {
   id: string;
@@ -128,7 +129,7 @@ const StoriesBar = () => {
                           <AvatarImage
                             src={
                               profiles[fullAddress]?.avatar_cid
-                                ? supabase.storage.from('avatars').getPublicUrl(profiles[fullAddress].avatar_cid).data.publicUrl
+                                ? getIPFSGatewayUrl(profiles[fullAddress].avatar_cid)
                                 : undefined
                             }
                           />

@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface Story {
   id: string;
@@ -102,7 +103,7 @@ const StoryViewer = ({
             <AvatarImage
               src={
                 currentProfile?.avatar_cid
-                  ? supabase.storage.from('avatars').getPublicUrl(currentProfile.avatar_cid).data.publicUrl
+                  ? getIPFSGatewayUrl(currentProfile.avatar_cid)
                   : undefined
               }
             />
