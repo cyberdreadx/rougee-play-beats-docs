@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_tokens: {
+        Row: {
+          chain_id: number
+          contract_address: string
+          created_at: string
+          id: string
+          token_name: string
+          token_symbol: string
+          total_supply: string
+          wallet_address: string
+        }
+        Insert: {
+          chain_id?: number
+          contract_address: string
+          created_at?: string
+          id?: string
+          token_name: string
+          token_symbol: string
+          total_supply: string
+          wallet_address: string
+        }
+        Update: {
+          chain_id?: number
+          contract_address?: string
+          created_at?: string
+          id?: string
+          token_name?: string
+          token_symbol?: string
+          total_supply?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           comment_text: string

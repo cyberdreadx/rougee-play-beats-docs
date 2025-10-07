@@ -7,9 +7,13 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw } from "lucide-react";
+import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBalance, useReadContract } from "wagmi";
+import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
 
@@ -36,6 +40,15 @@ const Wallet = () => {
   const { fundWallet } = useFundWallet();
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showMintDialog, setShowMintDialog] = useState(false);
+  const [minting, setMinting] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
+  const [artistToken, setArtistToken] = useState<any>(null);
+  const [tokenForm, setTokenForm] = useState({
+    name: '',
+    symbol: '',
+    supply: '1000000',
+  });
 
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({
     address: fullAddress as `0x${string}`,
@@ -61,6 +74,27 @@ const Wallet = () => {
       navigate("/");
     }
   }, [isConnected, isPrivyReady, navigate]);
+
+  useEffect(() => {
+    if (fullAddress) {
+      checkArtistToken();
+    }
+  }, [fullAddress]);
+
+  const checkArtistToken = async () => {
+    if (!fullAddress) return;
+    
+    const { data, error } = await supabase
+      .from('artist_tokens')
+      .select('*')
+      .eq('wallet_address', fullAddress)
+      .maybeSingle();
+
+    if (data) {
+      setHasToken(true);
+      setArtistToken(data);
+    }
+  };
 
   const copyAddress = async () => {
     if (fullAddress) {
@@ -93,12 +127,56 @@ const Wallet = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchBalance(), refetchXrge()]);
+    await Promise.all([refetchBalance(), refetchXrge(), checkArtistToken()]);
     toast({
       title: "Balances refreshed",
       description: "Your wallet balances have been updated",
     });
     setTimeout(() => setRefreshing(false), 500);
+  };
+
+  const handleMintToken = async () => {
+    if (!fullAddress || !tokenForm.name || !tokenForm.symbol) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setMinting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deploy-artist-token', {
+        body: {
+          tokenName: tokenForm.name,
+          tokenSymbol: tokenForm.symbol.toUpperCase(),
+          totalSupply: tokenForm.supply,
+          walletAddress: fullAddress,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Token deployed! 🎉",
+        description: `${tokenForm.name} (${tokenForm.symbol}) deployed successfully`,
+      });
+
+      setShowMintDialog(false);
+      setTokenForm({ name: '', symbol: '', supply: '1000000' });
+      await checkArtistToken();
+
+    } catch (error) {
+      console.error('Mint error:', error);
+      toast({
+        title: "Deployment failed",
+        description: error instanceof Error ? error.message : "Failed to deploy token",
+        variant: "destructive",
+      });
+    } finally {
+      setMinting(false);
+    }
   };
 
   if (!isConnected) {
@@ -223,11 +301,48 @@ const Wallet = () => {
 
         {/* Artist Tokens */}
         <Card className="p-4 mb-4 bg-card/50 backdrop-blur border-neon-green/20">
-          <h2 className="text-lg font-bold font-mono mb-3 text-neon-green">Artist Tokens</h2>
-          <div className="text-center py-6">
-            <p className="text-sm text-muted-foreground font-mono mb-1">No artist tokens yet</p>
-            <p className="text-3xl font-bold font-mono text-neon-green">0</p>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold font-mono text-neon-green">Artist Token</h2>
+            {!hasToken && (
+              <Button
+                variant="neon"
+                size="sm"
+                onClick={() => setShowMintDialog(true)}
+                className="font-mono text-xs"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                MINT TOKEN
+              </Button>
+            )}
           </div>
+          
+          {hasToken && artistToken ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-neon-green/5 border border-neon-green/20">
+                <div>
+                  <p className="text-sm font-bold font-mono">{artistToken.token_name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">${artistToken.token_symbol}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground font-mono">Supply</p>
+                  <p className="text-sm font-bold font-mono text-neon-green">
+                    {parseInt(artistToken.total_supply).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="p-2 rounded bg-background/50">
+                <p className="text-xs text-muted-foreground font-mono mb-1">Contract</p>
+                <p className="text-xs font-mono break-all">{artistToken.contract_address}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground font-mono mb-2">Create your artist token</p>
+              <p className="text-xs text-muted-foreground font-mono">
+                One-time opportunity to launch your own token
+              </p>
+            </div>
+          )}
         </Card>
 
         {/* Purchased Songs */}
@@ -239,6 +354,73 @@ const Wallet = () => {
           </div>
         </Card>
       </main>
+
+      {/* Mint Token Dialog */}
+      <Dialog open={showMintDialog} onOpenChange={setShowMintDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-xl">MINT ARTIST TOKEN</DialogTitle>
+            <DialogDescription className="font-mono">
+              Create your unique artist token. This is a one-time action.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="token-name" className="font-mono text-sm">Token Name</Label>
+              <Input
+                id="token-name"
+                placeholder="My Artist Token"
+                value={tokenForm.name}
+                onChange={(e) => setTokenForm({ ...tokenForm, name: e.target.value })}
+                className="font-mono mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="token-symbol" className="font-mono text-sm">Symbol</Label>
+              <Input
+                id="token-symbol"
+                placeholder="ART"
+                value={tokenForm.symbol}
+                onChange={(e) => setTokenForm({ ...tokenForm, symbol: e.target.value.toUpperCase() })}
+                maxLength={6}
+                className="font-mono mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="token-supply" className="font-mono text-sm">Total Supply</Label>
+              <Input
+                id="token-supply"
+                type="number"
+                value={tokenForm.supply}
+                onChange={(e) => setTokenForm({ ...tokenForm, supply: e.target.value })}
+                className="font-mono mt-1"
+              />
+            </div>
+
+            <Button
+              variant="neon"
+              onClick={handleMintToken}
+              disabled={minting || !tokenForm.name || !tokenForm.symbol}
+              className="w-full font-mono"
+            >
+              {minting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  DEPLOYING...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  DEPLOY TOKEN
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

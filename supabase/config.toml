@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.check-copyright]
 verify_jwt = false
+
+[functions.deploy-artist-token]
+verify_jwt = false
