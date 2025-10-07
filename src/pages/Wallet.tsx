@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { useFundWallet } from "@privy-io/react-auth";
+import { useIPLogger } from "@/hooks/useIPLogger";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
@@ -38,6 +39,7 @@ const Wallet = () => {
   const navigate = useNavigate();
   const { fullAddress, isConnected, isPrivyReady } = useWallet();
   const { fundWallet } = useFundWallet();
+  const { logIP } = useIPLogger('wallet_visit');
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showMintDialog, setShowMintDialog] = useState(false);
@@ -147,6 +149,9 @@ const Wallet = () => {
 
     setMinting(true);
     try {
+      // Log IP for mint action
+      await logIP('token_mint');
+
       const { data, error } = await supabase.functions.invoke('deploy-artist-token', {
         body: {
           tokenName: tokenForm.name,

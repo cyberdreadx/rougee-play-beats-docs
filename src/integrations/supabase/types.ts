@@ -433,6 +433,39 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_ip_logs: {
+        Row: {
+          action: string
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          user_agent: string | null
+          wallet_address: string
+        }
+        Insert: {
+          action: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_address: unknown
+          user_agent?: string | null
+          wallet_address: string
+        }
+        Update: {
+          action?: string
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          user_agent?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -450,9 +483,28 @@ export type Database = {
         Args: { buyer_wallet: string }
         Returns: number
       }
+      get_ips_by_wallet: {
+        Args: { check_wallet: string }
+        Returns: {
+          connection_count: number
+          countries: string[]
+          first_seen: string
+          ip_address: unknown
+          last_seen: string
+        }[]
+      }
       get_song_like_count: {
         Args: { p_song_id: string }
         Returns: number
+      }
+      get_wallets_by_ip: {
+        Args: { check_ip: unknown }
+        Returns: {
+          connection_count: number
+          first_seen: string
+          last_seen: string
+          wallet_address: string
+        }[]
       }
       has_role: {
         Args: {
