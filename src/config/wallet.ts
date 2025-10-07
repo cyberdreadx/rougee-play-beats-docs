@@ -1,8 +1,5 @@
-import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
+import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
-
-// Your WalletConnect Project ID
-export const projectId = 'cd4f138cd45bcb14df400b15eb4e6e7c';
 
 // Your Privy App ID (publishable key)
 export const privyAppId = 'cmfr2qk33005dl20dh3yirnho';
@@ -10,20 +7,12 @@ export const privyAppId = 'cmfr2qk33005dl20dh3yirnho';
 // Define the chains
 const chains = [base] as const;
 
-// App metadata
-const metadata = {
-  name: 'ROUGEE.PLAY',
-  description: 'Blockchain Music Platform - Discover, stream, and support artists on the decentralized music platform',
-  url: typeof window !== 'undefined' ? window.location.origin : 'https://rougee.play',
-  icons: []
-};
-
-// Create wagmi config
-export const config = defaultWagmiConfig({
+// Create wagmi config for Privy
+export const config = createConfig({
   chains,
-  projectId,
-  metadata,
-  ssr: false,
+  transports: {
+    [base.id]: http(),
+  },
 });
 
 export { chains };
