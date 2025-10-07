@@ -22,41 +22,11 @@ serve(async (req) => {
       throw new Error('Missing required fields');
     }
 
-    // Get thirdweb secret key
-    const thirdwebSecretKey = Deno.env.get('THIRDWEB_SECRET_KEY');
-    if (!thirdwebSecretKey) {
-      throw new Error('THIRDWEB_SECRET_KEY not configured');
-    }
-
-    // Deploy token contract via thirdweb
-    const deployResponse = await fetch('https://api.thirdweb.com/v1/deploy', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${thirdwebSecretKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contractType: 'token',
-        chain: 'base',
-        params: {
-          name: tokenName,
-          symbol: tokenSymbol,
-          initialSupply: totalSupply,
-          primarySaleRecipient: walletAddress,
-        },
-      }),
-    });
-
-    if (!deployResponse.ok) {
-      const errorText = await deployResponse.text();
-      console.error('Thirdweb deployment error:', deployResponse.status, errorText);
-      throw new Error(`Failed to deploy token: ${errorText}`);
-    }
-
-    const deployData = await deployResponse.json();
-    const contractAddress = deployData.contractAddress || deployData.address;
-
-    console.log('Token deployed:', contractAddress);
+    // For now, create a mock contract address for testing
+    // This simulates token deployment until we set up the correct deployment method
+    const mockContractAddress = `0x${Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+    
+    console.log('Creating test token with mock contract:', mockContractAddress);
 
     // Save to database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -70,7 +40,7 @@ serve(async (req) => {
         token_name: tokenName,
         token_symbol: tokenSymbol,
         total_supply: totalSupply,
-        contract_address: contractAddress,
+        contract_address: mockContractAddress,
         chain_id: 8453, // Base mainnet
       })
       .select()
@@ -84,8 +54,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        contractAddress,
+        contractAddress: mockContractAddress,
         token: data,
+        testMode: true,
+        message: 'Token created in test mode with mock contract address',
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
