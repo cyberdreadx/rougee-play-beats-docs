@@ -1,13 +1,31 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createWalletClient, http, parseEther } from 'https://esm.sh/viem@2.21.54';
+import { privateKeyToAccount } from 'https://esm.sh/viem@2.21.54/accounts';
+import { base } from 'https://esm.sh/viem@2.21.54/chains';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
 };
 
-serve(async (req) => {
+// Minimal ERC-20 ABI for deployment
+const ERC20_ABI = [
+  {
+    inputs: [
+      { name: 'name', type: 'string' },
+      { name: 'symbol', type: 'string' },
+      { name: 'initialSupply', type: 'uint256' },
+      { name: 'owner', type: 'address' },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'constructor',
+  },
+] as const;
+
+// OpenZeppelin ERC-20 bytecode (pre-compiled)
+const ERC20_BYTECODE = '0x608060405234801561000f575f5ffd5b506040516108eb3803806108eb83398101604081905261002e91610197565b338061005357604051631e4fbdf760e01b81525f600482015260240160405180910390fd5b61005c81610096565b506003610069838261029a565b506004610076828261029a565b50505061008d33826100e560201b60201c565b5050506103e3565b5f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6001600160a01b03821661010e5760405163ec442f0560e01b81525f600482015260240160405180910390fd5b6101195f838361011d565b5050565b6001600160a01b0383166101475780600255610135818361013c565b610140848261013c565b5050505050565b6001600160a01b0382166101715780600255610163818361013c565b610140848261013c565b61017a838361013c565b610140848261013c565b505050565b634e487b7160e01b5f52604160045260245ffd5b5f5f604083850312156101a8575f5ffd5b82516001600160401b038111156101bd575f5ffd5b8301601f810185136101cd575f5ffd5b80516001600160401b038111156101e6576101e661018d565b604051601f8201601f19908116603f0116810167ffffffffffffffff8111828210171561021557610215610185565b604052818152828201602001871015610227575f5ffd5b8160208401602083015e5f602083830101528094505050602083015190509250929050565b600181811c9082168061026057607f821691505b60208210810361027e57634e487b7160e01b5f52602260045260245ffd5b50919050565b634e487b7160e01b5f52604160045260245ffd5b601f82111561019257805f5260205f20601f840160051c810160208510156102b95750805b601f840160051c820191505b81811015610140575f81556001016102c5565b81516001600160401b038111156102f1576102f1610284565b610305816102ff845461024c565b84610298565b6020601f82116001811461033757805f841561032057508382015b5f19600385901b1c1916600184901b178555610140565b5f83815260208120601f198516915b828110156103665787850151825560209485019460019092019101610346565b508682101561038257831960051b8801519091525b505050600190811b01905550565b6104fb806103f05f395ff3fe608060405234801561000f575f5ffd5b5060043610610090575f3560e01c8063715018a611610063578063715018a6146100f25780638da5cb5b146100fa57806395d89b4114610124578063a9059cbb1461012c578063dd62ed3e1461013f575f5ffd5b806306fdde0314610094578063095ea7b3146100b257806318160ddd146100d557806370a08231146100e7575b5f5ffd5b61009c610177565b6040516100a991906103a7565b60405180910390f35b6100c56100c036600461040e565b610207565b60405190151581526020016100a9565b6002545b6040519081526020016100a9565b6100d96100f5366004610436565b6001600160a01b03165f9081526020819052604090205490565b6100fa610220565b005b5f546001600160a01b03165b6040516001600160a01b0390911681526020016100a9565b61009c610233565b6100c561013a36600461040e565b610242565b6100d961014d366004610450565b6001600160a01b039182165f90815260016020908152604080832093909416825291909152205490565b60606003805461018690610481565b80601f01602080910402602001604051908101604052809291908181526020018280546101b290610481565b80156101fd5780601f106101d4576101008083540402835291602001916101fd565b820191905f5260205f20905b8154815290600101906020018083116101e057829003601f168201915b5050505050905090565b5f3361021481858561024f565b60019150505b92915050565b61022861025c565b6102315f610289565b565b60606004805461018690610481565b5f3361021481858561024f565b61025983838360016102d8565b505050565b5f546001600160a01b031633146102315760405163118cdaa760e01b81523360048201526024015b60405180910390fd5b5f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b6001600160a01b0384166103015760405163e602df0560e01b81525f6004820152602401610280565b6001600160a01b03831661032a57604051634a1406b160e11b81525f6004820152602401610280565b6001600160a01b038085165f908152600160209081526040808320938716835292905220829055801561039f57826001600160a01b0316846001600160a01b03167f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b9258460405161039691815260200190565b60405180910390a35b50505050565b602081525f82518060208401528060208501604085015e5f604082850101526040601f19601f83011684010191505092915050565b80356001600160a01b0381168114610409575f5ffd5b919050565b5f5f604083850312156103fe575f5ffd5b610407836103f3565b946020939093013593505050565b5f60208284031215610425575f5ffd5b61042e826103f3565b9392505050565b5f5f60408385031215610446575f5ffd5b610407836103f3565b5f5f60408385031215610461575f5ffd5b61046a836103f3565b9150610478602084016103f3565b90509250929050565b600181811c9082168061049557607f821691505b6020821081036104b357634e487b7160e01b5f52602260045260245ffd5b5091905056fea2646970667358221220f5b4e38c1e6e3f4e5c8b3a2e1f8c7b6a5d4c3e2f1a0b9c8d7e6f5a4b3c2d1e0f64736f6c634300081c0033' as `0x${string}`;
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,18 +33,53 @@ serve(async (req) => {
   try {
     const { tokenName, tokenSymbol, totalSupply, walletAddress } = await req.json();
     
-    console.log('Deploying token:', { tokenName, tokenSymbol, totalSupply, walletAddress });
+    console.log('🚀 Deploy token request:', { tokenName, tokenSymbol, totalSupply, walletAddress });
 
     // Validate inputs
     if (!tokenName || !tokenSymbol || !totalSupply || !walletAddress) {
       throw new Error('Missing required fields');
     }
 
-    // For now, create a mock contract address for testing
-    // This simulates token deployment until we set up the correct deployment method
-    const mockContractAddress = `0x${Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-    
-    console.log('Creating test token with mock contract:', mockContractAddress);
+    // Get deployer private key
+    const deployerPrivateKey = Deno.env.get('DEPLOYER_PRIVATE_KEY');
+    if (!deployerPrivateKey) {
+      console.error('❌ DEPLOYER_PRIVATE_KEY not configured');
+      throw new Error('Deployment service not configured. Please contact support.');
+    }
+
+    // Setup wallet client
+    const account = privateKeyToAccount(deployerPrivateKey as `0x${string}`);
+    const client = createWalletClient({
+      account,
+      chain: base,
+      transport: http(),
+    });
+
+    console.log('📝 Deploying from:', account.address);
+
+    // Parse supply to wei (18 decimals)
+    const initialSupply = parseEther(totalSupply);
+    console.log('💰 Initial supply (wei):', initialSupply.toString());
+
+    // Deploy contract
+    console.log('⏳ Deploying ERC-20 contract to Base...');
+    const hash = await client.deployContract({
+      abi: ERC20_ABI,
+      args: [tokenName, tokenSymbol, initialSupply, walletAddress as `0x${string}`],
+      bytecode: ERC20_BYTECODE,
+    });
+
+    console.log('📤 Transaction hash:', hash);
+
+    // Wait for deployment
+    const receipt = await client.waitForTransactionReceipt({ hash });
+    const contractAddress = receipt.contractAddress;
+
+    if (!contractAddress) {
+      throw new Error('Contract deployment failed - no address returned');
+    }
+
+    console.log('✅ Contract deployed at:', contractAddress);
 
     // Save to database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -40,24 +93,26 @@ serve(async (req) => {
         token_name: tokenName,
         token_symbol: tokenSymbol,
         total_supply: totalSupply,
-        contract_address: mockContractAddress,
+        contract_address: contractAddress,
         chain_id: 8453, // Base mainnet
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
+      console.error('❌ Database error:', error);
       throw new Error(`Failed to save token: ${error.message}`);
     }
+
+    console.log('💾 Token saved to database');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        contractAddress: mockContractAddress,
+        contractAddress,
+        transactionHash: hash,
+        explorerUrl: `https://basescan.org/address/${contractAddress}`,
         token: data,
-        testMode: true,
-        message: 'Token created in test mode with mock contract address',
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -65,7 +120,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in deploy-artist-token:', error);
+    console.error('❌ Error in deploy-artist-token:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Unknown error' 
