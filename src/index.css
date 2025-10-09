@@ -77,7 +77,23 @@
   }
 
   body {
-    @apply bg-background text-foreground font-mono overflow-x-hidden;
+    @apply bg-background text-foreground font-mono overflow-x-hidden text-xs;
+  }
+  
+  h1 {
+    @apply text-lg font-bold;
+  }
+  
+  h2 {
+    @apply text-base font-bold;
+  }
+  
+  h3 {
+    @apply text-sm font-semibold;
+  }
+  
+  p {
+    @apply text-xs;
   }
   
   #root {
