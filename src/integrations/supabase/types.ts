@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads: {
+        Row: {
+          active: boolean | null
+          audio_cid: string
+          created_at: string | null
+          duration: number
+          id: string
+          image_cid: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          audio_cid: string
+          created_at?: string | null
+          duration?: number
+          id?: string
+          image_cid?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          audio_cid?: string
+          created_at?: string | null
+          duration?: number
+          id?: string
+          image_cid?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       artist_tokens: {
         Row: {
           chain_id: number

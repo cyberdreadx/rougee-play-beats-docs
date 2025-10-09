@@ -9,6 +9,7 @@ import TopSongs, { TopSongsRef } from "@/components/TopSongs";
 import StoriesBar from "@/components/StoriesBar";
 import LandingHero from "@/components/LandingHero";
 import MusicBars from "@/components/MusicBars";
+import { RadioToggle } from "@/components/RadioToggle";
 
 interface Song {
   id: string;
@@ -25,9 +26,11 @@ interface IndexProps {
   playSong: (song: Song) => void;
   currentSong: Song | null;
   isPlaying: boolean;
+  isRadioMode?: boolean;
+  onToggleRadio?: () => void;
 }
 
-const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
+const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }: IndexProps) => {
   const [activeTab, setActiveTab] = React.useState("DISCOVER");
   const topSongsRef = useRef<TopSongsRef>(null);
   const { isConnected } = useWallet();
@@ -50,7 +53,15 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
     <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col overflow-x-hidden">
       <Header />
       <NetworkInfo />
-      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="flex items-center justify-between px-4 py-2">
+        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+        {onToggleRadio && (
+          <RadioToggle 
+            isRadioMode={isRadioMode || false} 
+            onToggle={onToggleRadio}
+          />
+        )}
+      </div>
       <div className="flex-1 w-full overflow-x-hidden">
         <div className="flex items-center justify-center py-3">
           <MusicBars bars={8} className="h-6" />

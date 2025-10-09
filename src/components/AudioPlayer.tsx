@@ -18,14 +18,23 @@ interface Song {
   ticker?: string | null;
 }
 
+interface Ad {
+  id: string;
+  title: string;
+  audio_cid: string;
+  image_cid: string | null;
+  duration: number;
+}
+
 interface AudioPlayerProps {
   currentSong: Song | null;
+  currentAd?: Ad | null;
   isPlaying: boolean;
   onPlayPause: () => void;
   onSongEnd: () => void;
 }
 
-const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPlayerProps) => {
+const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd }: AudioPlayerProps) => {
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -145,7 +154,17 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (!currentSong) {
+  const isAd = !!currentAd;
+  const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
+  const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
+  const displayCover = isAd 
+    ? (currentAd.image_cid ? `https://gateway.lighthouse.storage/ipfs/${currentAd.image_cid}` : "") 
+    : (currentSong?.cover_cid ? `https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}` : "");
+  const audioSource = isAd 
+    ? `https://gateway.lighthouse.storage/ipfs/${currentAd.audio_cid}`
+    : (currentSong ? `https://gateway.lighthouse.storage/ipfs/${currentSong.audio_cid}` : "");
+
+  if (!currentSong && !currentAd) {
     return null;
   }
 
@@ -173,14 +192,14 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       {/* Mobile Compact Player */}
       <div className="md:hidden relative z-10">
         <div className="flex items-center gap-3 p-3 pb-2">
-          {currentSong.cover_cid && (
+          {displayCover && (
             <div 
               className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
-              onClick={() => navigate(`/song/${currentSong.id}`)}
+              onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
               <img 
-                src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
-                alt={currentSong.title}
+                src={displayCover}
+                alt={displayTitle}
                 className="w-full h-full object-cover"
               />
               {isPlaying && (
@@ -190,16 +209,14 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
           )}
           <div className="flex-1 min-w-0">
             <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-1">
-              <span className="truncate">{currentSong.title}</span>
-              {currentSong.ticker && (
+              <span className="truncate">{displayTitle}</span>
+              {!isAd && currentSong?.ticker && (
                 <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
               )}
             </div>
-            {currentSong.artist && (
-              <div className="font-mono text-xs text-muted-foreground truncate">
-                {currentSong.artist}
-              </div>
-            )}
+            <div className="font-mono text-xs text-muted-foreground truncate">
+              {displayArtist}
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button
@@ -264,14 +281,14 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       <div className="hidden md:flex items-center gap-4 p-4 relative z-10">
         {/* Song Info */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {currentSong.cover_cid && (
+          {displayCover && (
             <div 
               className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20 cursor-pointer hover:border-neon-green/60 transition-all hover:scale-105"
-              onClick={() => navigate(`/song/${currentSong.id}`)}
+              onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
               <img 
-                src={`https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}`}
-                alt={currentSong.title}
+                src={displayCover}
+                alt={displayTitle}
                 className="w-full h-full object-cover"
               />
               {isPlaying && (
@@ -281,20 +298,18 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
           )}
           <div className="min-w-0">
             <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-2">
-              <span className="truncate">{currentSong.title}</span>
-              {currentSong.ticker && (
+              <span className="truncate">{displayTitle}</span>
+              {!isAd && currentSong?.ticker && (
                 <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
               )}
             </div>
-            {currentSong.artist && (
-              <div 
-                className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors"
-                onClick={() => navigate(`/artist/${currentSong.wallet_address}`)}
-              >
-                {currentSong.artist}
-                {artistTicker && <span className="text-neon-green ml-1">${artistTicker}</span>}
-              </div>
-            )}
+            <div 
+              className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors"
+              onClick={() => !isAd && currentSong && navigate(`/artist/${currentSong.wallet_address}`)}
+            >
+              {displayArtist}
+              {!isAd && artistTicker && <span className="text-neon-green ml-1">${artistTicker}</span>}
+            </div>
           </div>
         </div>
 
@@ -356,7 +371,7 @@ const AudioPlayer = ({ currentSong, isPlaying, onPlayPause, onSongEnd }: AudioPl
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        src={`https://gateway.lighthouse.storage/ipfs/${currentSong.audio_cid}`}
+        src={audioSource}
         preload="metadata"
       />
     </Card>
