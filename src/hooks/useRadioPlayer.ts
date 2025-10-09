@@ -119,26 +119,32 @@ export const useRadioPlayer = () => {
   }, [songQueue, playCount, ads, fetchSongs, incrementPlayCount]);
 
   const startRadio = useCallback(async () => {
+    console.log('Starting radio...');
     setIsRadioMode(true);
     setPlayCount(0);
     
     // Fetch and shuffle songs first
     const songs = await fetchSongs();
+    console.log('Fetched songs:', songs.length);
     const shuffled = [...songs].sort(() => Math.random() - 0.5);
     setSongQueue(shuffled);
     
     // Fetch ads
     const fetchedAds = await fetchAds();
+    console.log('Fetched ads:', fetchedAds.length);
     setAds(fetchedAds);
     
     // Play first song
     if (shuffled.length > 0) {
       const firstSong = shuffled[0];
+      console.log('Playing first song:', firstSong.title);
       setCurrentSong(firstSong);
       setSongQueue(shuffled.slice(1));
       setIsPlaying(true);
       incrementPlayCount(firstSong.id);
       setPlayCount(1);
+    } else {
+      console.log('No songs available to play');
     }
   }, [fetchSongs, fetchAds, incrementPlayCount]);
 
