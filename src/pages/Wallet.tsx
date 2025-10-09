@@ -339,51 +339,48 @@ const Wallet = () => {
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-neon-green/10">
                 <WalletIcon className="h-4 w-4 text-neon-green" />
-          </div>
-
-          {/* KTA Balance */}
-          <div className="border-t border-border pt-4 mt-4">
-            <p className="text-xs text-muted-foreground font-mono mb-1">KTA Token Balance</p>
-            {ktaLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
-                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
-            ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold font-mono text-neon-green">
-                  {formatKtaBalance()}
-                </span>
-                <span className="text-sm text-muted-foreground font-mono">KTA</span>
-              </div>
-            )}
-          </div>
               <div>
-                <p className="text-xs text-muted-foreground font-mono">Connected Wallet</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-sm font-mono font-bold">{formatAddress(fullAddress || "")}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyAddress}
-                    className="h-5 w-5 p-0"
-                  >
-                    {copied ? (
-                      <Check className="h-3 w-3 text-neon-green" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </Button>
+                <p className="text-xs text-muted-foreground font-mono">KTA Token Balance</p>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {ktaLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
+                  ) : (
+                    <>
+                      <span className="text-2xl font-bold font-mono text-neon-green">
+                        {formatKtaBalance()}
+                      </span>
+                      <span className="text-sm text-muted-foreground font-mono">KTA</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-            <Badge variant="outline" className="border-neon-green/50 text-neon-green text-xs">
-              Connected
-            </Badge>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground font-mono mb-1">Connected Wallet</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-mono font-bold">{formatAddress(fullAddress || "")}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={copyAddress}
+                  className="h-5 w-5 p-0"
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-neon-green" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
+                </Button>
+              </div>
+              <Badge variant="outline" className="border-neon-green/50 text-neon-green text-xs mt-1">
+                Connected
+              </Badge>
+            </div>
           </div>
 
           {/* ETH Balance */}
-          <div className="border-t border-border pt-4">
+          <div className="border-t border-border pt-3 mt-3">
             <p className="text-xs text-muted-foreground font-mono mb-1">Ethereum Balance</p>
             {balanceLoading ? (
               <div className="flex items-center gap-2">
@@ -392,16 +389,16 @@ const Wallet = () => {
               </div>
             ) : (
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold font-mono text-neon-green">
+                <span className="text-xl font-bold font-mono text-neon-green">
                   {balance ? parseFloat(balance.formatted).toFixed(4) : "0.0000"}
                 </span>
-                <span className="text-sm text-muted-foreground font-mono">ETH</span>
+                <span className="text-xs text-muted-foreground font-mono">ETH</span>
               </div>
             )}
           </div>
 
           {/* XRGE Balance */}
-          <div className="border-t border-border pt-4 mt-4">
+          <div className="border-t border-border pt-3 mt-3">
             <p className="text-xs text-muted-foreground font-mono mb-1">XRGE Token Balance</p>
             {xrgeLoading ? (
               <div className="flex items-center gap-2">
@@ -410,17 +407,17 @@ const Wallet = () => {
               </div>
             ) : (
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold font-mono text-neon-green">
+                <span className="text-xl font-bold font-mono text-neon-green">
                   {formatXrgeBalance()}
                 </span>
-                <span className="text-sm text-muted-foreground font-mono">XRGE</span>
+                <span className="text-xs text-muted-foreground font-mono">XRGE</span>
               </div>
             )}
           </div>
 
-          {/* Funding Actions */}
-          <div className="border-t border-border pt-4 mt-4">
-            <p className="text-xs text-muted-foreground font-mono mb-3">Actions</p>
+          {/* Actions */}
+          <div className="border-t border-border pt-3 mt-3">
+            <p className="text-xs text-muted-foreground font-mono mb-2">Actions</p>
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="neon"
@@ -428,7 +425,7 @@ const Wallet = () => {
                 onClick={handleFundWallet}
                 className="font-mono text-xs"
               >
-                <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                <CreditCard className="h-3 w-3 mr-1" />
                 BUY CRYPTO
               </Button>
               <Button
@@ -437,7 +434,7 @@ const Wallet = () => {
                 onClick={handleFundWallet}
                 className="font-mono text-xs border-neon-green/50"
               >
-                <ArrowDownToLine className="h-3.5 w-3.5 mr-1.5" />
+                <ArrowDownToLine className="h-3 w-3 mr-1" />
                 RECEIVE
               </Button>
               <Button
@@ -446,7 +443,7 @@ const Wallet = () => {
                 onClick={() => setShowSendDialog(true)}
                 className="font-mono text-xs border-neon-green/50"
               >
-                <Send className="h-3.5 w-3.5 mr-1.5" />
+                <Send className="h-3 w-3 mr-1" />
                 SEND
               </Button>
             </div>
@@ -456,7 +453,7 @@ const Wallet = () => {
         {/* Artist Tokens */}
         <Card className="p-4 mb-4 bg-card/50 backdrop-blur border-neon-green/20">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold font-mono text-neon-green">Artist Token</h2>
+            <h2 className="text-base font-bold font-mono text-foreground">Artist Token</h2>
             {!hasToken && (
               <Button
                 variant="neon"
@@ -501,7 +498,7 @@ const Wallet = () => {
 
         {/* Purchased Songs */}
         <Card className="p-4 bg-card/50 backdrop-blur border-neon-green/20">
-          <h2 className="text-lg font-bold font-mono mb-3 text-neon-green">Purchased Songs</h2>
+          <h2 className="text-base font-bold font-mono mb-3 text-foreground">Purchased Songs</h2>
           <div className="text-center py-6">
             <p className="text-sm text-muted-foreground font-mono mb-1">No songs purchased yet</p>
             <p className="text-3xl font-bold font-mono text-neon-green">0</p>
