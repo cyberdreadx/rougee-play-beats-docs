@@ -341,16 +341,16 @@ const Wallet = () => {
                 <WalletIcon className="h-4 w-4 text-neon-green" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-mono">KTA Token Balance</p>
+                <p className="text-xs text-muted-foreground font-mono">XRGE Token Balance</p>
                 <div className="flex items-baseline gap-1 mt-0.5">
-                  {ktaLoading ? (
+                  {xrgeLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
                   ) : (
                     <>
                       <span className="text-2xl font-bold font-mono text-neon-green">
-                        {formatKtaBalance()}
+                        {formatXrgeBalance()}
                       </span>
-                      <span className="text-sm text-muted-foreground font-mono">KTA</span>
+                      <span className="text-sm text-muted-foreground font-mono">XRGE</span>
                     </>
                   )}
                 </div>
@@ -379,6 +379,24 @@ const Wallet = () => {
             </div>
           </div>
 
+          {/* KEETA Balance */}
+          <div className="border-t border-border pt-3 mt-3">
+            <p className="text-xs text-muted-foreground font-mono mb-1">KEETA Token Balance</p>
+            {ktaLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
+                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
+              </div>
+            ) : (
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-bold font-mono text-neon-green">
+                  {formatKtaBalance()}
+                </span>
+                <span className="text-xs text-muted-foreground font-mono">KTA</span>
+              </div>
+            )}
+          </div>
+
           {/* ETH Balance */}
           <div className="border-t border-border pt-3 mt-3">
             <p className="text-xs text-muted-foreground font-mono mb-1">Ethereum Balance</p>
@@ -397,22 +415,13 @@ const Wallet = () => {
             )}
           </div>
 
-          {/* XRGE Balance */}
+          {/* USDC Balance (Placeholder) */}
           <div className="border-t border-border pt-3 mt-3">
-            <p className="text-xs text-muted-foreground font-mono mb-1">XRGE Token Balance</p>
-            {xrgeLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
-                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
-              </div>
-            ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold font-mono text-neon-green">
-                  {formatXrgeBalance()}
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">XRGE</span>
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground font-mono mb-1">USDC Token Balance</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-bold font-mono text-neon-green">0.0000</span>
+              <span className="text-xs text-muted-foreground font-mono">USDC</span>
+            </div>
           </div>
 
           {/* Actions */}
