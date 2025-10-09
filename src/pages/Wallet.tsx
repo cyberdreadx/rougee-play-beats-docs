@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { parseEther, formatEther } from "viem";
 
 const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
+const KTA_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000" as const; // TODO: Add KTA token address
 
 const ERC20_ABI = [
   {
@@ -59,7 +60,7 @@ const Wallet = () => {
   const [minting, setMinting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [artistToken, setArtistToken] = useState<any>(null);
-  const [sendType, setSendType] = useState<'ETH' | 'XRGE'>('ETH');
+  const [sendType, setSendType] = useState<'ETH' | 'XRGE' | 'KTA'>('ETH');
   const [tokenForm, setTokenForm] = useState({
     name: '',
     symbol: '',
@@ -83,6 +84,19 @@ const Wallet = () => {
 
   const { data: xrgeDecimals } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+  });
+
+  const { data: ktaBalance, isLoading: ktaLoading, refetch: refetchKta } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+  });
+
+  const { data: ktaDecimals } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
   });
@@ -150,6 +164,13 @@ const Wallet = () => {
     return balance.toFixed(4);
   };
 
+  const formatKtaBalance = () => {
+    if (!ktaBalance || !ktaDecimals) return "0.0000";
+    const decimals = Number(ktaDecimals);
+    const balance = Number(ktaBalance) / Math.pow(10, decimals);
+    return balance.toFixed(4);
+  };
+
   const handleFundWallet = () => {
     if (fullAddress) {
       fundWallet({ address: fullAddress as `0x${string}` });
@@ -158,7 +179,7 @@ const Wallet = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([refetchBalance(), refetchXrge(), checkArtistToken()]);
+    await Promise.all([refetchBalance(), refetchXrge(), refetchKta(), checkArtistToken()]);
     toast({
       title: "Balances refreshed",
       description: "Your wallet balances have been updated",
@@ -230,7 +251,8 @@ const Wallet = () => {
           value: parseEther(sendForm.amount),
         });
       } else {
-        const decimals = Number(xrgeDecimals || 18);
+        const tokenAddress = sendType === 'XRGE' ? XRGE_TOKEN_ADDRESS : KTA_TOKEN_ADDRESS;
+        const decimals = Number((sendType === 'XRGE' ? xrgeDecimals : ktaDecimals) || 18);
         const amount = BigInt(Math.floor(parseFloat(sendForm.amount) * Math.pow(10, decimals)));
         
         if (!accountAddress || !chain) {
@@ -240,7 +262,7 @@ const Wallet = () => {
         writeContract({
           account: accountAddress,
           chain: chain,
-          address: XRGE_TOKEN_ADDRESS,
+          address: tokenAddress,
           abi: ERC20_ABI,
           functionName: 'transfer',
           args: [sendForm.to as `0x${string}`, amount],
@@ -271,12 +293,16 @@ const Wallet = () => {
   useEffect(() => {
     if (tokenTxSuccess) {
       toast({
-        title: "XRGE sent successfully! 🎉",
-        description: `Sent ${sendForm.amount} XRGE to ${sendForm.to.slice(0, 6)}...${sendForm.to.slice(-4)}`,
+        title: `${sendType} sent successfully! 🎉`,
+        description: `Sent ${sendForm.amount} ${sendType} to ${sendForm.to.slice(0, 6)}...${sendForm.to.slice(-4)}`,
       });
       setShowSendDialog(false);
       setSendForm({ to: '', amount: '' });
-      refetchXrge();
+      if (sendType === 'XRGE') {
+        refetchXrge();
+      } else {
+        refetchKta();
+      }
     }
   }, [tokenTxSuccess]);
 
@@ -313,7 +339,25 @@ const Wallet = () => {
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-neon-green/10">
                 <WalletIcon className="h-4 w-4 text-neon-green" />
+          </div>
+
+          {/* KTA Balance */}
+          <div className="border-t border-border pt-4 mt-4">
+            <p className="text-xs text-muted-foreground font-mono mb-1">KTA Token Balance</p>
+            {ktaLoading ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-neon-green" />
+                <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
+            ) : (
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold font-mono text-neon-green">
+                  {formatKtaBalance()}
+                </span>
+                <span className="text-sm text-muted-foreground font-mono">KTA</span>
+              </div>
+            )}
+          </div>
               <div>
                 <p className="text-xs text-muted-foreground font-mono">Connected Wallet</p>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -545,7 +589,7 @@ const Wallet = () => {
           <div className="space-y-4 mt-4">
             <div>
               <Label className="font-mono text-sm mb-2">Asset Type</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant={sendType === 'ETH' ? 'neon' : 'outline'}
                   size="sm"
@@ -561,6 +605,14 @@ const Wallet = () => {
                   className="font-mono"
                 >
                   XRGE
+                </Button>
+                <Button
+                  variant={sendType === 'KTA' ? 'neon' : 'outline'}
+                  size="sm"
+                  onClick={() => setSendType('KTA')}
+                  className="font-mono"
+                >
+                  KTA
                 </Button>
               </div>
             </div>
@@ -591,8 +643,10 @@ const Wallet = () => {
               />
               <p className="text-xs text-muted-foreground font-mono mt-1">
                 Available: {sendType === 'ETH' 
-                  ? (balance ? parseFloat(balance.formatted).toFixed(4) : '0') 
-                  : formatXrgeBalance()} {sendType}
+                  ? (balance ? parseFloat(balance.formatted).toFixed(4) : '0')
+                  : sendType === 'XRGE'
+                  ? formatXrgeBalance()
+                  : formatKtaBalance()} {sendType}
               </p>
             </div>
 
