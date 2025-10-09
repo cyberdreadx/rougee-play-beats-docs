@@ -1,7 +1,6 @@
 import React, { useRef } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import SearchBar from "@/components/SearchBar";
@@ -42,7 +41,6 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <LandingHero />
-        <Footer />
       </div>
     );
   }
