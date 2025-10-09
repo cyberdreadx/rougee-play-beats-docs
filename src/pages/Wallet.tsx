@@ -8,13 +8,14 @@ import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw, Sparkles, Send } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useBalance, useReadContract } from "wagmi";
+import { useBalance, useReadContract, useSendTransaction, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { parseEther, formatEther } from "viem";
 
 const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
 
@@ -33,23 +34,40 @@ const ERC20_ABI = [
     outputs: [{ name: "", type: "uint8" }],
     type: "function",
   },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" }
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function",
+  },
 ] as const;
 
 const Wallet = () => {
   const navigate = useNavigate();
   const { fullAddress, isConnected, isPrivyReady } = useWallet();
+  const { address: accountAddress, chain } = useAccount();
   const { fundWallet } = useFundWallet();
   const { logIP } = useIPLogger('wallet_visit');
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showMintDialog, setShowMintDialog] = useState(false);
+  const [showSendDialog, setShowSendDialog] = useState(false);
   const [minting, setMinting] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [artistToken, setArtistToken] = useState<any>(null);
+  const [sendType, setSendType] = useState<'ETH' | 'XRGE'>('ETH');
   const [tokenForm, setTokenForm] = useState({
     name: '',
     symbol: '',
     supply: '1000000',
+  });
+  const [sendForm, setSendForm] = useState({
+    to: '',
+    amount: '',
   });
 
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({
@@ -67,6 +85,17 @@ const Wallet = () => {
     address: XRGE_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
+  });
+
+  const { sendTransaction, data: ethTxHash, isPending: ethSending, error: ethError } = useSendTransaction();
+  const { writeContract, data: tokenTxHash, isPending: tokenSending, error: tokenError } = useWriteContract();
+  
+  const { isLoading: ethTxLoading, isSuccess: ethTxSuccess } = useWaitForTransactionReceipt({
+    hash: ethTxHash,
+  });
+  
+  const { isLoading: tokenTxLoading, isSuccess: tokenTxSuccess } = useWaitForTransactionReceipt({
+    hash: tokenTxHash,
   });
 
 
@@ -184,6 +213,73 @@ const Wallet = () => {
     }
   };
 
+  const handleSend = async () => {
+    if (!sendForm.to || !sendForm.amount) {
+      toast({
+        title: "Missing information",
+        description: "Please enter recipient address and amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (sendType === 'ETH') {
+        sendTransaction({
+          to: sendForm.to as `0x${string}`,
+          value: parseEther(sendForm.amount),
+        });
+      } else {
+        const decimals = Number(xrgeDecimals || 18);
+        const amount = BigInt(Math.floor(parseFloat(sendForm.amount) * Math.pow(10, decimals)));
+        
+        if (!accountAddress || !chain) {
+          throw new Error("Wallet not properly connected");
+        }
+        
+        writeContract({
+          account: accountAddress,
+          chain: chain,
+          address: XRGE_TOKEN_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'transfer',
+          args: [sendForm.to as `0x${string}`, amount],
+        });
+      }
+    } catch (error) {
+      console.error('Send error:', error);
+      toast({
+        title: "Transaction failed",
+        description: error instanceof Error ? error.message : "Failed to send",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (ethTxSuccess) {
+      toast({
+        title: "ETH sent successfully! 🎉",
+        description: `Sent ${sendForm.amount} ETH to ${sendForm.to.slice(0, 6)}...${sendForm.to.slice(-4)}`,
+      });
+      setShowSendDialog(false);
+      setSendForm({ to: '', amount: '' });
+      refetchBalance();
+    }
+  }, [ethTxSuccess]);
+
+  useEffect(() => {
+    if (tokenTxSuccess) {
+      toast({
+        title: "XRGE sent successfully! 🎉",
+        description: `Sent ${sendForm.amount} XRGE to ${sendForm.to.slice(0, 6)}...${sendForm.to.slice(-4)}`,
+      });
+      setShowSendDialog(false);
+      setSendForm({ to: '', amount: '' });
+      refetchXrge();
+    }
+  }, [tokenTxSuccess]);
+
   if (!isConnected) {
     return null;
   }
@@ -280,8 +376,8 @@ const Wallet = () => {
 
           {/* Funding Actions */}
           <div className="border-t border-border pt-4 mt-4">
-            <p className="text-xs text-muted-foreground font-mono mb-3">Add Funds</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs text-muted-foreground font-mono mb-3">Actions</p>
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="neon"
                 size="sm"
@@ -299,6 +395,15 @@ const Wallet = () => {
               >
                 <ArrowDownToLine className="h-3.5 w-3.5 mr-1.5" />
                 RECEIVE
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSendDialog(true)}
+                className="font-mono text-xs border-neon-green/50"
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                SEND
               </Button>
             </div>
           </div>
@@ -420,6 +525,92 @@ const Wallet = () => {
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
                   DEPLOY TOKEN
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Dialog */}
+      <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-xl">SEND CRYPTO</DialogTitle>
+            <DialogDescription className="font-mono">
+              Send ETH or XRGE tokens to another wallet
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label className="font-mono text-sm mb-2">Asset Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={sendType === 'ETH' ? 'neon' : 'outline'}
+                  size="sm"
+                  onClick={() => setSendType('ETH')}
+                  className="font-mono"
+                >
+                  ETH
+                </Button>
+                <Button
+                  variant={sendType === 'XRGE' ? 'neon' : 'outline'}
+                  size="sm"
+                  onClick={() => setSendType('XRGE')}
+                  className="font-mono"
+                >
+                  XRGE
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="send-to" className="font-mono text-sm">Recipient Address</Label>
+              <Input
+                id="send-to"
+                placeholder="0x..."
+                value={sendForm.to}
+                onChange={(e) => setSendForm({ ...sendForm, to: e.target.value })}
+                className="font-mono mt-1"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="send-amount" className="font-mono text-sm">
+                Amount ({sendType})
+              </Label>
+              <Input
+                id="send-amount"
+                type="number"
+                step="0.0001"
+                placeholder="0.0"
+                value={sendForm.amount}
+                onChange={(e) => setSendForm({ ...sendForm, amount: e.target.value })}
+                className="font-mono mt-1"
+              />
+              <p className="text-xs text-muted-foreground font-mono mt-1">
+                Available: {sendType === 'ETH' 
+                  ? (balance ? parseFloat(balance.formatted).toFixed(4) : '0') 
+                  : formatXrgeBalance()} {sendType}
+              </p>
+            </div>
+
+            <Button
+              variant="neon"
+              onClick={handleSend}
+              disabled={ethSending || tokenSending || ethTxLoading || tokenTxLoading || !sendForm.to || !sendForm.amount}
+              className="w-full font-mono"
+            >
+              {(ethSending || tokenSending || ethTxLoading || tokenTxLoading) ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  SENDING...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  SEND {sendType}
                 </>
               )}
             </Button>
