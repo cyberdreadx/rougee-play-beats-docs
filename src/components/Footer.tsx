@@ -31,20 +31,20 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="col-span-1 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <Music className="h-6 w-6 text-neon-green" />
-              <h3 className="text-xl font-bold neon-text font-mono">
+            <div className="flex items-center gap-2 mb-3">
+              <Music className="h-4 w-4 text-neon-green" />
+              <h3 className="text-sm font-bold neon-text font-mono">
                 ROUGEE.PLAY
               </h3>
             </div>
-            <p className="text-sm text-muted-foreground font-mono mb-4">
+            <p className="text-[10px] text-muted-foreground font-mono mb-3">
               Decentralized blockchain music platform. Own your music, trade artist tokens.
             </p>
           </div>
 
           {/* Product Links */}
           <div>
-            <h4 className="font-mono font-semibold text-foreground mb-4">
+            <h4 className="font-mono font-semibold text-foreground mb-3 text-xs">
               PRODUCT
             </h4>
             <ul className="space-y-2">
@@ -52,7 +52,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <button
                     onClick={() => navigate(link.path)}
-                    className="text-sm text-muted-foreground hover:text-neon-green transition-colors font-mono"
+                    className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono"
                   >
                     {link.name}
                   </button>
@@ -63,7 +63,7 @@ const Footer = () => {
 
           {/* Resources Links */}
           <div>
-            <h4 className="font-mono font-semibold text-foreground mb-4">
+            <h4 className="font-mono font-semibold text-foreground mb-3 text-xs">
               RESOURCES
             </h4>
             <ul className="space-y-2">
@@ -71,7 +71,7 @@ const Footer = () => {
                 <li key={link.name}>
                   <a
                     href={link.href}
-                    className="text-sm text-muted-foreground hover:text-neon-green transition-colors font-mono"
+                    className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono"
                   >
                     {link.name}
                   </a>
@@ -82,7 +82,7 @@ const Footer = () => {
 
           {/* Community Links */}
           <div>
-            <h4 className="font-mono font-semibold text-foreground mb-4">
+            <h4 className="font-mono font-semibold text-foreground mb-3 text-xs">
               COMMUNITY
             </h4>
             <div className="flex flex-col space-y-3">
@@ -92,9 +92,9 @@ const Footer = () => {
                   <a
                     key={link.name}
                     href={link.href}
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-neon-green transition-colors font-mono group"
+                    className="flex items-center gap-2 text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono group"
                   >
-                    <Icon className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                    <Icon className="h-3 w-3 group-hover:scale-110 transition-transform" />
                     {link.name}
                   </a>
                 );
@@ -104,11 +104,11 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-neon-green/10 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground font-mono">
+        <div className="mt-8 pt-6 border-t border-neon-green/10 flex flex-col md:flex-row justify-between items-center gap-3">
+          <p className="text-[10px] text-muted-foreground font-mono">
             © {currentYear} ROUGEE.PLAY. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
+          <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
             <a href="#" className="hover:text-neon-green transition-colors">
               Privacy Policy
             </a>

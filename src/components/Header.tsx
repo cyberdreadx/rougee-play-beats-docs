@@ -42,12 +42,12 @@ const Header = () => {
           className="flex items-center gap-2 md:gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <h1 className="text-lg md:text-2xl font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
+          <h1 className="text-xs md:text-sm font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
             ROUGEE.PLAY
           </h1>
           
           {/* User wallet info - hidden on mobile */}
-          <div className="hidden lg:block text-sm text-muted-foreground font-mono ml-6">
+          <div className="hidden lg:block text-[10px] text-muted-foreground font-mono ml-4">
             USER: <span className="text-foreground">
               {isConnected ? address : "Not Connected"}
             </span>
