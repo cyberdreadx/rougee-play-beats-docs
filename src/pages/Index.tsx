@@ -8,6 +8,7 @@ import TrendingArtists from "@/components/TrendingArtists";
 import TopSongs, { TopSongsRef } from "@/components/TopSongs";
 import StoriesBar from "@/components/StoriesBar";
 import LandingHero from "@/components/LandingHero";
+import MusicBars from "@/components/MusicBars";
 
 interface Song {
   id: string;
@@ -51,6 +52,9 @@ const Index = ({ playSong, currentSong, isPlaying }: IndexProps) => {
       <NetworkInfo />
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="flex-1 w-full overflow-x-hidden">
+        <div className="flex items-center justify-center py-3">
+          <MusicBars bars={8} className="h-6" />
+        </div>
         <SearchBar />
         <StoriesBar />
         <TrendingArtists />

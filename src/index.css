@@ -156,6 +156,17 @@
     50% { height: 100%; }
   }
   
+  @keyframes musicBar {
+    0%, 100% { 
+      transform: scaleY(0.3);
+      opacity: 0.5;
+    }
+    50% { 
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+  
   /* Dynamic theme-aware utilities */
   .text-neon-green {
     color: hsl(var(--neon-green)) !important;

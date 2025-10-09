@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
 import { Compass, TrendingUp, User, Wallet, Upload } from "lucide-react";
+import MusicBars from "./MusicBars";
 
 interface NavigationProps {
   activeTab?: string;
@@ -64,7 +65,8 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     <>
       {/* Desktop Navigation */}
       <nav className="hidden md:block w-full px-6 py-4">
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
+          <MusicBars bars={4} className="mr-2" />
           {tabs.map((tab) => (
             <Button
               key={tab.name}
@@ -79,6 +81,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
               [{tab.name}]
             </Button>
           ))}
+          <MusicBars bars={4} className="ml-2" />
         </div>
       </nav>
 
