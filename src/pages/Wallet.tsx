@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { parseEther, formatEther } from "viem";
 
 const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
-const KTA_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000" as const; // TODO: Add KTA token address
+const KTA_TOKEN_ADDRESS = "0xc0634090F2Fe6c6d75e61Be2b949464aBB498973" as const;
 
 const ERC20_ABI = [
   {
