@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Heart, MessageCircle, Share2, Image as ImageIcon, Send, X } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import StoriesBar from '@/components/StoriesBar';
+import LikeButton from '@/components/LikeButton';
 
 interface FeedComment {
   id: string;
@@ -442,15 +443,12 @@ export default function Feed() {
 
                   {/* Post Actions */}
                   <div className="flex items-center gap-6 pt-3 border-t border-border">
-                    <button
-                      onClick={() => toggleLike(post.id)}
-                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                    >
-                      <Heart
-                        className={`w-5 h-5 ${likedPosts.has(post.id) ? 'fill-red-500 text-red-500' : ''}`}
-                      />
-                      <span>{post.like_count}</span>
-                    </button>
+                    <LikeButton 
+                      songId={post.id}
+                      initialLikeCount={post.like_count}
+                      size="md"
+                      showCount={true}
+                    />
 
                     <button 
                       onClick={() => toggleComments(post.id)}
