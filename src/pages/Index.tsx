@@ -42,9 +42,20 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
   // Show landing page for non-connected wallets
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col pb-24">
         <Header />
         <LandingHero />
+        <div className="flex-1 w-full overflow-x-hidden">
+          <SearchBar />
+          <TrendingArtists />
+          <TopSongs 
+            ref={topSongsRef}
+            onPlaySong={playSong}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            onPlayCountUpdate={handlePlayCountUpdate}
+          />
+        </div>
       </div>
     );
   }
