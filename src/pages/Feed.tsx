@@ -5,12 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Heart, MessageCircle, Share2, Image as ImageIcon, Send } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Image as ImageIcon, Send, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import StoriesBar from '@/components/StoriesBar';
+
+interface FeedComment {
+  id: string;
+  wallet_address: string;
+  comment_text: string;
+  created_at: string;
+  profiles?: {
+    artist_name: string | null;
+    avatar_cid: string | null;
+  };
+}
 
 interface FeedPost {
   id: string;
@@ -36,6 +47,9 @@ export default function Feed() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadPosts();
@@ -159,6 +173,85 @@ export default function Feed() {
       });
     } finally {
       setPosting(false);
+    }
+  };
+
+  const toggleComments = async (postId: string) => {
+    const isExpanded = expandedComments.has(postId);
+    
+    if (isExpanded) {
+      setExpandedComments(prev => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+    } else {
+      setExpandedComments(prev => new Set(prev).add(postId));
+      await loadComments(postId);
+    }
+  };
+
+  const loadComments = async (postId: string) => {
+    try {
+      const { data: commentsData, error } = await supabase
+        .from('feed_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch profiles for comment authors
+      const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('wallet_address, artist_name, avatar_cid')
+        .in('wallet_address', walletAddresses);
+
+      const commentsWithProfiles = commentsData?.map(comment => ({
+        ...comment,
+        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null,
+      })) || [];
+
+      setComments(prev => ({ ...prev, [postId]: commentsWithProfiles as FeedComment[] }));
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!isConnected || !fullAddress) {
+      toast({
+        title: 'Connect wallet',
+        description: 'Please connect your wallet to comment',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const text = commentText[postId]?.trim();
+    if (!text) return;
+
+    try {
+      const { error } = await supabase
+        .from('feed_comments')
+        .insert({
+          post_id: postId,
+          wallet_address: fullAddress,
+          comment_text: text,
+        });
+
+      if (error) throw error;
+
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      await loadComments(postId);
+      loadPosts(); // Refresh to update comment count
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: 'Failed to add comment',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -335,13 +428,13 @@ export default function Feed() {
                         <img
                           src={getIPFSGatewayUrl(post.media_cid)}
                           alt="Post media"
-                          className="w-full max-h-96 object-cover"
+                          className="w-full h-auto object-contain rounded-lg"
                         />
                       ) : post.media_type === 'video' ? (
                         <video
                           src={getIPFSGatewayUrl(post.media_cid)}
                           controls
-                          className="w-full max-h-96"
+                          className="w-full h-auto rounded-lg"
                         />
                       ) : null}
                     </div>
@@ -359,7 +452,10 @@ export default function Feed() {
                       <span>{post.like_count}</span>
                     </button>
 
-                    <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                    <button 
+                      onClick={() => toggleComments(post.id)}
+                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    >
                       <MessageCircle className="w-5 h-5" />
                       <span>{post.comment_count}</span>
                     </button>
@@ -368,6 +464,66 @@ export default function Feed() {
                       <Share2 className="w-5 h-5" />
                     </button>
                   </div>
+
+                  {/* Comments Section */}
+                  {expandedComments.has(post.id) && (
+                    <div className="pt-4 mt-4 border-t border-border space-y-4">
+                      {/* Add Comment */}
+                      {isConnected && (
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add a comment..."
+                            value={commentText[post.id] || ''}
+                            onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment(post.id);
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddComment(post.id)}
+                            disabled={!commentText[post.id]?.trim()}
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Comments List */}
+                      <div className="space-y-3">
+                        {comments[post.id]?.map((comment) => (
+                          <div key={comment.id} className="flex gap-3">
+                            {comment.profiles?.avatar_cid ? (
+                              <img
+                                src={getIPFSGatewayUrl(comment.profiles.avatar_cid)}
+                                alt="Avatar"
+                                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                <span className="text-primary text-xs">
+                                  {comment.profiles?.artist_name?.[0] || '?'}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold">
+                                {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{comment.comment_text}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatTimeAgo(comment.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Card>
               ))
             )}

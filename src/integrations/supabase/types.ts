@@ -157,6 +157,33 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_comments: {
+        Row: {
+          comment_text: string
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          comment_text: string
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          comment_text?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       feed_likes: {
         Row: {
           created_at: string
