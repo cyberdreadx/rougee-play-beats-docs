@@ -42,10 +42,10 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
   // Show landing page for non-connected wallets
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-background flex flex-col pb-24">
+      <div className="min-h-screen bg-background flex flex-col pb-24 md:pb-20">
         <Header />
         <LandingHero />
-        <div className="flex-1 w-full overflow-x-hidden">
+        <div className="flex-1 w-full overflow-x-hidden px-2 md:px-0">
           <SearchBar />
           <TrendingArtists />
           <TopSongs 
@@ -64,7 +64,7 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
     <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col overflow-x-hidden">
       <Header />
       <NetworkInfo />
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between px-3 md:px-4 py-3 gap-2">
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         {onToggleRadio && (
           <RadioToggle 
@@ -74,10 +74,12 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
         )}
       </div>
       <div className="flex-1 w-full overflow-x-hidden">
-        <div className="flex items-center justify-center py-3">
-          <MusicBars bars={8} className="h-6" />
+        <div className="flex items-center justify-center py-2 md:py-3">
+          <MusicBars bars={6} className="h-5 md:h-6" />
         </div>
-        <SearchBar />
+        <div className="px-2 md:px-0">
+          <SearchBar />
+        </div>
         <StoriesBar />
         <TrendingArtists />
         <TopSongs 
