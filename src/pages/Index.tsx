@@ -45,9 +45,21 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
       <div className="min-h-screen bg-background flex flex-col pb-24 md:pb-20">
         <Header />
         <LandingHero />
-        <div className="flex-1 w-full overflow-x-hidden px-2 md:px-0">
-          <SearchBar />
+        
+        {/* Discovery Sections */}
+        <div className="flex-1 w-full overflow-x-hidden space-y-6 pb-8">
+          <div className="px-4">
+            <h2 className="text-lg font-bold font-mono mb-3 text-primary">
+              🔥 TRENDING ARTISTS
+            </h2>
+          </div>
           <TrendingArtists />
+          
+          <div className="px-4">
+            <h2 className="text-lg font-bold font-mono mb-3 text-primary">
+              🎵 TOP SONGS
+            </h2>
+          </div>
           <TopSongs 
             ref={topSongsRef}
             onPlaySong={playSong}

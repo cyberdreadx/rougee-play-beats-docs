@@ -76,25 +76,22 @@ const TrendingArtists = () => {
   }
 
   return (
-    <section className="w-full py-6 overflow-x-hidden">
-      <h2 className="text-xl font-bold font-mono mb-4 neon-text px-2 md:px-6">
-        TRENDING ARTISTS
-      </h2>
-      
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide px-2 md:px-6">
+    <section className="w-full overflow-x-hidden">
+      <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide px-4 snap-x snap-mandatory">
         {artists.map((artist) => (
-          <ArtistCard
-            key={artist.wallet_address}
-            walletAddress={artist.wallet_address}
-            artistName={artist.artist_name}
-            artistTicker={artist.artist_ticker || undefined}
-            avatarCid={artist.avatar_cid || undefined}
-            coverCid={artist.cover_cid || undefined}
-            totalSongs={artist.total_songs}
-            totalPlays={artist.total_plays}
-            verified={artist.verified}
-            size="medium"
-          />
+          <div key={artist.wallet_address} className="snap-start flex-shrink-0">
+            <ArtistCard
+              walletAddress={artist.wallet_address}
+              artistName={artist.artist_name}
+              artistTicker={artist.artist_ticker || undefined}
+              avatarCid={artist.avatar_cid || undefined}
+              coverCid={artist.cover_cid || undefined}
+              totalSongs={artist.total_songs}
+              totalPlays={artist.total_plays}
+              verified={artist.verified}
+              size="medium"
+            />
+          </div>
         ))}
       </div>
     </section>

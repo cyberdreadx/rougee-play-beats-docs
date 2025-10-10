@@ -123,12 +123,8 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
   };
 
   return (
-    <section className="w-full py-6 overflow-x-hidden">
-      <h2 className="text-xl font-bold font-mono mb-4 neon-text px-2 md:px-6">
-        TOP 10 SONGS
-      </h2>
-      
-      <div className="glass-card p-4 space-y-2 mx-2 md:mx-6">
+    <section className="w-full overflow-x-hidden">
+      <div className="glass-card p-3 md:p-4 space-y-2 mx-4">
         {loading ? (
           <div className="text-muted-foreground font-mono">Loading songs...</div>
         ) : songs.length === 0 ? (
