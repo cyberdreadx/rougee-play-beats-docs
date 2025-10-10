@@ -157,6 +157,71 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "feed_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feed_posts: {
+        Row: {
+          comment_count: number | null
+          content_text: string | null
+          created_at: string
+          id: string
+          like_count: number | null
+          media_cid: string | null
+          media_type: string | null
+          updated_at: string
+          wallet_address: string
+        }
+        Insert: {
+          comment_count?: number | null
+          content_text?: string | null
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_cid?: string | null
+          media_type?: string | null
+          updated_at?: string
+          wallet_address: string
+        }
+        Update: {
+          comment_count?: number | null
+          content_text?: string | null
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_cid?: string | null
+          media_type?: string | null
+          updated_at?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           artist_name: string | null

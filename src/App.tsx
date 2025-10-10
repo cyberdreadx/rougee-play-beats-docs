@@ -19,6 +19,7 @@ import BecomeArtist from "./pages/BecomeArtist";
 import Wallet from "./pages/Wallet";
 import SongTrade from "./pages/SongTrade";
 import Admin from "./pages/Admin";
+import Feed from "./pages/Feed";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -71,6 +72,7 @@ const AppContent = () => {
         <Route path="/upload" element={<Upload />} />
         <Route path="/become-artist" element={<BecomeArtist />} />
         <Route path="/wallet" element={<Wallet />} />
+        <Route path="/feed" element={<Feed />} />
         <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
         <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
