@@ -24,7 +24,7 @@ export default function LikeButton({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && address) {
       checkIfLiked();
       fetchLikeCount();
     }
@@ -35,10 +35,10 @@ export default function LikeButton({
 
     try {
       const { data, error } = await supabase
-        .from('song_likes')
+        .from('feed_likes')
         .select('id')
         .eq('wallet_address', address)
-        .eq('song_id', songId)
+        .eq('post_id', songId)
         .maybeSingle();
 
       if (error) throw error;
@@ -51,9 +51,9 @@ export default function LikeButton({
   const fetchLikeCount = async () => {
     try {
       const { count, error } = await supabase
-        .from('song_likes')
+        .from('feed_likes')
         .select('*', { count: 'exact', head: true })
-        .eq('song_id', songId);
+        .eq('post_id', songId);
 
       if (error) throw error;
       setLikeCount(count || 0);
@@ -81,10 +81,10 @@ export default function LikeButton({
       if (isLiked) {
         // Unlike
         const { error } = await supabase
-          .from('song_likes')
+          .from('feed_likes')
           .delete()
           .eq('wallet_address', address)
-          .eq('song_id', songId);
+          .eq('post_id', songId);
 
         if (error) throw error;
         
@@ -93,10 +93,10 @@ export default function LikeButton({
       } else {
         // Like
         const { error } = await supabase
-          .from('song_likes')
+          .from('feed_likes')
           .insert({
             wallet_address: address,
-            song_id: songId,
+            post_id: songId,
           });
 
         if (error) throw error;
