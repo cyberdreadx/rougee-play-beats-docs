@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Web3Provider from "@/providers/Web3Provider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useRadioPlayer } from "@/hooks/useRadioPlayer";
+import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AdDisplay } from "@/components/AdDisplay";
 import { useState } from "react";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -22,7 +23,20 @@ import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
   const radioPlayer = useRadioPlayer();
+  const audioPlayer = useAudioPlayer();
   const [showAdModal, setShowAdModal] = useState(false);
+
+  // Determine active source (radio or manual)
+  const isRadioActive = radioPlayer.isRadioMode;
+  const activeSong = isRadioActive ? radioPlayer.currentSong : audioPlayer.currentSong;
+  const activeIsPlaying = isRadioActive ? radioPlayer.isPlaying : audioPlayer.isPlaying;
+
+  const handlePlaySong = (song: any) => {
+    if (radioPlayer.isRadioMode) {
+      radioPlayer.stopRadio();
+    }
+    audioPlayer.playSong(song);
+  };
 
   return (
     <>
@@ -39,9 +53,9 @@ const AppContent = () => {
           path="/" 
           element={
             <Index 
-              playSong={() => {}} 
-              currentSong={radioPlayer.currentSong} 
-              isPlaying={radioPlayer.isPlaying}
+              playSong={handlePlaySong} 
+              currentSong={activeSong} 
+              isPlaying={activeIsPlaying}
               isRadioMode={radioPlayer.isRadioMode}
               onToggleRadio={() => {
                 if (radioPlayer.isRadioMode) {
@@ -57,20 +71,20 @@ const AppContent = () => {
         <Route path="/upload" element={<Upload />} />
         <Route path="/become-artist" element={<BecomeArtist />} />
         <Route path="/wallet" element={<Wallet />} />
-        <Route path="/artist/:walletAddress" element={<Artist playSong={() => {}} currentSong={radioPlayer.currentSong} isPlaying={radioPlayer.isPlaying} />} />
+        <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
-        <Route path="/song/:songId" element={<SongTrade playSong={() => {}} currentSong={radioPlayer.currentSong} isPlaying={radioPlayer.isPlaying} />} />
+        <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
         <Route path="/admin" element={<Admin />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
       <AudioPlayer 
-        currentSong={radioPlayer.currentSong}
+        currentSong={activeSong}
         currentAd={radioPlayer.currentAd}
-        isPlaying={radioPlayer.isPlaying}
-        onPlayPause={radioPlayer.togglePlayPause}
-        onSongEnd={radioPlayer.onMediaEnd}
+        isPlaying={activeIsPlaying}
+        onPlayPause={isRadioActive ? radioPlayer.togglePlayPause : audioPlayer.togglePlayPause}
+        onSongEnd={isRadioActive ? radioPlayer.onMediaEnd : audioPlayer.onSongEnd}
       />
     </>
   );
