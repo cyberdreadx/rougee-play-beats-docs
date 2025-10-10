@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Heart, MessageCircle, Share2, Image as ImageIcon, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
+import Header from '@/components/Header';
 
 interface FeedPost {
   id: string;
@@ -213,159 +214,162 @@ export default function Feed() {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-24 pb-32 px-4">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
-          <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
-        </div>
+    <>
+      <Header />
+      <div className="min-h-screen bg-background pt-24 pb-32 px-4">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
+            <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
+          </div>
 
-        {/* Post Creator */}
-        {isConnected && (
-          <Card className="p-4 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border">
-            <Textarea
-              placeholder="What's on your mind?"
-              value={contentText}
-              onChange={(e) => setContentText(e.target.value)}
-              className="min-h-[100px] resize-none"
-            />
+          {/* Post Creator */}
+          {isConnected && (
+            <Card className="p-4 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border">
+              <Textarea
+                placeholder="What's on your mind?"
+                value={contentText}
+                onChange={(e) => setContentText(e.target.value)}
+                className="min-h-[100px] resize-none"
+              />
 
-            {mediaPreview && (
-              <div className="relative">
-                <img
-                  src={mediaPreview}
-                  alt="Preview"
-                  className="max-h-64 rounded-lg mx-auto"
+              {mediaPreview && (
+                <div className="relative">
+                  <img
+                    src={mediaPreview}
+                    alt="Preview"
+                    className="max-h-64 rounded-lg mx-auto"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      setMediaFile(null);
+                      setMediaPreview(null);
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleMediaChange}
+                  className="hidden"
+                  id="media-upload"
                 />
+                <label htmlFor="media-upload">
+                  <Button variant="outline" size="sm" asChild>
+                    <span className="cursor-pointer">
+                      <ImageIcon className="w-4 h-4 mr-2" />
+                      Add Media
+                    </span>
+                  </Button>
+                </label>
+
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setMediaFile(null);
-                    setMediaPreview(null);
-                  }}
+                  onClick={handlePost}
+                  disabled={posting || (!contentText && !mediaFile)}
+                  className="ml-auto"
                 >
-                  Remove
+                  <Send className="w-4 h-4 mr-2" />
+                  {posting ? 'Posting to IPFS...' : 'Post'}
                 </Button>
               </div>
-            )}
+            </Card>
+          )}
 
-            <div className="flex gap-2">
-              <Input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleMediaChange}
-                className="hidden"
-                id="media-upload"
-              />
-              <label htmlFor="media-upload">
-                <Button variant="outline" size="sm" asChild>
-                  <span className="cursor-pointer">
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    Add Media
-                  </span>
-                </Button>
-              </label>
+          {/* Feed */}
+          <div className="space-y-4">
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading feed...</div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No posts yet. Be the first to post!
+              </div>
+            ) : (
+              posts.map((post) => (
+                <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border">
+                  {/* Post Header */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {post.profiles?.avatar_cid ? (
+                      <img
+                        src={getIPFSGatewayUrl(post.profiles.avatar_cid)}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-primary text-sm">
+                          {post.profiles?.artist_name?.[0] || '?'}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold">
+                        {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTimeAgo(post.created_at)}
+                      </p>
+                    </div>
+                  </div>
 
-              <Button
-                onClick={handlePost}
-                disabled={posting || (!contentText && !mediaFile)}
-                className="ml-auto"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                {posting ? 'Posting to IPFS...' : 'Post'}
-              </Button>
-            </div>
-          </Card>
-        )}
+                  {/* Post Content */}
+                  {post.content_text && (
+                    <p className="mb-3 whitespace-pre-wrap">{post.content_text}</p>
+                  )}
 
-        {/* Feed */}
-        <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading feed...</div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No posts yet. Be the first to post!
-            </div>
-          ) : (
-            posts.map((post) => (
-              <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border">
-                {/* Post Header */}
-                <div className="flex items-center gap-3 mb-3">
-                  {post.profiles?.avatar_cid ? (
-                    <img
-                      src={getIPFSGatewayUrl(post.profiles.avatar_cid)}
-                      alt="Avatar"
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-primary text-sm">
-                        {post.profiles?.artist_name?.[0] || '?'}
-                      </span>
+                  {/* Post Media */}
+                  {post.media_cid && (
+                    <div className="mb-3 rounded-lg overflow-hidden">
+                      {post.media_type === 'image' ? (
+                        <img
+                          src={getIPFSGatewayUrl(post.media_cid)}
+                          alt="Post media"
+                          className="w-full max-h-96 object-cover"
+                        />
+                      ) : post.media_type === 'video' ? (
+                        <video
+                          src={getIPFSGatewayUrl(post.media_cid)}
+                          controls
+                          className="w-full max-h-96"
+                        />
+                      ) : null}
                     </div>
                   )}
-                  <div>
-                    <p className="font-semibold">
-                      {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatTimeAgo(post.created_at)}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Post Content */}
-                {post.content_text && (
-                  <p className="mb-3 whitespace-pre-wrap">{post.content_text}</p>
-                )}
-
-                {/* Post Media */}
-                {post.media_cid && (
-                  <div className="mb-3 rounded-lg overflow-hidden">
-                    {post.media_type === 'image' ? (
-                      <img
-                        src={getIPFSGatewayUrl(post.media_cid)}
-                        alt="Post media"
-                        className="w-full max-h-96 object-cover"
+                  {/* Post Actions */}
+                  <div className="flex items-center gap-6 pt-3 border-t border-border">
+                    <button
+                      onClick={() => toggleLike(post.id)}
+                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${likedPosts.has(post.id) ? 'fill-red-500 text-red-500' : ''}`}
                       />
-                    ) : post.media_type === 'video' ? (
-                      <video
-                        src={getIPFSGatewayUrl(post.media_cid)}
-                        controls
-                        className="w-full max-h-96"
-                      />
-                    ) : null}
+                      <span>{post.like_count}</span>
+                    </button>
+
+                    <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                      <MessageCircle className="w-5 h-5" />
+                      <span>{post.comment_count}</span>
+                    </button>
+
+                    <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors ml-auto">
+                      <Share2 className="w-5 h-5" />
+                    </button>
                   </div>
-                )}
-
-                {/* Post Actions */}
-                <div className="flex items-center gap-6 pt-3 border-t border-border">
-                  <button
-                    onClick={() => toggleLike(post.id)}
-                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${likedPosts.has(post.id) ? 'fill-red-500 text-red-500' : ''}`}
-                    />
-                    <span>{post.like_count}</span>
-                  </button>
-
-                  <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
-                    <MessageCircle className="w-5 h-5" />
-                    <span>{post.comment_count}</span>
-                  </button>
-
-                  <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors ml-auto">
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </Card>
-            ))
-          )}
+                </Card>
+              ))
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
