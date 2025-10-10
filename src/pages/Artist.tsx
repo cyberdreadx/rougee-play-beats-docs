@@ -12,7 +12,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +31,17 @@ interface Song {
   ticker?: string | null;
 }
 
+interface FeedPost {
+  id: string;
+  content_text: string | null;
+  media_cid: string | null;
+  media_type: string | null;
+  wallet_address: string;
+  created_at: string;
+  like_count: number;
+  comment_count: number;
+}
+
 interface ArtistProps {
   playSong: (song: Song) => void;
   currentSong: Song | null;
@@ -43,6 +55,8 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const { profile, loading, error } = useArtistProfile(walletAddress || null);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const [holdersCount, setHoldersCount] = useState<number>(0);
   const [holdingsCount, setHoldingsCount] = useState<number>(0);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -76,6 +90,30 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
     };
 
     fetchArtistSongs();
+  }, [walletAddress]);
+
+  useEffect(() => {
+    const fetchArtistPosts = async () => {
+      if (!walletAddress) return;
+
+      try {
+        setLoadingPosts(true);
+        const { data, error } = await supabase
+          .from("feed_posts")
+          .select("*")
+          .eq("wallet_address", walletAddress)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setPosts(data || []);
+      } catch (err) {
+        console.error("Error fetching artist posts:", err);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    fetchArtistPosts();
   }, [walletAddress]);
 
   useEffect(() => {
@@ -296,82 +334,146 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
           </Card>
         )}
 
-        {/* Artist's Songs */}
-        <div>
-          <h2 className="text-2xl font-mono font-bold neon-text mb-4">
-            MUSIC
-          </h2>
-          
-          {loadingSongs ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
-            </div>
-          ) : songs.length === 0 ? (
-            <Card className="console-bg tech-border p-6 text-center">
-              <p className="font-mono text-muted-foreground">No songs uploaded yet</p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {songs.map((song) => {
-                const coverUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : null;
-                
-                return (
-                  <Card
-                    key={song.id}
-                    className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors group"
-                    onClick={() => playSong(song)}
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Album Artwork */}
-                      <div className="relative flex-shrink-0">
-                        <div className="w-16 h-16 rounded tech-border overflow-hidden bg-primary/20">
-                          {coverUrl ? (
-                            <img 
-                              src={coverUrl} 
-                              alt={song.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Music className="h-6 w-6 text-neon-green" />
-                            </div>
-                          )}
-                        </div>
-                        {/* Play Icon Overlay */}
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          {currentSong?.id === song.id && isPlaying ? (
-                            <Loader2 className="h-6 w-6 text-neon-green animate-spin" />
-                          ) : (
-                            <Play className="h-6 w-6 text-neon-green" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Song Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
-                          <span className="truncate">{song.title}</span>
-                          {song.ticker && (
-                            <span className="text-neon-green text-sm flex-shrink-0">${song.ticker}</span>
-                          )}
-                        </p>
-                        <p className="text-sm font-mono text-muted-foreground">
-                          {song.play_count} plays
-                        </p>
-                      </div>
+        {/* Tabs for Music and Posts */}
+        <Tabs defaultValue="music" className="w-full">
+          <TabsList className="w-full justify-start mb-6">
+            <TabsTrigger value="music" className="font-mono">
+              <Music className="h-4 w-4 mr-2" />
+              MUSIC
+            </TabsTrigger>
+            <TabsTrigger value="posts" className="font-mono">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              POSTS
+            </TabsTrigger>
+          </TabsList>
 
-                      {/* Action Buttons */}
-                      <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
-                        <LikeButton songId={song.id} size="sm" showCount={false} />
-                        <ReportButton songId={song.id} />
+          <TabsContent value="music">
+            {loadingSongs ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
+              </div>
+            ) : songs.length === 0 ? (
+              <Card className="console-bg tech-border p-6 text-center">
+                <p className="font-mono text-muted-foreground">No songs uploaded yet</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {songs.map((song) => {
+                  const coverUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : null;
+                  
+                  return (
+                    <Card
+                      key={song.id}
+                      className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors group"
+                      onClick={() => playSong(song)}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/* Album Artwork */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-16 h-16 rounded tech-border overflow-hidden bg-primary/20">
+                            {coverUrl ? (
+                              <img 
+                                src={coverUrl} 
+                                alt={song.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Music className="h-6 w-6 text-neon-green" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Play Icon Overlay */}
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            {currentSong?.id === song.id && isPlaying ? (
+                              <Loader2 className="h-6 w-6 text-neon-green animate-spin" />
+                            ) : (
+                              <Play className="h-6 w-6 text-neon-green" />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Song Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
+                            <span className="truncate">{song.title}</span>
+                            {song.ticker && (
+                              <span className="text-neon-green text-sm flex-shrink-0">${song.ticker}</span>
+                            )}
+                          </p>
+                          <p className="text-sm font-mono text-muted-foreground">
+                            {song.play_count} plays
+                          </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+                          <LikeButton songId={song.id} size="sm" showCount={false} />
+                          <ReportButton songId={song.id} />
+                        </div>
                       </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="posts">
+            {loadingPosts ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
+              </div>
+            ) : posts.length === 0 ? (
+              <Card className="console-bg tech-border p-6 text-center">
+                <p className="font-mono text-muted-foreground">No posts yet</p>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {posts.map((post) => (
+                  <Card key={post.id} className="console-bg tech-border p-6">
+                    {post.content_text && (
+                      <p className="font-mono text-sm mb-4 whitespace-pre-wrap">
+                        {post.content_text}
+                      </p>
+                    )}
+                    
+                    {post.media_cid && post.media_type && (
+                      <div className="mb-4">
+                        {post.media_type.startsWith('image') ? (
+                          <img 
+                            src={getIPFSGatewayUrl(post.media_cid)}
+                            alt="Post media"
+                            className="w-full rounded tech-border"
+                          />
+                        ) : post.media_type.startsWith('video') ? (
+                          <video 
+                            src={getIPFSGatewayUrl(post.media_cid)}
+                            controls
+                            className="w-full rounded tech-border"
+                          />
+                        ) : null}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
+                      <div className="flex items-center gap-2">
+                        <LikeButton songId={post.id} size="sm" showCount={true} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="h-4 w-4" />
+                        <span>{post.comment_count}</span>
+                      </div>
+                      <span className="ml-auto">
+                        {new Date(post.created_at).toLocaleDateString()}
+                      </span>
                     </div>
                   </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
