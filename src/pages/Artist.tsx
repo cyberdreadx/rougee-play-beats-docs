@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +43,17 @@ interface FeedPost {
   comment_count: number;
 }
 
+interface FeedComment {
+  id: string;
+  wallet_address: string;
+  comment_text: string;
+  created_at: string;
+  profiles?: {
+    artist_name: string | null;
+    avatar_cid: string | null;
+  };
+}
+
 interface ArtistProps {
   playSong: (song: Song) => void;
   currentSong: Song | null;
@@ -60,6 +72,9 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const [holdersCount, setHoldersCount] = useState<number>(0);
   const [holdingsCount, setHoldingsCount] = useState<number>(0);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
 
   const isOwnProfile = fullAddress?.toLowerCase() === walletAddress?.toLowerCase();
 
@@ -145,6 +160,99 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
     fetchSocialStats();
   }, [walletAddress]);
+
+  const toggleComments = async (postId: string) => {
+    const isExpanded = expandedComments.has(postId);
+    
+    if (isExpanded) {
+      setExpandedComments(prev => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+    } else {
+      setExpandedComments(prev => new Set(prev).add(postId));
+      await loadComments(postId);
+    }
+  };
+
+  const loadComments = async (postId: string) => {
+    try {
+      const { data: commentsData, error } = await supabase
+        .from('feed_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('wallet_address, artist_name, avatar_cid')
+        .in('wallet_address', walletAddresses);
+
+      const commentsWithProfiles = commentsData?.map(comment => ({
+        ...comment,
+        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null,
+      })) || [];
+
+      setComments(prev => ({ ...prev, [postId]: commentsWithProfiles as FeedComment[] }));
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!fullAddress) {
+      toast({
+        title: 'Connect wallet',
+        description: 'Please connect your wallet to comment',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const text = commentText[postId]?.trim();
+    if (!text) return;
+
+    try {
+      const { error } = await supabase
+        .from('feed_comments')
+        .insert({
+          post_id: postId,
+          wallet_address: fullAddress,
+          comment_text: text,
+        });
+
+      if (error) throw error;
+
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      await loadComments(postId);
+      
+      // Update comment count in local state
+      setPosts(prev => prev.map(p => 
+        p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p
+      ));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast({
+        title: 'Failed to add comment',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  };
 
   if (loading) {
     return (
@@ -456,18 +564,79 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono border-t border-border pt-4 mt-4">
                       <div className="flex items-center gap-2">
                         <LikeButton songId={post.id} size="sm" showCount={true} />
                       </div>
-                      <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleComments(post.id)}
+                        className="flex items-center gap-1 font-mono"
+                      >
                         <MessageSquare className="h-4 w-4" />
                         <span>{post.comment_count}</span>
-                      </div>
+                      </Button>
                       <span className="ml-auto">
-                        {new Date(post.created_at).toLocaleDateString()}
+                        {formatTimeAgo(post.created_at)}
                       </span>
                     </div>
+
+                    {/* Comments Section */}
+                    {expandedComments.has(post.id) && (
+                      <div className="mt-4 space-y-4 border-t border-border pt-4">
+                        {/* Add Comment Input */}
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Add a comment..."
+                            value={commentText[post.id] || ''}
+                            onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment(post.id);
+                              }
+                            }}
+                            className="font-mono text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            variant="neon"
+                            onClick={() => handleAddComment(post.id)}
+                            disabled={!commentText[post.id]?.trim()}
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Comments List */}
+                        <div className="space-y-3">
+                          {comments[post.id]?.map((comment) => (
+                            <div key={comment.id} className="flex gap-3">
+                              <Avatar className="h-8 w-8 flex-shrink-0">
+                                <AvatarImage 
+                                  src={comment.profiles?.avatar_cid ? getIPFSGatewayUrl(comment.profiles.avatar_cid) : undefined} 
+                                />
+                                <AvatarFallback className="bg-primary/20 text-neon-green text-xs">
+                                  {(comment.profiles?.artist_name || comment.wallet_address).substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-mono text-xs font-semibold">
+                                    {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatTimeAgo(comment.created_at)}
+                                  </span>
+                                </div>
+                                <p className="font-mono text-sm">{comment.comment_text}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>
