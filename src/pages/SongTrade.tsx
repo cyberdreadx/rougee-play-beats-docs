@@ -35,6 +35,10 @@ interface Comment {
   user_name: string | null;
   comment_text: string;
   created_at: string;
+  profiles?: {
+    artist_name: string | null;
+    avatar_cid: string | null;
+  };
 }
 
 interface SongTradeProps {
@@ -93,14 +97,27 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
-      const { data, error } = await supabase
+      const { data: commentsData, error } = await supabase
         .from("comments")
         .select("*")
         .eq("song_id", songId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setComments(data || []);
+
+      // Fetch profiles for comment authors
+      const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('wallet_address, artist_name, avatar_cid')
+        .in('wallet_address', walletAddresses);
+
+      const commentsWithProfiles = commentsData?.map(comment => ({
+        ...comment,
+        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null,
+      })) || [];
+
+      setComments(commentsWithProfiles as Comment[]);
     } catch (error) {
       console.error("Error fetching comments:", error);
     } finally {
@@ -475,14 +492,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <div key={comment.id} className="console-bg p-3 md:p-4 border border-border rounded-lg">
                       <div className="flex items-start gap-2 md:gap-3">
                         <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
+                          {comment.profiles?.avatar_cid && (
+                            <AvatarImage
+                              src={getIPFSGatewayUrl(comment.profiles.avatar_cid)}
+                              className="object-cover"
+                            />
+                          )}
                           <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
-                            {comment.wallet_address.substring(0, 2).toUpperCase()}
+                            {comment.profiles?.artist_name?.[0]?.toUpperCase() || comment.wallet_address.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
                             <p className="font-mono text-xs md:text-sm font-semibold truncate">
-                              {comment.wallet_address.substring(0, 6)}...{comment.wallet_address.substring(38)}
+                              {comment.profiles?.artist_name || `${comment.wallet_address.substring(0, 6)}...${comment.wallet_address.substring(38)}`}
                             </p>
                             <p className="font-mono text-xs text-muted-foreground">
                               {new Date(comment.created_at).toLocaleDateString()}
