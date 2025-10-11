@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Song {
@@ -32,9 +32,27 @@ interface AudioPlayerProps {
   isPlaying: boolean;
   onPlayPause: () => void;
   onSongEnd: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  onShuffle?: () => void;
+  onRepeat?: () => void;
+  shuffleEnabled?: boolean;
+  repeatMode?: 'off' | 'all' | 'one';
 }
 
-const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd }: AudioPlayerProps) => {
+const AudioPlayer = ({ 
+  currentSong, 
+  currentAd, 
+  isPlaying, 
+  onPlayPause, 
+  onSongEnd,
+  onNext,
+  onPrevious,
+  onShuffle,
+  onRepeat,
+  shuffleEnabled = false,
+  repeatMode = 'off'
+}: AudioPlayerProps) => {
   const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -218,19 +236,27 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
               {displayArtist}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMute}
-              className="h-8 w-8"
-            >
-              {isMuted ? (
-                <VolumeX className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-neon-green" />
-              )}
-            </Button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {onShuffle && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onShuffle}
+                className={`h-7 w-7 ${shuffleEnabled ? 'text-neon-green' : 'text-muted-foreground'}`}
+              >
+                <Shuffle className="w-3 h-3" />
+              </Button>
+            )}
+            {onPrevious && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onPrevious}
+                className="h-8 w-8 text-muted-foreground"
+              >
+                <SkipBack className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -241,6 +267,42 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
                 <Pause className="w-5 h-5 text-neon-green" />
               ) : (
                 <Play className="w-5 h-5 text-neon-green fill-neon-green" />
+              )}
+            </Button>
+            {onNext && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onNext}
+                className="h-8 w-8 text-muted-foreground"
+              >
+                <SkipForward className="w-4 h-4" />
+              </Button>
+            )}
+            {onRepeat && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onRepeat}
+                className={`h-7 w-7 ${repeatMode !== 'off' ? 'text-neon-green' : 'text-muted-foreground'}`}
+              >
+                {repeatMode === 'one' ? (
+                  <Repeat1 className="w-3 h-3" />
+                ) : (
+                  <Repeat className="w-3 h-3" />
+                )}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMute}
+              className="h-7 w-7"
+            >
+              {isMuted ? (
+                <VolumeX className="w-3 h-3 text-muted-foreground" />
+              ) : (
+                <Volume2 className="w-3 h-3 text-neon-green" />
               )}
             </Button>
           </div>
@@ -314,22 +376,74 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-4 flex-1 max-w-md">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onPlayPause}
-            className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border-2 border-neon-green/50 transition-all hover:scale-110 shadow-lg shadow-neon-green/20"
-          >
-            {isPlaying ? (
-              <Pause className="w-6 h-6 text-neon-green" />
-            ) : (
-              <Play className="w-6 h-6 text-neon-green fill-neon-green" />
+        <div className="flex flex-col items-center gap-2 flex-1 max-w-2xl">
+          {/* Main control buttons */}
+          <div className="flex items-center gap-3">
+            {onShuffle && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onShuffle}
+                className={`h-8 w-8 transition-colors ${shuffleEnabled ? 'text-neon-green' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <Shuffle className="w-4 h-4" />
+              </Button>
             )}
-          </Button>
+            
+            {onPrevious && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onPrevious}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <SkipBack className="w-5 h-5" />
+              </Button>
+            )}
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onPlayPause}
+              className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border-2 border-neon-green/50 transition-all hover:scale-110 shadow-lg shadow-neon-green/20"
+            >
+              {isPlaying ? (
+                <Pause className="w-6 h-6 text-neon-green" />
+              ) : (
+                <Play className="w-6 h-6 text-neon-green fill-neon-green" />
+              )}
+            </Button>
 
-          <div className="flex items-center gap-2 flex-1">
-            <span className="font-mono text-xs text-muted-foreground min-w-[40px]">
+            {onNext && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onNext}
+                className="h-9 w-9 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <SkipForward className="w-5 h-5" />
+              </Button>
+            )}
+
+            {onRepeat && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onRepeat}
+                className={`h-8 w-8 transition-colors ${repeatMode !== 'off' ? 'text-neon-green' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {repeatMode === 'one' ? (
+                  <Repeat1 className="w-4 h-4" />
+                ) : (
+                  <Repeat className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Progress bar */}
+          <div className="flex items-center gap-2 w-full">
+            <span className="font-mono text-xs text-muted-foreground min-w-[40px] text-right">
               {formatTime(currentTime)}
             </span>
             <Slider
