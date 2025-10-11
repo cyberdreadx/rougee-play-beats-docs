@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Music, Twitter, Github, MessageCircle } from "lucide-react";
+import { Music, Github, MessageCircle } from "lucide-react";
+import { FaXTwitter } from "react-icons/fa6";
 
 const Footer = () => {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ const Footer = () => {
       { name: "Terms", href: "#" },
     ],
     community: [
-      { name: "Twitter", href: "https://x.com/rougeenetwork", icon: Twitter },
+      { name: "X", href: "https://x.com/rougeenetwork", icon: FaXTwitter },
       { name: "Discord", href: "https://discord.gg/Vumf5tcMTp", icon: MessageCircle },
       { name: "GitHub", href: "https://github.com/cyberdreadx/rougee-play-beats", icon: Github },
     ],
