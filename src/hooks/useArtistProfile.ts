@@ -8,6 +8,8 @@ export interface ArtistProfile {
   artist_name?: string;
   artist_ticker?: string;
   bio?: string;
+  email?: string;
+  email_notifications?: boolean;
   avatar_cid?: string;
   cover_cid?: string;
   profile_metadata_cid?: string;
@@ -40,7 +42,7 @@ export const useArtistProfile = (walletAddress: string | null) => {
       // Fetch from Supabase cache
       const { data: cachedProfile, error: cacheError } = await supabase
         .from('profiles')
-        .select('wallet_address, display_name, artist_name, artist_ticker, bio, avatar_cid, cover_cid, profile_metadata_cid, social_links, verified, total_plays, total_songs, role, created_at, updated_at')
+        .select('wallet_address, display_name, artist_name, artist_ticker, bio, email, email_notifications, avatar_cid, cover_cid, profile_metadata_cid, social_links, verified, total_plays, total_songs, role, created_at, updated_at')
         .eq('wallet_address', walletAddress)
         .maybeSingle();
 

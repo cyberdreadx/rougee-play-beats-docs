@@ -27,6 +27,8 @@ const ProfileEdit = () => {
   const [artistName, setArtistName] = useState("");
   const [artistTicker, setArtistTicker] = useState("");
   const [bio, setBio] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailNotifications, setEmailNotifications] = useState(true);
   const [twitter, setTwitter] = useState("");
   const [instagram, setInstagram] = useState("");
   const [website, setWebsite] = useState("");
@@ -61,6 +63,8 @@ const ProfileEdit = () => {
       setArtistName(profile.artist_name || "");
       setArtistTicker(profile.artist_ticker || "");
       setBio(profile.bio || "");
+      setEmail(profile.email || "");
+      setEmailNotifications(profile.email_notifications ?? true);
       setTwitter(profile.social_links?.twitter || "");
       setInstagram(profile.social_links?.instagram || "");
       setWebsite(profile.social_links?.website || "");
@@ -252,6 +256,16 @@ const ProfileEdit = () => {
       return;
     }
 
+    // Validate email format if provided
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append("wallet_address", fullAddress);
     formData.append("display_name", isArtist ? artistName.trim() : displayName.trim());
@@ -260,6 +274,8 @@ const ProfileEdit = () => {
       formData.append("artist_ticker", artistTicker.trim().toUpperCase());
     }
     formData.append("bio", bio.trim());
+    formData.append("email", email.trim());
+    formData.append("email_notifications", emailNotifications.toString());
     formData.append("social_links", JSON.stringify({ twitter, instagram, website, coverPosition }));
 
     if (avatarFile) {
@@ -496,6 +512,42 @@ const ProfileEdit = () => {
               <p className="text-xs text-muted-foreground font-mono text-right">
                 {bio.length}/500
               </p>
+            </div>
+
+            {/* Email & Notifications */}
+            <div className="space-y-4">
+              <h3 className="font-mono font-bold text-neon-green">Email & Notifications</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="font-mono">
+                  Email (For promotional updates & notifications)
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                />
+                <p className="text-xs text-muted-foreground font-mono">
+                  Optional - Only used to send you updates about your profile and platform news
+                </p>
+              </div>
+
+              {email.trim() && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="email-notifications"
+                    checked={emailNotifications}
+                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                    className="h-4 w-4 rounded border-neon-green/30 bg-background"
+                  />
+                  <Label htmlFor="email-notifications" className="font-mono cursor-pointer">
+                    I want to receive promotional emails and updates
+                  </Label>
+                </div>
+              )}
             </div>
 
             {/* Verification Section for Artists */}

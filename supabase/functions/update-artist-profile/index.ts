@@ -26,6 +26,8 @@ Deno.serve(async (req) => {
     const displayName = formData.get('display_name') as string;
     const artistName = formData.get('artist_name') as string || '';
     const bio = formData.get('bio') as string || '';
+    const email = formData.get('email') as string || '';
+    const emailNotifications = formData.get('email_notifications') === 'true';
     const artistTicker = formData.get('artist_ticker') as string || '';
     const socialLinks = formData.get('social_links') as string || '{}';
     const avatarFile = formData.get('avatar') as File | null;
@@ -151,6 +153,8 @@ Deno.serve(async (req) => {
       wallet_address: walletAddress,
       display_name: displayName,
       bio,
+      email: email || null,
+      email_notifications: emailNotifications,
       social_links: JSON.parse(socialLinks),
       profile_metadata_cid: metadataCid,
       updated_at: new Date().toISOString(),

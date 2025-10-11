@@ -259,6 +259,8 @@ export type Database = {
           cover_cid: string | null
           created_at: string
           display_name: string | null
+          email: string | null
+          email_notifications: boolean | null
           id: string
           profile_metadata_cid: string | null
           role: string
@@ -280,6 +282,8 @@ export type Database = {
           cover_cid?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
+          email_notifications?: boolean | null
           id?: string
           profile_metadata_cid?: string | null
           role: string
@@ -301,6 +305,8 @@ export type Database = {
           cover_cid?: string | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
+          email_notifications?: boolean | null
           id?: string
           profile_metadata_cid?: string | null
           role?: string
