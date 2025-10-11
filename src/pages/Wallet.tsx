@@ -340,7 +340,7 @@ const Wallet = () => {
               <div className="p-2 rounded-lg bg-neon-green/10">
                 <WalletIcon className="h-4 w-4 text-neon-green" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-xs text-muted-foreground font-mono">XRGE Token Balance</p>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   {xrgeLoading ? (
@@ -353,6 +353,23 @@ const Wallet = () => {
                       <span className="text-sm text-muted-foreground font-mono">XRGE</span>
                     </>
                   )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs font-mono text-muted-foreground">{formatAddress(XRGE_TOKEN_ADDRESS)}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(XRGE_TOKEN_ADDRESS);
+                      toast({
+                        title: "Address copied!",
+                        description: "XRGE token address copied to clipboard",
+                      });
+                    }}
+                    className="h-4 w-4 p-0"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             </div>
