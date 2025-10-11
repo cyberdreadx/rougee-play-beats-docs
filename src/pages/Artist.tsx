@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -325,9 +325,10 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                 {profile.artist_name}
               </h1>
               {profile.verified && (
-                <Badge className="bg-neon-green/20 text-neon-green border-neon-green">
-                  VERIFIED
-                </Badge>
+                <>
+                  <CheckCircle className="h-5 w-5 text-neon-green" aria-label="Verified artist" />
+                  <Badge className="bg-neon-green/20 text-neon-green border-neon-green">VERIFIED</Badge>
+                </>
               )}
             </div>
             {profile.artist_ticker && (

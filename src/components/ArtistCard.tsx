@@ -74,9 +74,14 @@ const ArtistCard = ({
         </div>
 
         <div className="space-y-1">
-          <h3 className="font-mono font-bold text-lg truncate neon-text">
-            {artistName}
-          </h3>
+          <div className="flex items-center gap-1">
+            <h3 className="font-mono font-bold text-lg truncate neon-text">
+              {artistName}
+            </h3>
+            {verified && (
+              <CheckCircle className="h-4 w-4 text-neon-green" aria-label="Verified artist" />
+            )}
+          </div>
           {artistTicker && (
             <p className="text-sm font-mono text-neon-green">
               ${artistTicker}

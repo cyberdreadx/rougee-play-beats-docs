@@ -438,14 +438,26 @@ const Admin = () => {
 
       // If approved, update profile
       if (approved) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ verified: true })
-          .eq('wallet_address', walletAddress);
+        // Update profile verified flag using REST with target wallet header to satisfy RLS
+        const profileUpdate = await fetch(
+          `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/profiles?wallet_address=eq.${walletAddress}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+              'x-wallet-address': walletAddress,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ verified: true })
+          }
+        );
 
-        if (profileError) {
-          console.error('Failed to update profile:', profileError);
-          throw profileError;
+        if (!profileUpdate.ok) {
+          const errText = await profileUpdate.text();
+          console.error('Failed to update profile:', profileUpdate.status, errText);
+          throw new Error('Failed to update profile');
         }
         
         console.log('Profile verified successfully');

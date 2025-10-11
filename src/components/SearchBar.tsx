@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Music, User, Loader2 } from "lucide-react";
+import { Music, User, Loader2, CheckCircle } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface SearchResult {
@@ -16,6 +16,7 @@ interface SearchResult {
   cover_cid?: string;
   avatar_cid?: string;
   artist_ticker?: string;
+  verified?: boolean;
 }
 
 const SearchBar = () => {
@@ -52,7 +53,7 @@ const SearchBar = () => {
         // Search artists
         const { data: artists } = await supabase
           .from("profiles")
-          .select("wallet_address, artist_name, avatar_cid, artist_ticker")
+          .select("wallet_address, artist_name, avatar_cid, artist_ticker, verified")
           .ilike("artist_name", searchTerm)
           .limit(5);
 
@@ -70,6 +71,7 @@ const SearchBar = () => {
           wallet_address: a.wallet_address,
           avatar_cid: a.avatar_cid,
           artist_ticker: a.artist_ticker,
+          verified: a.verified,
         }));
 
         const songResults: SearchResult[] = (songs || []).map((s) => ({
@@ -157,6 +159,9 @@ const SearchBar = () => {
                         <p className="font-mono text-sm font-bold text-foreground truncate">
                           {result.name}
                         </p>
+                        {result.verified && (
+                          <CheckCircle className="h-3.5 w-3.5 text-neon-green" aria-label="Verified artist" />
+                        )}
                         {result.artist_ticker && (
                           <span className="font-mono text-xs text-neon-green border border-neon-green/30 px-1.5 py-0.5 rounded">
                             ${result.artist_ticker}
