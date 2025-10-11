@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Trash2, Pause } from "lucide-react";
+import { Play, Trash2, Pause, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
@@ -35,10 +35,11 @@ export interface TopSongsRef {
 const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSong, isPlaying, onPlayCountUpdate }, ref) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { address } = useWallet();
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+const { address } = useWallet();
+const [songs, setSongs] = useState<Song[]>([]);
+const [loading, setLoading] = useState(true);
+const [isAdmin, setIsAdmin] = useState(false);
+const [verifiedMap, setVerifiedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchSongs();
@@ -66,22 +67,38 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
     }
   };
 
-  const fetchSongs = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('songs')
-        .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at')
-        .order('play_count', { ascending: false })
-        .limit(10);
+const fetchSongs = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('songs')
+      .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at')
+      .order('play_count', { ascending: false })
+      .limit(10);
 
-      if (error) throw error;
-      setSongs(data || []);
-    } catch (error) {
-      console.error('Error fetching songs:', error);
-    } finally {
-      setLoading(false);
+    if (error) throw error;
+    setSongs(data || []);
+
+    // Fetch verified status for artists in the list
+    if (data && data.length > 0) {
+      const wallets = Array.from(new Set(data.map((s) => s.wallet_address)));
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('wallet_address, verified')
+        .in('wallet_address', wallets);
+      if (!profilesError && profiles) {
+        const map: Record<string, boolean> = {};
+        profiles.forEach((p: any) => {
+          if (p.wallet_address) map[p.wallet_address] = !!p.verified;
+        });
+        setVerifiedMap(map);
+      }
     }
-  };
+  } catch (error) {
+    console.error('Error fetching songs:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handlePlayClick = (song: Song) => {
     onPlaySong(song);
@@ -162,10 +179,13 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                   </div>
                   {song.artist && (
                     <div 
-                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors truncate"
+                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors truncate flex items-center gap-1"
                       onClick={() => window.location.href = `/artist/${song.wallet_address}`}
                     >
-                      {song.artist}
+                      <span className="truncate">{song.artist}</span>
+                      {verifiedMap[song.wallet_address] && (
+                        <CheckCircle className="h-3 w-3 text-neon-green" aria-label="Verified artist" />
+                      )}
                     </div>
                   )}
                   <div className="font-mono text-[10px] md:text-xs text-muted-foreground md:hidden">
