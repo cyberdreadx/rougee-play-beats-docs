@@ -349,16 +349,32 @@ const Admin = () => {
 
   const fetchVerificationRequests = async () => {
     try {
-      const { data: requests, error: requestsError } = await supabase
-        .from('verification_requests')
-        .select('*')
-        .order('requested_at', { ascending: false });
+      if (!fullAddress) return;
+      
+      // Create a custom Supabase call with headers
+      const response = await fetch(
+        `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/verification_requests?order=requested_at.desc`,
+        {
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+            'x-wallet-address': fullAddress,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (requestsError) throw requestsError;
+      if (!response.ok) {
+        console.error('Failed to fetch verification requests:', response.status);
+        throw new Error(`Failed: ${response.status}`);
+      }
+
+      const requests = await response.json();
+      console.log('Verification requests loaded:', requests);
 
       // Fetch profiles separately
       if (requests && requests.length > 0) {
-        const walletAddresses = requests.map(r => r.wallet_address);
+        const walletAddresses = requests.map((r: any) => r.wallet_address);
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('wallet_address, artist_name, display_name, avatar_cid')
@@ -367,7 +383,7 @@ const Admin = () => {
         if (profilesError) throw profilesError;
 
         // Map profiles to requests
-        const requestsWithProfiles = requests.map(request => ({
+        const requestsWithProfiles = requests.map((request: any) => ({
           ...request,
           profiles: profiles?.find(p => p.wallet_address === request.wallet_address) || null
         }));
