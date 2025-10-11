@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Music, Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/hooks/useWallet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +20,7 @@ import {
 
 export default function UploadMusic() {
   const navigate = useNavigate();
-  const { address } = useAccount();
+  const { fullAddress: address } = useWallet();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [title, setTitle] = useState("");
