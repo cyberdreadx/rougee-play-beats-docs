@@ -12,8 +12,12 @@ import { Label } from "@/components/ui/label";
 import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, Music, Trash2, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { 
+  Loader2, AlertTriangle, Music, Trash2, ExternalLink, CheckCircle2, XCircle,
+  Users, BarChart3, Shield, MessageSquare, Eye, Ban, Activity, TrendingUp
+} from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface SongReport {
   id: string;
@@ -54,6 +58,28 @@ const Admin = () => {
   const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([]);
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
+  
+  // Analytics state
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalSongs: 0,
+    totalPlays: 0,
+    totalPosts: 0,
+    verifiedArtists: 0,
+    pendingReports: 0
+  });
+  
+  // User management state
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  
+  // Content management state
+  const [songs, setSongs] = useState<any[]>([]);
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  
+  // Security monitoring state
+  const [ipLogs, setIpLogs] = useState<any[]>([]);
+  const [suspiciousActivity, setSuspiciousActivity] = useState<any[]>([]);
 
   useEffect(() => {
     if (isPrivyReady) {
@@ -94,13 +120,143 @@ const Admin = () => {
       }
 
       setIsAdmin(true);
-      fetchReports();
-      fetchVerificationRequests();
+      fetchAllData();
     } catch (error) {
       console.error("Error checking admin access:", error);
       navigate("/");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchStats(),
+      fetchReports(),
+      fetchVerificationRequests(),
+      fetchUsers(),
+      fetchSongs(),
+      fetchFeedPosts(),
+      fetchIPLogs(),
+      fetchSuspiciousActivity()
+    ]);
+  };
+
+  const fetchStats = async () => {
+    try {
+      const [usersRes, songsRes, feedRes, verifiedRes, reportsRes] = await Promise.all([
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('songs').select('id, play_count', { count: 'exact' }),
+        supabase.from('feed_posts').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('verified', true),
+        supabase.from('song_reports').select('id', { count: 'exact', head: true })
+      ]);
+
+      const totalPlays = songsRes.data?.reduce((sum, song) => sum + (song.play_count || 0), 0) || 0;
+
+      setStats({
+        totalUsers: usersRes.count || 0,
+        totalSongs: songsRes.count || 0,
+        totalPlays,
+        totalPosts: feedRes.count || 0,
+        verifiedArtists: verifiedRes.count || 0,
+        pendingReports: reportsRes.count || 0
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchSongs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setSongs(data || []);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+    }
+  };
+
+  const fetchFeedPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('feed_posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setFeedPosts(data || []);
+    } catch (error) {
+      console.error('Error fetching feed posts:', error);
+    }
+  };
+
+  const fetchIPLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('wallet_ip_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setIpLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching IP logs:', error);
+    }
+  };
+
+  const fetchSuspiciousActivity = async () => {
+    try {
+      // Find IPs with multiple wallet addresses
+      const { data, error } = await supabase
+        .rpc('get_wallets_by_ip', { check_ip: '0.0.0.0' });
+
+      if (error) throw error;
+      
+      // Get IPs with 3+ wallets
+      const suspicious = ipLogs.reduce((acc: any[], log) => {
+        const existing = acc.find(item => item.ip_address === log.ip_address);
+        if (existing) {
+          if (!existing.wallets.includes(log.wallet_address)) {
+            existing.wallets.push(log.wallet_address);
+            existing.count++;
+          }
+        } else {
+          acc.push({
+            ip_address: log.ip_address,
+            wallets: [log.wallet_address],
+            count: 1,
+            country: log.country
+          });
+        }
+        return acc;
+      }, []).filter(item => item.count >= 3);
+
+      setSuspiciousActivity(suspicious);
+    } catch (error) {
+      console.error('Error fetching suspicious activity:', error);
     }
   };
 
@@ -323,27 +479,317 @@ const Admin = () => {
           <h1 className="text-3xl font-mono font-bold neon-text">ADMIN PANEL</h1>
         </div>
 
-        <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="reports">
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-8 mb-6">
+            <TabsTrigger value="dashboard" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              DASHBOARD
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <AlertTriangle className="h-4 w-4" />
               REPORTS ({reports.length})
             </TabsTrigger>
-            <TabsTrigger value="verification">
-              VERIFICATION ({verificationRequests.filter(r => r.status === 'pending').length})
+            <TabsTrigger value="verification" className="gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              VERIFY ({verificationRequests.filter(r => r.status === 'pending').length})
             </TabsTrigger>
-            <TabsTrigger value="all">
-              ALL ({reports.length})
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="h-4 w-4" />
+              USERS ({users.length})
             </TabsTrigger>
-            <TabsTrigger value="copyright">
-              COPYRIGHT ({groupedReports.copyright.length})
+            <TabsTrigger value="songs" className="gap-2">
+              <Music className="h-4 w-4" />
+              SONGS ({songs.length})
             </TabsTrigger>
-            <TabsTrigger value="hate_speech">
-              HATE SPEECH ({groupedReports.hate_speech.length})
+            <TabsTrigger value="posts" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              POSTS ({feedPosts.length})
             </TabsTrigger>
-            <TabsTrigger value="other">
-              OTHER ({groupedReports.other.length})
+            <TabsTrigger value="security" className="gap-2">
+              <Shield className="h-4 w-4" />
+              SECURITY
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-2">
+              <Activity className="h-4 w-4" />
+              ACTIVITY
             </TabsTrigger>
           </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">TOTAL USERS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.totalUsers}</p>
+                  </div>
+                  <Users className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">TOTAL SONGS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.totalSongs}</p>
+                  </div>
+                  <Music className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">TOTAL PLAYS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.totalPlays.toLocaleString()}</p>
+                  </div>
+                  <TrendingUp className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">TOTAL POSTS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.totalPosts}</p>
+                  </div>
+                  <MessageSquare className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">VERIFIED ARTISTS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.verifiedArtists}</p>
+                  </div>
+                  <CheckCircle2 className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+
+              <Card className="console-bg tech-border p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-mono text-muted-foreground mb-1">PENDING REPORTS</p>
+                    <p className="text-3xl font-mono font-bold neon-text">{stats.pendingReports}</p>
+                  </div>
+                  <AlertTriangle className="h-12 w-12 text-neon-green opacity-50" />
+                </div>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card className="console-bg tech-border p-6">
+              <h3 className="font-mono font-bold text-lg mb-4 neon-text">RECENT ACTIVITY</h3>
+              <div className="space-y-3">
+                {ipLogs.slice(0, 10).map((log) => (
+                  <div key={log.id} className="flex items-center justify-between p-3 bg-background/50 rounded border border-border">
+                    <div className="flex items-center gap-3">
+                      <Activity className="h-4 w-4 text-neon-green" />
+                      <div className="font-mono text-sm">
+                        <p className="text-foreground">{log.wallet_address?.slice(0, 10)}...</p>
+                        <p className="text-muted-foreground text-xs">{log.action} • {log.ip_address}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {new Date(log.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Users Tab */}
+          <TabsContent value="users">
+            <Card className="console-bg tech-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-mono">WALLET</TableHead>
+                    <TableHead className="font-mono">ARTIST NAME</TableHead>
+                    <TableHead className="font-mono">ROLE</TableHead>
+                    <TableHead className="font-mono">VERIFIED</TableHead>
+                    <TableHead className="font-mono">SONGS</TableHead>
+                    <TableHead className="font-mono">PLAYS</TableHead>
+                    <TableHead className="font-mono">JOINED</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-mono text-xs">
+                        {user.wallet_address?.slice(0, 8)}...{user.wallet_address?.slice(-6)}
+                      </TableCell>
+                      <TableCell className="font-mono">{user.artist_name || user.display_name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {user.role?.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {user.verified ? (
+                          <CheckCircle2 className="h-4 w-4 text-neon-green" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono">{user.total_songs || 0}</TableCell>
+                      <TableCell className="font-mono">{user.total_plays || 0}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* Songs Tab */}
+          <TabsContent value="songs">
+            <Card className="console-bg tech-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-mono">TITLE</TableHead>
+                    <TableHead className="font-mono">ARTIST</TableHead>
+                    <TableHead className="font-mono">GENRE</TableHead>
+                    <TableHead className="font-mono">PLAYS</TableHead>
+                    <TableHead className="font-mono">UPLOADED</TableHead>
+                    <TableHead className="font-mono">ACTIONS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {songs.map((song) => (
+                    <TableRow key={song.id}>
+                      <TableCell className="font-mono font-medium">{song.title}</TableCell>
+                      <TableCell className="font-mono">{song.artist || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {song.genre || 'N/A'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono">{song.play_count || 0}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {new Date(song.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/song/${song.id}`)}
+                        >
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          {/* Posts Tab */}
+          <TabsContent value="posts">
+            <div className="space-y-4">
+              {feedPosts.map((post) => (
+                <Card key={post.id} className="console-bg tech-border p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-mono text-xs text-muted-foreground mb-2">
+                        {post.wallet_address?.slice(0, 10)}...
+                      </p>
+                      <p className="font-mono mb-3">{post.content_text}</p>
+                      <div className="flex gap-4 text-xs font-mono text-muted-foreground">
+                        <span>❤️ {post.like_count}</span>
+                        <span>💬 {post.comment_count}</span>
+                        <span>{new Date(post.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Security Tab */}
+          <TabsContent value="security">
+            <Card className="console-bg tech-border p-6 mb-6">
+              <h3 className="font-mono font-bold text-lg mb-4 neon-text flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                SUSPICIOUS ACTIVITY
+              </h3>
+              <div className="space-y-3">
+                {suspiciousActivity.map((activity, idx) => (
+                  <div key={idx} className="p-4 bg-destructive/10 border border-destructive/50 rounded">
+                    <div className="font-mono text-sm">
+                      <p className="text-foreground font-bold mb-2">
+                        IP: {activity.ip_address} ({activity.country || 'Unknown'})
+                      </p>
+                      <p className="text-muted-foreground mb-2">
+                        {activity.count} wallet addresses detected:
+                      </p>
+                      <div className="space-y-1">
+                        {activity.wallets.map((wallet: string, i: number) => (
+                          <p key={i} className="text-xs text-foreground/80">
+                            {wallet}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {suspiciousActivity.length === 0 && (
+                  <p className="text-center font-mono text-muted-foreground py-8">
+                    No suspicious activity detected
+                  </p>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Activity Log Tab */}
+          <TabsContent value="activity">
+            <Card className="console-bg tech-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-mono">WALLET</TableHead>
+                    <TableHead className="font-mono">ACTION</TableHead>
+                    <TableHead className="font-mono">IP ADDRESS</TableHead>
+                    <TableHead className="font-mono">LOCATION</TableHead>
+                    <TableHead className="font-mono">TIMESTAMP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ipLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-mono text-xs">
+                        {log.wallet_address?.slice(0, 8)}...{log.wallet_address?.slice(-6)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {log.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{log.ip_address}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {log.city && log.country ? `${log.city}, ${log.country}` : log.country || '-'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {new Date(log.created_at).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="reports">
             <ReportsList 
