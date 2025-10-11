@@ -6,7 +6,7 @@ import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
-import { User, Shield } from "lucide-react";
+import { User, Shield, CheckCircle } from "lucide-react";
 
 
 const Header = () => {
@@ -52,10 +52,14 @@ const Header = () => {
           </h1>
           
           {/* User wallet info - hidden on mobile */}
-          <div className="hidden lg:block text-[10px] text-muted-foreground font-mono ml-4">
-            USER: <span className="text-foreground">
+          <div className="hidden lg:flex items-center gap-2 text-[10px] text-muted-foreground font-mono ml-4">
+            <span>USER:</span>
+            <span className="text-foreground">
               {isConnected ? fullAddress : "Not Connected"}
             </span>
+            {isConnected && profile?.verified && (
+              <CheckCircle className="h-3 w-3 text-neon-green" />
+            )}
           </div>
         </div>
 

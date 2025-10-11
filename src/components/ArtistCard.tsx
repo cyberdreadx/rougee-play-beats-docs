@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Music, Play } from "lucide-react";
+import { Music, Play, CheckCircle } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface ArtistCardProps {
@@ -66,7 +66,8 @@ const ArtistCard = ({
             </AvatarFallback>
           </Avatar>
           {verified && (
-            <Badge className="bg-neon-green/20 text-neon-green border-neon-green">
+            <Badge className="bg-neon-green/20 text-neon-green border-neon-green flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
               VERIFIED
             </Badge>
           )}

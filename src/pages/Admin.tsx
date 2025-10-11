@@ -406,18 +406,35 @@ const Admin = () => {
     setProcessingRequests(new Set(processingRequests).add(requestId));
     
     try {
-      // Update verification request
-      const { error: requestError } = await supabase
-        .from('verification_requests')
-        .update({
-          status: approved ? 'approved' : 'rejected',
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: fullAddress,
-          admin_notes: adminNotes[requestId] || null
-        })
-        .eq('id', requestId);
+      console.log('Processing verification decision:', { requestId, walletAddress, approved });
+      
+      // Update verification request using fetch with custom header
+      const updateResponse = await fetch(
+        `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/verification_requests?id=eq.${requestId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
+            'x-wallet-address': fullAddress || '',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            status: approved ? 'approved' : 'rejected',
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: fullAddress,
+            admin_notes: adminNotes[requestId] || null
+          })
+        }
+      );
 
-      if (requestError) throw requestError;
+      if (!updateResponse.ok) {
+        console.error('Failed to update verification request:', updateResponse.status);
+        throw new Error('Failed to update verification request');
+      }
+
+      console.log('Verification request updated successfully');
 
       // If approved, update profile
       if (approved) {
@@ -426,7 +443,12 @@ const Admin = () => {
           .update({ verified: true })
           .eq('wallet_address', walletAddress);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Failed to update profile:', profileError);
+          throw profileError;
+        }
+        
+        console.log('Profile verified successfully');
       }
 
       toast({
@@ -436,7 +458,8 @@ const Admin = () => {
           : "Verification request has been rejected",
       });
 
-      fetchVerificationRequests();
+      // Refresh data
+      await fetchAllData();
     } catch (error) {
       console.error('Error processing verification:', error);
       toast({
