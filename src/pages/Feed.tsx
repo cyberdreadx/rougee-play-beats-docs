@@ -315,7 +315,7 @@ export default function Feed() {
       <Navigation />
       <StoriesBar />
       <div className="min-h-screen bg-background pt-32 pb-24 md:pb-32 px-4">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl md:max-w-5xl lg:max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
             <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
@@ -323,7 +323,7 @@ export default function Feed() {
 
           {/* Post Creator */}
           {isConnected && (
-            <Card className="p-4 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border">
+            <Card className="p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
               <Textarea
                 placeholder="What's on your mind?"
                 value={contentText}
@@ -382,33 +382,33 @@ export default function Feed() {
           )}
 
           {/* Feed */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading feed...</div>
+              <div className="col-span-full text-center py-8 text-muted-foreground">Loading feed...</div>
             ) : posts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="col-span-full text-center py-8 text-muted-foreground">
                 No posts yet. Be the first to post!
               </div>
             ) : (
               posts.map((post) => (
-                <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border">
+                <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col">
                   {/* Post Header */}
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2 mb-3">
                     {post.profiles?.avatar_cid ? (
                       <img
                         src={getIPFSGatewayUrl(post.profiles.avatar_cid)}
                         alt="Avatar"
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-primary text-sm">
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-primary text-xs">
                           {post.profiles?.artist_name?.[0] || '?'}
                         </span>
                       </div>
                     )}
-                    <div>
-                      <p className="font-semibold">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">
                         {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -419,47 +419,47 @@ export default function Feed() {
 
                   {/* Post Content */}
                   {post.content_text && (
-                    <p className="mb-3 whitespace-pre-wrap">{post.content_text}</p>
+                    <p className="mb-3 text-sm whitespace-pre-wrap line-clamp-6">{post.content_text}</p>
                   )}
 
                   {/* Post Media */}
                   {post.media_cid && (
-                    <div className="mb-3 rounded-lg overflow-hidden">
+                    <div className="mb-3 rounded-lg overflow-hidden aspect-square">
                       {post.media_type === 'image' ? (
                         <img
                           src={getIPFSGatewayUrl(post.media_cid)}
                           alt="Post media"
-                          className="w-full h-auto object-contain rounded-lg"
+                          className="w-full h-full object-cover rounded-lg"
                         />
                       ) : post.media_type === 'video' ? (
                         <video
                           src={getIPFSGatewayUrl(post.media_cid)}
                           controls
-                          className="w-full h-auto rounded-lg"
+                          className="w-full h-full object-cover rounded-lg"
                         />
                       ) : null}
                     </div>
                   )}
 
                   {/* Post Actions */}
-                  <div className="flex items-center gap-6 pt-3 border-t border-border">
+                  <div className="flex items-center gap-4 pt-3 mt-auto border-t border-border">
                     <LikeButton 
                       songId={post.id}
                       initialLikeCount={post.like_count}
-                      size="md"
+                      size="sm"
                       showCount={true}
                     />
 
                     <button 
                       onClick={() => toggleComments(post.id)}
-                      className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                      className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
                     >
-                      <MessageCircle className="w-5 h-5" />
+                      <MessageCircle className="w-4 h-4" />
                       <span>{post.comment_count}</span>
                     </button>
 
-                    <button className="flex items-center gap-2 text-sm hover:text-primary transition-colors ml-auto">
-                      <Share2 className="w-5 h-5" />
+                    <button className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors ml-auto">
+                      <Share2 className="w-4 h-4" />
                     </button>
                   </div>
 
