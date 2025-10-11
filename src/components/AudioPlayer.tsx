@@ -169,7 +169,7 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
   }
 
   return (
-    <Card className="fixed bottom-0 md:bottom-0 left-0 right-0 z-50 glass border-0 mb-0 md:mb-0 overflow-hidden">
+    <Card className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 glass border-0 overflow-hidden">
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/5 via-transparent to-neon-green/5 animate-pulse opacity-50" />
       
@@ -191,7 +191,7 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
       
       {/* Mobile Compact Player */}
       <div className="md:hidden relative z-10">
-        <div className="flex items-center gap-3 p-3 pb-2">
+        <div className="flex items-center gap-2 p-2 pb-1">
           {displayCover && (
             <div 
               className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
@@ -247,9 +247,9 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
         </div>
         
         {/* Mobile progress slider */}
-        <div className="px-3 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
+        <div className="px-2 pb-1">
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-[10px] text-muted-foreground min-w-[30px]">
               {formatTime(currentTime)}
             </span>
             <Slider
@@ -259,14 +259,14 @@ const AudioPlayer = ({ currentSong, currentAd, isPlaying, onPlayPause, onSongEnd
               className="flex-1"
               onValueChange={handleSeek}
             />
-            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
+            <span className="font-mono text-[10px] text-muted-foreground min-w-[30px]">
               {formatTime(duration)}
             </span>
           </div>
         </div>
         
         {/* Mobile volume slider */}
-        <div className="px-3 pb-2">
+        <div className="px-2 pb-1">
           <Slider
             value={[isMuted ? 0 : volume]}
             max={1}

@@ -138,10 +138,10 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-2 overflow-hidden"
+              className="flex items-center justify-between p-2 md:p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-1 md:gap-2"
             >
-              <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0 overflow-hidden">
-                <span className="text-neon-green font-mono font-bold text-lg w-6 md:w-8 flex-shrink-0">
+              <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                <span className="text-neon-green font-mono font-bold text-sm md:text-lg w-5 md:w-8 flex-shrink-0">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
@@ -153,29 +153,36 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     />
                   </div>
                 )}
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <div className="font-mono text-foreground font-semibold flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-xs md:text-sm text-foreground font-semibold flex items-center gap-1">
                     <span className="truncate">{song.title}</span>
                     {song.ticker && (
-                      <span className="text-neon-green text-xs flex-shrink-0">${song.ticker}</span>
+                      <span className="text-neon-green text-[10px] md:text-xs flex-shrink-0">${song.ticker}</span>
                     )}
                   </div>
                   {song.artist && (
                     <div 
-                      className="font-mono text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors"
+                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors truncate"
                       onClick={() => window.location.href = `/artist/${song.wallet_address}`}
                     >
                       {song.artist}
                     </div>
                   )}
+                  <div className="font-mono text-[10px] md:text-xs text-muted-foreground md:hidden">
+                    {song.play_count} plays
+                  </div>
                 </div>
-                <div className="font-mono text-xs md:text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
+                <div className="hidden md:block font-mono text-xs md:text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
                   {song.play_count} plays
                 </div>
               </div>
-              <div className="flex items-center space-x-2 flex-shrink-0">
-                <LikeButton songId={song.id} size="sm" showCount={false} />
-                <ReportButton songId={song.id} />
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                <div className="hidden md:block">
+                  <LikeButton songId={song.id} size="sm" showCount={false} />
+                </div>
+                <div className="hidden md:block">
+                  <ReportButton songId={song.id} />
+                </div>
                 <Button 
                   variant="ghost"
                   size="icon"
@@ -183,12 +190,12 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                     e.stopPropagation();
                     handlePlayClick(song);
                   }}
-                  className={`h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110 ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-lg shadow-neon-green/50' : ''}`}
+                  className={`h-9 w-9 md:h-10 md:w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110 ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-lg shadow-neon-green/50' : ''}`}
                 >
                   {isCurrentSong(song) && isPlaying ? (
-                    <Pause className="w-5 h-5 text-neon-green" />
+                    <Pause className="w-4 h-4 md:w-5 md:h-5 text-neon-green" />
                   ) : (
-                    <Play className="w-5 h-5 text-neon-green fill-neon-green" />
+                    <Play className="w-4 h-4 md:w-5 md:h-5 text-neon-green fill-neon-green" />
                   )}
                 </Button>
                 {isAdmin && (
@@ -200,7 +207,7 @@ const TopSongs = forwardRef<TopSongsRef, TopSongsProps>(({ onPlaySong, currentSo
                       deleteSong(song.id, song.title);
                     }}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
                   </Button>
                 )}
               </div>
