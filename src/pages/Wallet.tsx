@@ -412,6 +412,23 @@ const Wallet = () => {
                 <span className="text-xs text-muted-foreground font-mono">KTA</span>
               </div>
             )}
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs font-mono text-muted-foreground">{formatAddress(KTA_TOKEN_ADDRESS)}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(KTA_TOKEN_ADDRESS);
+                  toast({
+                    title: "Address copied!",
+                    description: "KEETA token address copied to clipboard",
+                  });
+                }}
+                className="h-4 w-4 p-0"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
 
           {/* ETH Balance */}
