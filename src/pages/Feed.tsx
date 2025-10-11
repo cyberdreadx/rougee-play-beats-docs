@@ -424,18 +424,18 @@ export default function Feed() {
 
                   {/* Post Media */}
                   {post.media_cid && (
-                    <div className="mb-3 rounded-lg overflow-hidden aspect-square">
+                    <div className="mb-3 rounded-lg overflow-hidden">
                       {post.media_type === 'image' ? (
                         <img
                           src={getIPFSGatewayUrl(post.media_cid)}
                           alt="Post media"
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full max-h-[600px] object-contain bg-black/5 rounded-lg"
                         />
                       ) : post.media_type === 'video' ? (
                         <video
                           src={getIPFSGatewayUrl(post.media_cid)}
                           controls
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full max-h-[600px] object-contain rounded-lg"
                         />
                       ) : null}
                     </div>
