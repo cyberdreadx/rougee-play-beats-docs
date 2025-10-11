@@ -19,9 +19,9 @@ const Footer = () => {
       { name: "Terms", href: "#" },
     ],
     community: [
-      { name: "Twitter", href: "#", icon: Twitter },
-      { name: "Discord", href: "#", icon: MessageCircle },
-      { name: "GitHub", href: "#", icon: Github },
+      { name: "Twitter", href: "https://x.com/rougeenetwork", icon: Twitter },
+      { name: "Discord", href: "https://discord.gg/Vumf5tcMTp", icon: MessageCircle },
+      { name: "GitHub", href: "https://github.com/cyberdreadx/rougee-play-beats", icon: Github },
     ],
   };
 
