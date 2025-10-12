@@ -58,7 +58,9 @@ export const useArtistProfile = (walletAddress: string | null) => {
       if (cachedProfile.profile_metadata_cid) {
         try {
           const ipfsProfile = await fetchProfileFromIPFS(cachedProfile.profile_metadata_cid);
-          setProfile({ ...cachedProfile, ...ipfsProfile });
+          // Preserve trusted DB fields like verified/plays/songs; avoid IPFS overriding them
+          const { verified: _ignoreVerified, total_plays: _ipfsPlays, total_songs: _ipfsSongs, role: _ipfsRole, ...ipfsRest } = ipfsProfile || {};
+          setProfile({ ...cachedProfile, ...ipfsRest } as ArtistProfile);
         } catch (ipfsError) {
           console.error('Failed to fetch from IPFS, using cache:', ipfsError);
           // Fallback to cached data
