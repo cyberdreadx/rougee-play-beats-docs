@@ -17,7 +17,6 @@ export interface ArtistProfile {
   verified: boolean;
   total_plays: number;
   total_songs: number;
-  role?: string;
   created_at: string;
   updated_at: string;
   avatarUrl?: string;
@@ -42,7 +41,7 @@ export const useArtistProfile = (walletAddress: string | null) => {
       // Fetch from Supabase cache
       const { data: cachedProfile, error: cacheError } = await supabase
         .from('profiles')
-        .select('wallet_address, display_name, artist_name, artist_ticker, bio, email, email_notifications, avatar_cid, cover_cid, profile_metadata_cid, social_links, verified, total_plays, total_songs, role, created_at, updated_at')
+        .select('wallet_address, display_name, artist_name, artist_ticker, bio, email, email_notifications, avatar_cid, cover_cid, profile_metadata_cid, social_links, verified, total_plays, total_songs, created_at, updated_at')
         .eq('wallet_address', walletAddress)
         .maybeSingle();
 
@@ -59,7 +58,7 @@ export const useArtistProfile = (walletAddress: string | null) => {
         try {
           const ipfsProfile = await fetchProfileFromIPFS(cachedProfile.profile_metadata_cid);
           // Preserve trusted DB fields like verified/plays/songs; avoid IPFS overriding them
-          const { verified: _ignoreVerified, total_plays: _ipfsPlays, total_songs: _ipfsSongs, role: _ipfsRole, ...ipfsRest } = ipfsProfile || {};
+          const { verified: _ignoreVerified, total_plays: _ipfsPlays, total_songs: _ipfsSongs, ...ipfsRest } = ipfsProfile || {};
           setProfile({ ...cachedProfile, ...ipfsRest } as ArtistProfile);
         } catch (ipfsError) {
           console.error('Failed to fetch from IPFS, using cache:', ipfsError);
