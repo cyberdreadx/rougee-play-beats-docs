@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
@@ -19,18 +20,19 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    
     const formData = await req.formData();
-    const walletAddress = formData.get('wallet_address') as string;
     const contentText = formData.get('content_text') as string;
     const mediaFile = formData.get('media') as File | null;
 
     // Validate input
     const PostSchema = z.object({
-      wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
       content_text: z.string().max(5000).optional()
     });
 
-    const validation = PostSchema.safeParse({ wallet_address: walletAddress, content_text: contentText || '' });
+    const validation = PostSchema.safeParse({ content_text: contentText || '' });
     if (!validation.success) {
       return new Response(JSON.stringify({ error: 'Invalid input', details: validation.error.issues }), 
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });

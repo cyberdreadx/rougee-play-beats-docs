@@ -7,6 +7,7 @@ import { Music, Upload, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/hooks/useWallet";
+import { usePrivyToken } from "@/hooks/usePrivyToken";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +22,7 @@ import {
 export default function UploadMusic() {
   const navigate = useNavigate();
   const { fullAddress: address } = useWallet();
+  const { getAuthHeaders } = usePrivyToken();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [title, setTitle] = useState("");
@@ -54,12 +56,14 @@ export default function UploadMusic() {
     
     setScanning(true);
     try {
+      const headers = await getAuthHeaders();
+      
       const formData = new FormData();
       formData.append('audio', file);
-      formData.append('wallet_address', address);
       formData.append('file_name', file.name);
 
       const { data, error } = await supabase.functions.invoke('check-copyright', {
+        headers,
         body: formData,
       });
 
@@ -116,9 +120,10 @@ export default function UploadMusic() {
 
     setUploading(true);
     try {
+      const headers = await getAuthHeaders();
+      
       const formData = new FormData();
       formData.append('file', audioFile);
-      formData.append('walletAddress', address);
       if (coverFile) {
         formData.append('coverFile', coverFile);
       }
@@ -131,6 +136,7 @@ export default function UploadMusic() {
       }));
 
       const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
+        headers,
         body: formData
       });
 

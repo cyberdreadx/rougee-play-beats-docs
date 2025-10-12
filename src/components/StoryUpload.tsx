@@ -7,9 +7,11 @@ import { useWallet } from "@/hooks/useWallet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Upload, X } from "lucide-react";
+import { usePrivyToken } from "@/hooks/usePrivyToken";
 
 const StoryUpload = () => {
   const { fullAddress } = useWallet();
+  const { getAuthHeaders } = usePrivyToken();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -58,13 +60,15 @@ const StoryUpload = () => {
     setUploading(true);
 
     try {
+      const headers = await getAuthHeaders();
+      
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("walletAddress", fullAddress);
       formData.append("caption", caption);
       formData.append("mediaType", mediaType);
 
       const { data, error } = await supabase.functions.invoke("upload-story", {
+        headers,
         body: formData,
       });
 

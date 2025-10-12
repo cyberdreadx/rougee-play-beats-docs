@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,11 +23,13 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    
     const formData = await req.formData();
     
     // Define validation schema
     const ProfileSchema = z.object({
-      wallet_address: z.string().min(1).max(255),
       display_name: z.string().min(1).max(100).trim(),
       artist_name: z.string().max(100).trim(),
       bio: z.string().max(500).trim(),
@@ -36,7 +39,6 @@ Deno.serve(async (req) => {
     });
 
     const rawData = {
-      wallet_address: formData.get('wallet_address') as string,
       display_name: formData.get('display_name') as string,
       artist_name: formData.get('artist_name') as string || '',
       bio: formData.get('bio') as string || '',
@@ -54,7 +56,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { wallet_address: walletAddress, display_name: displayName, artist_name: artistName,
+    const { display_name: displayName, artist_name: artistName,
             bio, email, artist_ticker: artistTicker, social_links: socialLinks } = validation.data;
     const emailNotifications = formData.get('email_notifications') === 'true';
     const avatarFile = formData.get('avatar') as File | null;
@@ -205,7 +207,6 @@ Deno.serve(async (req) => {
       social_links: JSON.parse(socialLinks),
       profile_metadata_cid: metadataCid,
       updated_at: new Date().toISOString(),
-      role: artistName ? 'artist' : 'listener',
     };
 
     if (artistName) profileData.artist_name = artistName;

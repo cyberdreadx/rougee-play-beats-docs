@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,10 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const { walletAddress, action } = await req.json();
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    
+    const { action } = await req.json();
 
-    if (!walletAddress || !action) {
-      throw new Error('Missing walletAddress or action');
+    if (!action) {
+      throw new Error('Missing action');
     }
 
     // Get IP address from request headers

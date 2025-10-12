@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,14 +22,16 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const walletAddress = formData.get('walletAddress') as string;
     const caption = formData.get('caption') as string | null;
     const mediaType = formData.get('mediaType') as string;
 
-    if (!file || !walletAddress || !mediaType) {
-      throw new Error('Missing required fields: file, walletAddress, or mediaType');
+    if (!file || !mediaType) {
+      throw new Error('Missing required fields: file or mediaType');
     }
 
     // File size limit: 50MB

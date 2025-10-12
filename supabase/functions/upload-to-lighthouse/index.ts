@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,21 +20,16 @@ serve(async (req) => {
       throw new Error('LIGHTHOUSE_API_KEY not configured');
     }
 
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const walletAddress = formData.get('walletAddress') as string;
     const metadataStr = formData.get('metadata') as string;
     const coverFile = formData.get('coverFile') as File;
 
-    if (!file || !walletAddress) {
-      throw new Error('File and wallet address are required');
-    }
-
-    // Validate wallet address
-    const WalletSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
-    if (!WalletSchema.safeParse(walletAddress).success) {
-      return new Response(JSON.stringify({ error: 'Invalid wallet address' }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    if (!file) {
+      throw new Error('File is required');
     }
 
     // Validate audio file

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,14 +21,16 @@ serve(async (req) => {
       throw new Error('ACRCloud credentials not configured');
     }
 
+    // Validate JWT and extract wallet address
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File;
-    const walletAddress = formData.get('wallet_address') as string;
     const fileName = formData.get('file_name') as string;
 
-    if (!audioFile || !walletAddress) {
+    if (!audioFile) {
       return new Response(
-        JSON.stringify({ error: 'Missing audio file or wallet address' }),
+        JSON.stringify({ error: 'Missing audio file' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

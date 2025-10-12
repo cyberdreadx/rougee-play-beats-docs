@@ -3,11 +3,13 @@ import { useWallet } from './useWallet';
 import { useArtistProfile } from './useArtistProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { usePrivy } from '@privy-io/react-auth';
 
 export const useCurrentUserProfile = () => {
   const { fullAddress } = useWallet();
   const { profile, loading, refresh } = useArtistProfile(fullAddress || null);
   const [updating, setUpdating] = useState(false);
+  const { getAccessToken } = usePrivy();
 
   const updateProfile = async (formData: FormData) => {
     if (!fullAddress) {
@@ -22,7 +24,12 @@ export const useCurrentUserProfile = () => {
     try {
       setUpdating(true);
       
+      const token = await getAccessToken();
+      
       const response = await supabase.functions.invoke('update-artist-profile', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 

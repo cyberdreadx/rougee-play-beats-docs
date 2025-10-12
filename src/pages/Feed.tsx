@@ -12,6 +12,7 @@ import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import StoriesBar from '@/components/StoriesBar';
 import LikeButton from '@/components/LikeButton';
+import { usePrivyToken } from '@/hooks/usePrivyToken';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -41,6 +42,7 @@ export default function Feed() {
     fullAddress,
     isConnected
   } = useWallet();
+  const { getAuthHeaders } = usePrivyToken();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -133,11 +135,13 @@ export default function Feed() {
     }
     setPosting(true);
     try {
+      const headers = await getAuthHeaders();
+      
       const formData = new FormData();
-      formData.append('wallet_address', fullAddress);
       if (contentText) formData.append('content_text', contentText);
       if (mediaFile) formData.append('media', mediaFile);
       const response = await supabase.functions.invoke('create-feed-post', {
+        headers,
         body: formData
       });
       if (response.error) throw response.error;
