@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,14 +14,24 @@ serve(async (req) => {
   }
 
   try {
-    const { tokenName, tokenSymbol, totalSupply, walletAddress } = await req.json();
+    const rawBody = await req.json();
     
-    console.log('🚀 Deploy token request:', { tokenName, tokenSymbol, totalSupply, walletAddress });
-
     // Validate inputs
-    if (!tokenName || !tokenSymbol || !totalSupply || !walletAddress) {
-      throw new Error('Missing required fields');
+    const TokenSchema = z.object({
+      tokenName: z.string().min(1).max(100).trim(),
+      tokenSymbol: z.string().min(1).max(10).regex(/^[A-Z0-9]+$/),
+      totalSupply: z.string().regex(/^\d+$/),
+      walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/)
+    });
+
+    const validation = TokenSchema.safeParse(rawBody);
+    if (!validation.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input', details: validation.error.issues }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
+
+    const { tokenName, tokenSymbol, totalSupply, walletAddress } = validation.data;
+    console.log('🚀 Deploy token request:', { tokenName, tokenSymbol, totalSupply, walletAddress });
 
     // Get Thirdweb secret key
     const thirdwebSecretKey = Deno.env.get('THIRDWEB_SECRET_KEY');

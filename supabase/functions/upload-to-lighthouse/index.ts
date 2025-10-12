@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,22 +22,67 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const walletAddress = formData.get('walletAddress') as string;
-    const metadata = formData.get('metadata') as string;
+    const metadataStr = formData.get('metadata') as string;
     const coverFile = formData.get('coverFile') as File;
-
-    console.log('Form data received:', {
-      file: file?.name,
-      walletAddress,
-      coverFile: coverFile?.name || 'No cover file',
-      metadataKeys: metadata ? Object.keys(JSON.parse(metadata)) : 'No metadata'
-    });
 
     if (!file || !walletAddress) {
       throw new Error('File and wallet address are required');
     }
 
-    console.log('Uploading file to Lighthouse:', file.name, '- Processing...');
-    const parsedMetadata = metadata ? JSON.parse(metadata) : {};
+    // Validate wallet address
+    const WalletSchema = z.string().regex(/^0x[a-fA-F0-9]{40}$/);
+    if (!WalletSchema.safeParse(walletAddress).success) {
+      return new Response(JSON.stringify({ error: 'Invalid wallet address' }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    }
+
+    // Validate audio file
+    if (file.size > 50 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'Audio too large (max 50MB)' }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    }
+    const validAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a'];
+    if (!validAudioTypes.includes(file.type)) {
+      return new Response(JSON.stringify({ error: 'Invalid audio type' }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+    }
+
+    // Validate cover if provided
+    if (coverFile && coverFile.size > 0) {
+      if (coverFile.size > 5 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Cover too large (max 5MB)' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+      const validImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validImageTypes.includes(coverFile.type)) {
+        return new Response(JSON.stringify({ error: 'Invalid cover type' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+    }
+
+    // Validate metadata
+    let parsedMetadata: any = {};
+    if (metadataStr) {
+      try {
+        parsedMetadata = JSON.parse(metadataStr);
+        const MetadataSchema = z.object({
+          title: z.string().min(1).max(200),
+          artist: z.string().max(200).optional(),
+          genre: z.string().max(100).optional(),
+          description: z.string().max(1000).optional()
+        });
+        const metadataValidation = MetadataSchema.safeParse(parsedMetadata);
+        if (!metadataValidation.success) {
+          return new Response(JSON.stringify({ error: 'Invalid metadata', details: metadataValidation.error.issues }), 
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+        }
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON in metadata' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+    }
+
+    console.log('Validation passed. Uploading file to Lighthouse:', file.name);
 
     // Helper function to upload to Lighthouse
     const uploadToLighthouse = async (fileToUpload: File, fileName?: string) => {

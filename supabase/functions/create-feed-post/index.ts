@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,11 +24,32 @@ serve(async (req) => {
     const contentText = formData.get('content_text') as string;
     const mediaFile = formData.get('media') as File | null;
 
-    console.log('Creating feed post for wallet:', walletAddress);
+    // Validate input
+    const PostSchema = z.object({
+      wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      content_text: z.string().max(5000).optional()
+    });
 
-    if (!walletAddress) {
-      throw new Error('Wallet address is required');
+    const validation = PostSchema.safeParse({ wallet_address: walletAddress, content_text: contentText || '' });
+    if (!validation.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input', details: validation.error.issues }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
+
+    // Validate media
+    if (mediaFile && mediaFile.size > 0) {
+      if (mediaFile.size > 20 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Media too large (max 20MB)' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+      if (!validTypes.includes(mediaFile.type)) {
+        return new Response(JSON.stringify({ error: 'Invalid media type' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+    }
+
+    console.log('Creating feed post for wallet:', walletAddress);
 
     let mediaCid: string | null = null;
     let mediaType: string | null = null;

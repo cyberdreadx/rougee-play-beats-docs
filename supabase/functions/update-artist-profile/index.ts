@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,19 +23,66 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     const formData = await req.formData();
-    const walletAddress = formData.get('wallet_address') as string;
-    const displayName = formData.get('display_name') as string;
-    const artistName = formData.get('artist_name') as string || '';
-    const bio = formData.get('bio') as string || '';
-    const email = formData.get('email') as string || '';
+    
+    // Define validation schema
+    const ProfileSchema = z.object({
+      wallet_address: z.string().min(1).max(255),
+      display_name: z.string().min(1).max(100).trim(),
+      artist_name: z.string().max(100).trim(),
+      bio: z.string().max(500).trim(),
+      email: z.string().email().max(255).or(z.literal('')),
+      artist_ticker: z.string().max(10).regex(/^[A-Z0-9]*$/),
+      social_links: z.string()
+    });
+
+    const rawData = {
+      wallet_address: formData.get('wallet_address') as string,
+      display_name: formData.get('display_name') as string,
+      artist_name: formData.get('artist_name') as string || '',
+      bio: formData.get('bio') as string || '',
+      email: formData.get('email') as string || '',
+      artist_ticker: formData.get('artist_ticker') as string || '',
+      social_links: formData.get('social_links') as string || '{}'
+    };
+
+    // Validate
+    const validation = ProfileSchema.safeParse(rawData);
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid input', details: validation.error.issues }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { wallet_address: walletAddress, display_name: displayName, artist_name: artistName,
+            bio, email, artist_ticker: artistTicker, social_links: socialLinks } = validation.data;
     const emailNotifications = formData.get('email_notifications') === 'true';
-    const artistTicker = formData.get('artist_ticker') as string || '';
-    const socialLinks = formData.get('social_links') as string || '{}';
     const avatarFile = formData.get('avatar') as File | null;
     const coverFile = formData.get('cover') as File | null;
 
-    if (!walletAddress || !displayName) {
-      throw new Error('Wallet address and display name are required');
+    // Validate files
+    if (avatarFile && avatarFile.size > 0) {
+      if (avatarFile.size > 5 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Avatar too large (max 5MB)' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(avatarFile.type)) {
+        return new Response(JSON.stringify({ error: 'Invalid avatar type' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+    }
+
+    if (coverFile && coverFile.size > 0) {
+      if (coverFile.size > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Cover too large (max 10MB)' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+      if (!validTypes.includes(coverFile.type)) {
+        return new Response(JSON.stringify({ error: 'Invalid cover type' }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      }
     }
 
     console.log('Processing profile update for:', walletAddress);
