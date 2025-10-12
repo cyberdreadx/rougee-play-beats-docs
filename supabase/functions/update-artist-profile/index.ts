@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
 
     console.log('Processing profile update for:', walletAddress);
 
-    // Fetch existing profile to preserve image CIDs if not uploading new ones
+    // Fetch existing profile to preserve image CIDs and verified status if not uploading new ones
     const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('avatar_cid, cover_cid')
+      .select('avatar_cid, cover_cid, verified')
       .eq('wallet_address', walletAddress)
       .maybeSingle();
 
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       coverCid = await uploadToLighthouse(coverFile, `cover-${walletAddress}.${coverFile.name.split('.').pop()}`);
     }
 
-    // Create metadata JSON
+    // Create metadata JSON (preserve verified status from database)
     const metadata = {
       wallet_address: walletAddress,
       display_name: displayName,
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
       avatar_cid: avatarCid,
       cover_cid: coverCid,
       social_links: JSON.parse(socialLinks),
-      verified: false,
+      verified: existingProfile?.verified || false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
