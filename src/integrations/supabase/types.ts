@@ -599,7 +599,69 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          artist_name: string | null
+          artist_ticker: string | null
+          avatar_cid: string | null
+          avatar_url: string | null
+          bio: string | null
+          cover_cid: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          role: string | null
+          social_links: Json | null
+          ticker_created_at: string | null
+          total_plays: number | null
+          total_songs: number | null
+          updated_at: string | null
+          user_id: string | null
+          verified: boolean | null
+          wallet_address: string | null
+        }
+        Insert: {
+          artist_name?: string | null
+          artist_ticker?: string | null
+          avatar_cid?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          cover_cid?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          role?: string | null
+          social_links?: Json | null
+          ticker_created_at?: string | null
+          total_plays?: number | null
+          total_songs?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          wallet_address?: string | null
+        }
+        Update: {
+          artist_name?: string | null
+          artist_ticker?: string | null
+          avatar_cid?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          cover_cid?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          role?: string | null
+          social_links?: Json | null
+          ticker_created_at?: string | null
+          total_plays?: number | null
+          total_songs?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_expired_stories: {
