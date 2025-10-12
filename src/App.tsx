@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import Web3Provider from "@/providers/Web3Provider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useRadioPlayer } from "@/hooks/useRadioPlayer";
@@ -93,17 +94,19 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <ThemeProvider>
-    <Web3Provider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
-    </Web3Provider>
-  </ThemeProvider>
+  <HelmetProvider>
+    <ThemeProvider>
+      <Web3Provider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </Web3Provider>
+    </ThemeProvider>
+  </HelmetProvider>
 );
 
 export default App;

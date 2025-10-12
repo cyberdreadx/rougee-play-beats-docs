@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -230,8 +231,27 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     );
   }
 
+  const coverImageUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : '/og-image.png';
+  const pageUrl = `https://edbd29f5-fe8e-435d-b3d2-8111ac95287a.lovableproject.com/song/${song.id}`;
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">
+      <Helmet>
+        <title>{song.title} - {song.artist || 'Unknown Artist'} | ROUGEE.PLAY</title>
+        <meta name="description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY. Stream and trade music NFTs on the blockchain.`} />
+        
+        <meta property="og:title" content={`${song.title} - ${song.artist || 'Unknown Artist'}`} />
+        <meta property="og:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`} />
+        <meta property="og:image" content={coverImageUrl} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:type" content="music.song" />
+        
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${song.title} - ${song.artist || 'Unknown Artist'}`} />
+        <meta name="twitter:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`} />
+        <meta name="twitter:image" content={coverImageUrl} />
+      </Helmet>
+
       <Header />
       <Navigation />
       <NetworkInfo />
