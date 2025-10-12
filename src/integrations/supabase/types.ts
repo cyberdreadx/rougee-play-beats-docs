@@ -263,7 +263,6 @@ export type Database = {
           email_notifications: boolean | null
           id: string
           profile_metadata_cid: string | null
-          role: string
           social_links: Json | null
           ticker_created_at: string | null
           total_plays: number | null
@@ -286,7 +285,6 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           profile_metadata_cid?: string | null
-          role: string
           social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
@@ -309,7 +307,6 @@ export type Database = {
           email_notifications?: boolean | null
           id?: string
           profile_metadata_cid?: string | null
-          role?: string
           social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
@@ -610,7 +607,6 @@ export type Database = {
           created_at: string | null
           display_name: string | null
           id: string | null
-          role: string | null
           social_links: Json | null
           ticker_created_at: string | null
           total_plays: number | null
@@ -630,7 +626,6 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string | null
-          role?: string | null
           social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
@@ -650,7 +645,6 @@ export type Database = {
           created_at?: string | null
           display_name?: string | null
           id?: string | null
-          role?: string | null
           social_links?: Json | null
           ticker_created_at?: string | null
           total_plays?: number | null
