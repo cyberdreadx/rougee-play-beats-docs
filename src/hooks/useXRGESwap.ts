@@ -73,16 +73,22 @@ export const useXRGESwap = () => {
 
   // Buy XRGE with ETH
   const buyXRGE = (ethAmount: string, slippageBps: number = 500) => {
+    console.log('buyXRGE called with:', { ethAmount, slippageBps });
+    
     try {
       const value = parseEther(ethAmount);
+      console.log('Parsed value:', value.toString());
       
-      writeContract({
+      const config = {
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
         functionName: 'swapETHForXRGESimple',
         args: [BigInt(slippageBps)],
         value,
-      } as any);
+      };
+      
+      console.log('Calling writeContract with config:', config);
+      writeContract(config as any);
     } catch (err) {
       console.error('Buy XRGE error:', err);
       toast({

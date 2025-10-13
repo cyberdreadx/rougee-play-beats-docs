@@ -53,7 +53,10 @@ const Swap = () => {
   }, [isSuccess, refetchApproval, refetchEthBalance]);
 
   const handleBuy = () => {
+    console.log('handleBuy clicked', { buyAmount, slippage });
+    
     if (!buyAmount || Number(buyAmount) <= 0) {
+      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid ETH amount",
@@ -61,6 +64,8 @@ const Swap = () => {
       });
       return;
     }
+    
+    console.log('Calling buyXRGE with:', buyAmount, Number(slippage) * 100);
     buyXRGE(buyAmount, Number(slippage) * 100);
   };
 
