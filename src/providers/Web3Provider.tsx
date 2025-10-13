@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
+import { WagmiProvider } from '@privy-io/wagmi';
 import { PrivyProvider } from '@privy-io/react-auth';
 
 import { config, privyAppId } from '@/config/wallet';
@@ -30,11 +30,11 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
         },
       }}
     >
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={config}>
           {children}
-        </QueryClientProvider>
-      </WagmiProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
     </PrivyProvider>
   );
 }

@@ -1,4 +1,5 @@
-import { http, createConfig } from 'wagmi';
+import { http } from 'wagmi';
+import { createConfig } from '@privy-io/wagmi';
 import { base } from 'wagmi/chains';
 
 // Your Privy App ID (publishable key)
