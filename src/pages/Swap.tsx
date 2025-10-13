@@ -156,6 +156,16 @@ const Swap = () => {
     },
   });
 
+  // Format balances
+  const formatTokenBalance = (balance: bigint | undefined, decimals: number = 18) => {
+    if (!balance) return "0.00";
+    return (Number(balance) / Math.pow(10, decimals)).toFixed(decimals === 6 ? 2 : 4);
+  };
+
+  const ethBalanceFormatted = ethBalance ? Number(formatEther(ethBalance.value)).toFixed(6) : "0.000000";
+  const xrgeBalanceFormatted = formatTokenBalance(xrgeBalance as bigint | undefined, Number(xrgeDecimals || 18));
+  const ktaBalanceFormatted = formatTokenBalance(ktaBalance as bigint | undefined, Number(xrgeDecimals || 18));
+  const usdcBalanceFormatted = formatTokenBalance(usdcBalance as bigint | undefined, 6);
 
   useEffect(() => {
     // Only redirect if Privy is ready and user is not connected
@@ -421,7 +431,6 @@ const Swap = () => {
             {/* Buy Tab */}
             <TabsContent value="buy" className="space-y-6">
               <div className="space-y-4">
-                {/* Token Selector */}
                 <div>
                   <Label htmlFor="token-select" className="font-mono text-sm">
                     Pay With
@@ -431,9 +440,30 @@ const Swap = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ETH">ETH</SelectItem>
-                      <SelectItem value="KTA">KTA</SelectItem>
-                      <SelectItem value="USDC">USDC</SelectItem>
+                      <SelectItem value="ETH" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>ETH</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="KTA" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>KTA</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="USDC" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>USDC</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -561,9 +591,30 @@ const Swap = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ETH">ETH</SelectItem>
-                      <SelectItem value="KTA">KTA</SelectItem>
-                      <SelectItem value="USDC">USDC</SelectItem>
+                      <SelectItem value="ETH" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>ETH</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="KTA" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>KTA</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="USDC" className="font-mono">
+                        <div className="flex items-center justify-between w-full">
+                          <span>USDC</span>
+                          <span className="text-xs text-muted-foreground ml-4">
+                            {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
+                          </span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
