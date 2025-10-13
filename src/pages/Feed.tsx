@@ -327,8 +327,8 @@ export default function Feed() {
             </Card>}
 
           {/* Feed */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {loading ? <div className="col-span-full text-center py-8 text-muted-foreground">Loading feed...</div> : posts.length === 0 ? <div className="col-span-full text-center py-8 text-muted-foreground">
+          <div className="max-w-2xl mx-auto space-y-4">
+            {loading ? <div className="text-center py-8 text-muted-foreground">Loading feed...</div> : posts.length === 0 ? <div className="text-center py-8 text-muted-foreground">
                 No posts yet. Be the first to post!
               </div> : posts.map(post => <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col">
                   {/* Post Header */}
