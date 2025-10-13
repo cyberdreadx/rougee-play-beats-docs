@@ -687,6 +687,10 @@ export type Database = {
         Args: { p_song_id: string }
         Returns: number
       }
+      get_wallet_from_jwt: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_wallets_by_ip: {
         Args: { check_ip: unknown }
         Returns: {
