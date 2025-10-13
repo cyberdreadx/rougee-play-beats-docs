@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight } from "lucide-react";
 import MusicBars from "./MusicBars";
 
 interface NavigationProps {
@@ -25,6 +25,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
     ),
     { name: "WALLET", path: "/wallet", icon: Wallet },
+    { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "UPLOAD", path: "/upload", icon: Upload },
   ];
 
@@ -53,6 +54,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
     if (tab.path === "/wallet") {
       return location.pathname === "/wallet";
+    }
+    if (tab.path === "/swap") {
+      return location.pathname === "/swap";
     }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
