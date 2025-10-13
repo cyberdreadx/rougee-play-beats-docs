@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.log-ip]
 verify_jwt = false
+
+[functions.create-feed-post]
+verify_jwt = false
