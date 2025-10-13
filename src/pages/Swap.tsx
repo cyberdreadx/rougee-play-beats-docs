@@ -20,8 +20,9 @@ import {
   KTA_TOKEN_ADDRESS,
   USDC_TOKEN_ADDRESS
 } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown } from "lucide-react";
+import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { useBalance, useReadContract } from "wagmi";
 import { formatEther } from "viem";
@@ -218,7 +219,21 @@ const Swap = () => {
       return;
     }
     
+    if (!hasApproval) {
+      toast({
+        title: "Approval Required",
+        description: "Please approve XRGE first before selling",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const slippageBps = Number(slippage) * 100;
+    
+    toast({
+      title: "Selling XRGE",
+      description: "Step 2 of 2: Confirming sell transaction...",
+    });
     
     if (selectedToken === "ETH") {
       sellXRGE(sellAmount, slippageBps);
@@ -258,6 +273,11 @@ const Swap = () => {
       });
       return;
     }
+    
+    toast({
+      title: "Approving XRGE",
+      description: "Step 1 of 2: Approving XRGE for swap. After this, you'll need to confirm the sell transaction.",
+    });
     
     approveXRGE(sellAmount);
   };
@@ -496,6 +516,14 @@ const Swap = () => {
 
             {/* Sell Tab */}
             <TabsContent value="sell" className="space-y-6">
+              {/* Info Alert */}
+              <Alert className="border-neon-green/20 bg-neon-green/5">
+                <Info className="h-4 w-4 text-neon-green" />
+                <AlertDescription className="font-mono text-sm">
+                  Selling requires 2 transactions: First approve XRGE, then confirm the sell.
+                </AlertDescription>
+              </Alert>
+              
               <div className="space-y-4">
                 {/* Token Selector */}
                 <div>
@@ -591,7 +619,7 @@ const Swap = () => {
                         APPROVING...
                       </>
                     ) : (
-                      "APPROVE XRGE"
+                      "STEP 1: APPROVE XRGE"
                     )}
                   </Button>
                 ) : (
@@ -608,7 +636,7 @@ const Swap = () => {
                         {isPending ? "CONFIRMING..." : "PROCESSING..."}
                       </>
                     ) : (
-                      "SELL XRGE"
+                      "STEP 2: SELL XRGE"
                     )}
                   </Button>
                 )}
