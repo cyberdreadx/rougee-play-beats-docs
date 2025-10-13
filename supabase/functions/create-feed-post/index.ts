@@ -20,8 +20,12 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    console.log('Validating Privy token...');
+    console.log('Authorization header present:', !!req.headers.get('authorization'));
+    
     // Validate JWT and extract wallet address
     const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    console.log('Wallet address validated:', walletAddress);
     
     const formData = await req.formData();
     const contentText = formData.get('content_text') as string;
