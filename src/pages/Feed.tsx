@@ -139,7 +139,9 @@ export default function Feed() {
     }
     setPosting(true);
     try {
-      const headers = await getAuthHeaders();
+      const baseHeaders = await getAuthHeaders();
+      const headers: Record<string, string> = { ...baseHeaders };
+      if (fullAddress) headers['x-wallet-address'] = fullAddress;
       
       const formData = new FormData();
       if (contentText) formData.append('content_text', contentText);

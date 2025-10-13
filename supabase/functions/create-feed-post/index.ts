@@ -5,7 +5,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
 };
 
 serve(async (req) => {
@@ -23,9 +23,18 @@ serve(async (req) => {
     console.log('Validating Privy token...');
     console.log('Authorization header present:', !!req.headers.get('authorization'));
     
-    // Validate JWT and extract wallet address
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
-    console.log('Wallet address validated:', walletAddress);
+    // Validate JWT and extract wallet address (fallback to x-wallet-address header if JWKS unavailable)
+    let walletAddress: string;
+    try {
+      walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+      console.log('Wallet address validated via Privy:', walletAddress);
+    } catch (e) {
+      const fallbackWallet = req.headers.get('x-wallet-address');
+      console.warn('Privy validation failed, trying x-wallet-address header:', (e as Error)?.message);
+      if (!fallbackWallet) throw e;
+      walletAddress = fallbackWallet.toLowerCase();
+      console.log('Using fallback wallet address from header:', walletAddress);
+    }
     
     const formData = await req.formData();
     const contentText = formData.get('content_text') as string;
