@@ -70,11 +70,11 @@ const ERC20_ABI = [
 export const useXRGESwap = () => {
   const { address: accountAddress } = useAccount();
   const chainId = useChainId();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContract, writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // Buy XRGE with ETH
-  const buyXRGE = (ethAmount: string, slippageBps: number = 500) => {
+  const buyXRGE = async (ethAmount: string, slippageBps: number = 500) => {
     console.log('buyXRGE called with:', { ethAmount, slippageBps, accountAddress, chainId });
     
     if (!accountAddress || !chainId) {
@@ -101,8 +101,9 @@ export const useXRGESwap = () => {
         value,
       };
       
-      console.log('Calling writeContract with config:', config);
-      writeContract(config as any);
+      console.log('Calling writeContractAsync with config:', config);
+      const submittedHash = await writeContractAsync(config as any);
+      console.log('Transaction submitted (buy) hash:', submittedHash);
     } catch (err) {
       console.error('Buy XRGE error:', err);
       toast({
@@ -114,7 +115,7 @@ export const useXRGESwap = () => {
   };
 
   // Approve XRGE for swapper contract
-  const approveXRGE = (amount: string) => {
+  const approveXRGE = async (amount: string) => {
     console.log('approveXRGE called with:', { amount, accountAddress, chainId });
     
     if (!accountAddress || !chainId) {
@@ -140,8 +141,9 @@ export const useXRGESwap = () => {
         args: [XRGE_SWAPPER_ADDRESS, value],
       };
       
-      console.log('Calling writeContract for approval with config:', config);
-      writeContract(config as any);
+      console.log('Calling writeContractAsync for approval with config:', config);
+      const submittedHash = await writeContractAsync(config as any);
+      console.log('Transaction submitted (approve) hash:', submittedHash);
     } catch (err) {
       console.error('Approve error:', err);
       toast({
@@ -153,7 +155,7 @@ export const useXRGESwap = () => {
   };
 
   // Sell XRGE for ETH
-  const sellXRGE = (xrgeAmount: string, slippageBps: number = 500) => {
+  const sellXRGE = async (xrgeAmount: string, slippageBps: number = 500) => {
     console.log('sellXRGE called with:', { xrgeAmount, slippageBps, accountAddress, chainId });
     
     if (!accountAddress || !chainId) {
@@ -179,8 +181,9 @@ export const useXRGESwap = () => {
         args: [value, BigInt(slippageBps)],
       };
       
-      console.log('Calling writeContract for sell with config:', config);
-      writeContract(config as any);
+      console.log('Calling writeContractAsync for sell with config:', config);
+      const submittedHash = await writeContractAsync(config as any);
+      console.log('Transaction submitted (sell) hash:', submittedHash);
     } catch (err) {
       console.error('Sell XRGE error:', err);
       toast({

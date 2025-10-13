@@ -22,7 +22,7 @@ const Swap = () => {
 
   console.log('Swap component rendered', { isConnected, fullAddress, buyAmount, slippage });
 
-  const { buyXRGE, sellXRGE, approveXRGE, isPending, isConfirming, isSuccess } = useXRGESwap();
+  const { buyXRGE, sellXRGE, approveXRGE, isPending, isConfirming, isSuccess, error } = useXRGESwap();
   const { expectedXRGE, isLoading: isBuyQuoteLoading } = useXRGEQuote(buyAmount);
   const { expectedETH, isLoading: isSellQuoteLoading } = useETHQuote(sellAmount);
   const { hasApproval, refetch: refetchApproval } = useXRGEApproval(
@@ -60,6 +60,14 @@ const Swap = () => {
       refetchEthBalance();
     }
   }, [isSuccess, refetchApproval, refetchEthBalance]);
+
+  useEffect(() => {
+    if (error) {
+      const message = (error as any)?.shortMessage || (error as Error)?.message || 'Transaction failed';
+      toast({ title: 'Transaction Error', description: message, variant: 'destructive' });
+      console.error('Transaction error:', error);
+    }
+  }, [error]);
 
   const handleBuy = () => {
     console.log('handleBuy clicked', { buyAmount, slippage });
