@@ -20,6 +20,8 @@ const Swap = () => {
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
 
+  console.log('Swap component rendered', { isConnected, fullAddress, buyAmount, slippage });
+
   const { buyXRGE, sellXRGE, approveXRGE, isPending, isConfirming, isSuccess } = useXRGESwap();
   const { expectedXRGE, isLoading: isBuyQuoteLoading } = useXRGEQuote(buyAmount);
   const { expectedETH, isLoading: isSellQuoteLoading } = useETHQuote(sellAmount);
@@ -31,6 +33,13 @@ const Swap = () => {
   // Fetch ETH balance
   const { data: ethBalance, refetch: refetchEthBalance } = useBalance({
     address: fullAddress as any,
+  });
+
+  console.log('Button state:', { 
+    isPending, 
+    isConfirming, 
+    buyAmount, 
+    disabled: isPending || isConfirming || !buyAmount 
   });
 
   useEffect(() => {
