@@ -7,22 +7,60 @@ interface TokenPrices {
   usdc: number;
 }
 
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317";
+const KTA_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24318";
+
 export const useTokenPrices = () => {
   const { data: prices, isLoading } = useQuery<TokenPrices>({
     queryKey: ['token-prices'],
     queryFn: async () => {
-      // Fetch prices from CoinGecko or similar API
-      // For now, using mock data - replace with actual API calls
       try {
-        const response = await fetch(
+        // Fetch ETH price from CoinGecko
+        const ethResponse = await fetch(
           'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
         );
-        const data = await response.json();
+        const ethData = await ethResponse.json();
+        const ethPrice = ethData.ethereum?.usd || 0;
+
+        // Fetch XRGE price from DEX Screener
+        let xrgePrice = 0;
+        try {
+          const xrgeResponse = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${XRGE_TOKEN_ADDRESS}`
+          );
+          const xrgeData = await xrgeResponse.json();
+          
+          // Find the Base chain pair with highest liquidity
+          const basePair = xrgeData.pairs?.find((pair: any) => 
+            pair.chainId === 'base' && pair.quoteToken?.symbol === 'WETH'
+          ) || xrgeData.pairs?.[0];
+          
+          xrgePrice = basePair?.priceUsd ? parseFloat(basePair.priceUsd) : 0;
+        } catch (error) {
+          console.error('Failed to fetch XRGE price from DEX Screener:', error);
+        }
+
+        // Fetch KTA price from DEX Screener
+        let ktaPrice = 0;
+        try {
+          const ktaResponse = await fetch(
+            `https://api.dexscreener.com/latest/dex/tokens/${KTA_TOKEN_ADDRESS}`
+          );
+          const ktaData = await ktaResponse.json();
+          
+          const basePair = ktaData.pairs?.find((pair: any) => 
+            pair.chainId === 'base'
+          ) || ktaData.pairs?.[0];
+          
+          ktaPrice = basePair?.priceUsd ? parseFloat(basePair.priceUsd) : 0;
+        } catch (error) {
+          console.error('Failed to fetch KTA price from DEX Screener:', error);
+        }
         
         return {
-          eth: data.ethereum?.usd || 0,
-          xrge: 0.01, // Mock price - replace with actual
-          kta: 0.005, // Mock price - replace with actual
+          eth: ethPrice,
+          xrge: xrgePrice,
+          kta: ktaPrice,
           usdc: 1, // USDC is pegged to $1
         };
       } catch (error) {
