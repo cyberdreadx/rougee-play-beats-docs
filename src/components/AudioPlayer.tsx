@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1 } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Song {
@@ -60,25 +60,28 @@ const AudioPlayer = ({
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [artistTicker, setArtistTicker] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
 
-  // Fetch artist ticker
+  // Fetch artist ticker and verified status
   useEffect(() => {
-    const fetchArtistTicker = async () => {
+    const fetchArtistData = async () => {
       if (!currentSong?.wallet_address) {
         setArtistTicker(null);
+        setIsVerified(false);
         return;
       }
 
       const { data } = await supabase
         .from("profiles")
-        .select("artist_ticker")
+        .select("artist_ticker, verified")
         .eq("wallet_address", currentSong.wallet_address)
         .maybeSingle();
 
       setArtistTicker(data?.artist_ticker || null);
+      setIsVerified(data?.verified || false);
     };
 
-    fetchArtistTicker();
+    fetchArtistData();
   }, [currentSong?.wallet_address]);
 
   useEffect(() => {
@@ -366,11 +369,14 @@ const AudioPlayer = ({
               )}
             </div>
             <div 
-              className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors"
+              className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors flex items-center gap-1"
               onClick={() => !isAd && currentSong && navigate(`/artist/${currentSong.wallet_address}`)}
             >
-              {displayArtist}
-              {!isAd && artistTicker && <span className="text-neon-green ml-1">${artistTicker}</span>}
+              <span className="truncate">{displayArtist}</span>
+              {!isAd && isVerified && (
+                <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+              )}
+              {!isAd && artistTicker && <span className="text-neon-green flex-shrink-0">${artistTicker}</span>}
             </div>
           </div>
         </div>

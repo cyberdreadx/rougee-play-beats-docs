@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import Header from '@/components/Header';
@@ -21,6 +21,7 @@ interface FeedComment {
   profiles?: {
     artist_name: string | null;
     avatar_cid: string | null;
+    verified: boolean | null;
   };
 }
 interface FeedPost {
@@ -35,6 +36,7 @@ interface FeedPost {
   profiles?: {
     artist_name: string | null;
     avatar_cid: string | null;
+    verified: boolean | null;
   };
 }
 export default function Feed() {
@@ -73,7 +75,7 @@ export default function Feed() {
       const walletAddresses = [...new Set(postsData?.map(p => p.wallet_address) || [])];
       const {
         data: profilesData
-      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid').in('wallet_address', walletAddresses);
+      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
 
       // Merge data
       const postsWithProfiles = postsData?.map(post => ({
@@ -191,7 +193,7 @@ export default function Feed() {
       const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
       const {
         data: profilesData
-      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid').in('wallet_address', walletAddresses);
+      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
       const commentsWithProfiles = commentsData?.map(comment => ({
         ...comment,
         profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null
@@ -333,8 +335,11 @@ export default function Feed() {
                         </span>
                       </div>}
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">
+                      <p className="font-semibold text-sm truncate flex items-center gap-1">
                         {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
+                        {post.profiles?.verified && (
+                          <CheckCircle className="h-3.5 w-3.5 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatTimeAgo(post.created_at)}
@@ -391,8 +396,11 @@ export default function Feed() {
                                 </span>
                               </div>}
                             <div className="flex-1">
-                              <p className="text-sm font-semibold">
+                              <p className="text-sm font-semibold flex items-center gap-1">
                                 {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
+                                {comment.profiles?.verified && (
+                                  <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+                                )}
                               </p>
                               <p className="text-sm text-muted-foreground">{comment.comment_text}</p>
                               <p className="text-xs text-muted-foreground mt-1">
