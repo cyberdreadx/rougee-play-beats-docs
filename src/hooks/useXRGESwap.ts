@@ -4,7 +4,7 @@ import { toast } from '@/hooks/use-toast';
 
 // XRGESwapper contract address on Base
 const XRGE_SWAPPER_ADDRESS = '0x3B0F149C81fF268aaA968BcD149ddccBd8007Cf8' as Address;
-const XRGE_TOKEN_ADDRESS = '0x37D126C98Aa9543C3F89E1F38E828aFDbC20E5dC' as Address;
+const XRGE_TOKEN_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
 
 // Contract ABI (only functions we need)
 const XRGE_SWAPPER_ABI = [
