@@ -80,6 +80,10 @@ const Wallet = () => {
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!fullAddress,
+      refetchInterval: 5000, // Refetch every 5 seconds
+    },
   });
 
   const { data: xrgeDecimals } = useReadContract({

@@ -8,11 +8,30 @@ import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import { useWallet } from "@/hooks/useWallet";
 import { useXRGESwap, useXRGEQuote, useETHQuote, useXRGEApproval } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet } from "lucide-react";
+import { ArrowDownUp, Loader2, Wallet, Coins } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useBalance } from "wagmi";
+import { useBalance, useReadContract } from "wagmi";
 import { formatEther } from "viem";
+
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
+
+const ERC20_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    type: "function",
+  },
+] as const;
 
 const Swap = () => {
   const navigate = useNavigate();
@@ -34,6 +53,23 @@ const Swap = () => {
   // Fetch ETH balance
   const { data: ethBalance, refetch: refetchEthBalance } = useBalance({
     address: fullAddress as any,
+  });
+
+  // Fetch XRGE balance
+  const { data: xrgeBalance, refetch: refetchXrgeBalance } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!fullAddress,
+    },
+  });
+
+  const { data: xrgeDecimals } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
   });
 
   console.log('Button state:', { 
@@ -59,8 +95,9 @@ const Swap = () => {
       setSellAmount("");
       refetchApproval();
       refetchEthBalance();
+      refetchXrgeBalance();
     }
-  }, [isSuccess, refetchApproval, refetchEthBalance]);
+  }, [isSuccess, refetchApproval, refetchEthBalance, refetchXrgeBalance]);
 
   useEffect(() => {
     if (error) {
@@ -141,17 +178,33 @@ const Swap = () => {
         </div>
 
         {/* Balance Display */}
-        <Card className="p-4 bg-card border-tech-border mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-neon-green" />
-              <span className="font-mono text-sm text-muted-foreground">ETH Balance:</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <Card className="p-4 bg-card border-tech-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-neon-green" />
+                <span className="font-mono text-sm text-muted-foreground">ETH Balance:</span>
+              </div>
+              <span className="font-mono text-lg font-bold">
+                {ethBalance ? Number(formatEther(ethBalance.value)).toFixed(6) : '0.000000'}
+              </span>
             </div>
-            <span className="font-mono text-lg font-bold">
-              {ethBalance ? Number(formatEther(ethBalance.value)).toFixed(6) : '0.000000'} ETH
-            </span>
-          </div>
-        </Card>
+          </Card>
+
+          <Card className="p-4 bg-card border-tech-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-neon-green" />
+                <span className="font-mono text-sm text-muted-foreground">XRGE Balance:</span>
+              </div>
+              <span className="font-mono text-lg font-bold">
+                {xrgeBalance && xrgeDecimals 
+                  ? (Number(xrgeBalance) / Math.pow(10, Number(xrgeDecimals))).toFixed(2)
+                  : '0.00'}
+              </span>
+            </div>
+          </Card>
+        </div>
 
         <Card className="p-6 bg-card border-tech-border">
           <Tabs defaultValue="buy" className="w-full">
