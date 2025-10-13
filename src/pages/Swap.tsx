@@ -53,7 +53,7 @@ const ERC20_ABI = [
 
 const Swap = () => {
   const navigate = useNavigate();
-  const { isConnected, fullAddress } = useWallet();
+  const { isConnected, fullAddress, isPrivyReady } = useWallet();
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
@@ -157,10 +157,11 @@ const Swap = () => {
 
 
   useEffect(() => {
-    if (!isConnected) {
+    // Only redirect if Privy is ready and user is not connected
+    if (isPrivyReady && !isConnected) {
       navigate("/");
     }
-  }, [isConnected, navigate]);
+  }, [isConnected, isPrivyReady, navigate]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -260,6 +261,11 @@ const Swap = () => {
     
     approveXRGE(sellAmount);
   };
+
+  // Show nothing while Privy is initializing
+  if (!isPrivyReady) {
+    return null;
+  }
 
   if (!isConnected) {
     return null;
