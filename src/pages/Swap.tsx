@@ -79,7 +79,10 @@ const Swap = () => {
   };
 
   const handleSell = () => {
+    console.log('handleSell clicked', { sellAmount, slippage, hasApproval });
+    
     if (!sellAmount || Number(sellAmount) <= 0) {
+      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid XRGE amount",
@@ -87,11 +90,16 @@ const Swap = () => {
       });
       return;
     }
+    
+    console.log('Calling sellXRGE with:', sellAmount, Number(slippage) * 100);
     sellXRGE(sellAmount, Number(slippage) * 100);
   };
 
   const handleApprove = () => {
+    console.log('handleApprove clicked', { sellAmount, slippage });
+    
     if (!sellAmount || Number(sellAmount) <= 0) {
+      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid XRGE amount",
@@ -99,6 +107,8 @@ const Swap = () => {
       });
       return;
     }
+    
+    console.log('Calling approveXRGE with:', sellAmount);
     approveXRGE(sellAmount);
   };
 

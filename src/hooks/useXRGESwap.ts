@@ -115,6 +115,8 @@ export const useXRGESwap = () => {
 
   // Approve XRGE for swapper contract
   const approveXRGE = (amount: string) => {
+    console.log('approveXRGE called with:', { amount, accountAddress, chainId });
+    
     if (!accountAddress || !chainId) {
       console.error('Wallet not properly connected');
       toast({
@@ -127,15 +129,19 @@ export const useXRGESwap = () => {
     
     try {
       const value = parseEther(amount);
+      console.log('Parsed value:', value.toString());
       
-      writeContract({
+      const config = {
         account: accountAddress,
         chainId: chainId,
         address: XRGE_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: 'approve',
         args: [XRGE_SWAPPER_ADDRESS, value],
-      } as any);
+      };
+      
+      console.log('Calling writeContract for approval with config:', config);
+      writeContract(config as any);
     } catch (err) {
       console.error('Approve error:', err);
       toast({
@@ -148,6 +154,8 @@ export const useXRGESwap = () => {
 
   // Sell XRGE for ETH
   const sellXRGE = (xrgeAmount: string, slippageBps: number = 500) => {
+    console.log('sellXRGE called with:', { xrgeAmount, slippageBps, accountAddress, chainId });
+    
     if (!accountAddress || !chainId) {
       console.error('Wallet not properly connected');
       toast({
@@ -160,15 +168,19 @@ export const useXRGESwap = () => {
     
     try {
       const value = parseEther(xrgeAmount);
+      console.log('Parsed value:', value.toString());
       
-      writeContract({
+      const config = {
         account: accountAddress,
         chainId: chainId,
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
         functionName: 'swapXRGEForETHSimple',
         args: [value, BigInt(slippageBps)],
-      } as any);
+      };
+      
+      console.log('Calling writeContract for sell with config:', config);
+      writeContract(config as any);
     } catch (err) {
       console.error('Sell XRGE error:', err);
       toast({
