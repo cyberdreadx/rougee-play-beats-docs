@@ -71,18 +71,24 @@ export default function Feed() {
       }).limit(50);
       if (error) throw error;
 
-      // Fetch profiles separately
+      // Fetch profiles separately (case-insensitive by using ilike OR filter)
       const walletAddresses = [...new Set(postsData?.map(p => p.wallet_address) || [])];
-      const {
-        data: profilesData
-      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
+      let profilesData: { wallet_address: string; artist_name: string | null; avatar_cid: string | null; verified: boolean | null }[] = [];
+      if (walletAddresses.length) {
+        const orFilter = walletAddresses.map((a) => `wallet_address.ilike.${a}`).join(',');
+        const { data } = await supabase
+          .from('profiles')
+          .select('wallet_address, artist_name, avatar_cid, verified')
+          .or(orFilter);
+        profilesData = data || [];
+      }
       
       console.log('Profiles data:', profilesData);
 
-      // Merge data
+      // Merge data (normalize addresses to lowercase)
       const postsWithProfiles = postsData?.map(post => ({
         ...post,
-        profiles: profilesData?.find(p => p.wallet_address === post.wallet_address) || null
+        profiles: profilesData?.find(p => p.wallet_address?.toLowerCase() === post.wallet_address?.toLowerCase()) || null
       })) || [];
       setPosts(postsWithProfiles as FeedPost[]);
     } catch (error) {
