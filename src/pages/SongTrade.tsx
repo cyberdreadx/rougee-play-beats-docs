@@ -15,6 +15,7 @@ import NetworkInfo from "@/components/NetworkInfo";
 import Navigation from "@/components/Navigation";
 import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
+import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
@@ -354,6 +355,11 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               </div>
             </div>
           </Card>
+        </div>
+
+        {/* Trading Chart */}
+        <div className="mb-6 md:mb-8">
+          <SongTradingChart songTokenAddress={songTokenAddress} />
         </div>
 
         {/* Main Content */}
