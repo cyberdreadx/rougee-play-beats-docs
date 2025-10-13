@@ -306,6 +306,32 @@ const Swap = () => {
           </p>
         </div>
 
+        {/* DexScreener Chart */}
+        <Card className="p-4 bg-card border-tech-border mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-mono text-lg font-bold text-neon-green">
+              XRGE Price Chart
+            </h2>
+            <a 
+              href={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-neon-green hover:underline"
+            >
+              View on DexScreener →
+            </a>
+          </div>
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              src={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}?embed=1&theme=dark&trades=0&info=0`}
+              className="absolute top-0 left-0 w-full h-full rounded-lg border border-tech-border"
+              style={{ border: 0 }}
+              allowFullScreen
+            />
+          </div>
+        </Card>
+
+
         {/* Balance Display */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4 bg-card border-tech-border">
