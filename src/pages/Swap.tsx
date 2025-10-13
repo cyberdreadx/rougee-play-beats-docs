@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
 
 const ERC20_ABI = [
   {
@@ -57,6 +58,8 @@ const Swap = () => {
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
   const [selectedToken, setSelectedToken] = useState<"ETH" | "KTA" | "USDC">("ETH");
+  
+  const { prices, calculateUsdValue } = useTokenPrices();
 
   const { 
     buyXRGE, 
@@ -278,28 +281,74 @@ const Swap = () => {
         </div>
 
         {/* Balance Display */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="p-4 bg-card border-tech-border">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-neon-green" />
-                <span className="font-mono text-sm text-muted-foreground">ETH Balance:</span>
+                <span className="font-mono text-xs text-muted-foreground">ETH</span>
               </div>
               <span className="font-mono text-lg font-bold">
                 {ethBalance ? Number(formatEther(ethBalance.value)).toFixed(6) : '0.000000'}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                ≈ ${ethBalance ? calculateUsdValue(Number(formatEther(ethBalance.value)), 'eth').toFixed(2) : '0.00'}
               </span>
             </div>
           </Card>
 
           <Card className="p-4 bg-card border-tech-border">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 <Coins className="h-4 w-4 text-neon-green" />
-                <span className="font-mono text-sm text-muted-foreground">XRGE Balance:</span>
+                <span className="font-mono text-xs text-muted-foreground">XRGE</span>
               </div>
               <span className="font-mono text-lg font-bold">
                 {xrgeBalance && xrgeDecimals 
                   ? (Number(xrgeBalance) / Math.pow(10, Number(xrgeDecimals))).toFixed(2)
+                  : '0.00'}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                ≈ ${xrgeBalance && xrgeDecimals 
+                  ? calculateUsdValue(Number(xrgeBalance) / Math.pow(10, Number(xrgeDecimals)), 'xrge').toFixed(2)
+                  : '0.00'}
+              </span>
+            </div>
+          </Card>
+
+          <Card className="p-4 bg-card border-tech-border">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-neon-green" />
+                <span className="font-mono text-xs text-muted-foreground">KTA</span>
+              </div>
+              <span className="font-mono text-lg font-bold">
+                {ktaBalance && xrgeDecimals 
+                  ? (Number(ktaBalance) / Math.pow(10, Number(xrgeDecimals))).toFixed(2)
+                  : '0.00'}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                ≈ ${ktaBalance && xrgeDecimals 
+                  ? calculateUsdValue(Number(ktaBalance) / Math.pow(10, Number(xrgeDecimals)), 'kta').toFixed(2)
+                  : '0.00'}
+              </span>
+            </div>
+          </Card>
+
+          <Card className="p-4 bg-card border-tech-border">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-neon-green" />
+                <span className="font-mono text-xs text-muted-foreground">USDC</span>
+              </div>
+              <span className="font-mono text-lg font-bold">
+                {usdcBalance 
+                  ? (Number(usdcBalance) / Math.pow(10, 6)).toFixed(2)
+                  : '0.00'}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                ≈ ${usdcBalance 
+                  ? calculateUsdValue(Number(usdcBalance) / Math.pow(10, 6), 'usdc').toFixed(2)
                   : '0.00'}
               </span>
             </div>
