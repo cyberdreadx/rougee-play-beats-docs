@@ -3,7 +3,7 @@ import { parseEther, formatEther, Address } from 'viem';
 import { toast } from '@/hooks/use-toast';
 
 // XRGESwapper contract address on Base
-const XRGE_SWAPPER_ADDRESS = '0x99C2a99bE53554ac6c0E71c136A8CbC82451Fc9A' as Address;
+const XRGE_SWAPPER_ADDRESS = '0x0F02Dd18fE3C481483c1B1828C7A3Df01B9ed017' as Address;
 const XRGE_TOKEN_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
 
 // Contract ABI (only functions we need)
