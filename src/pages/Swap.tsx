@@ -211,9 +211,10 @@ const Swap = () => {
                 </div>
 
                 <Button
+                  type="button"
                   onClick={handleBuy}
                   disabled={isPending || isConfirming || !buyAmount}
-                  className="w-full font-mono"
+                  className="w-full font-mono relative z-10 pointer-events-auto"
                   variant="neon"
                   size="lg"
                 >
