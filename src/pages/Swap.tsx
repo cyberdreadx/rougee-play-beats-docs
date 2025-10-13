@@ -7,9 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
 import { useWallet } from "@/hooks/useWallet";
 import { useXRGESwap, useXRGEQuote, useETHQuote, useXRGEApproval } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2 } from "lucide-react";
+import { ArrowDownUp, Loader2, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useBalance } from "wagmi";
+import { formatEther } from "viem";
 
 const Swap = () => {
   const navigate = useNavigate();
@@ -26,6 +28,11 @@ const Swap = () => {
     sellAmount
   );
 
+  // Fetch ETH balance
+  const { data: ethBalance, refetch: refetchEthBalance } = useBalance({
+    address: fullAddress as any,
+  });
+
   useEffect(() => {
     if (!isConnected) {
       navigate("/");
@@ -41,8 +48,9 @@ const Swap = () => {
       setBuyAmount("");
       setSellAmount("");
       refetchApproval();
+      refetchEthBalance();
     }
-  }, [isSuccess, refetchApproval]);
+  }, [isSuccess, refetchApproval, refetchEthBalance]);
 
   const handleBuy = () => {
     if (!buyAmount || Number(buyAmount) <= 0) {
@@ -97,6 +105,19 @@ const Swap = () => {
             Buy or sell XRGE tokens instantly
           </p>
         </div>
+
+        {/* Balance Display */}
+        <Card className="p-4 bg-card border-tech-border mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-neon-green" />
+              <span className="font-mono text-sm text-muted-foreground">ETH Balance:</span>
+            </div>
+            <span className="font-mono text-lg font-bold">
+              {ethBalance ? Number(formatEther(ethBalance.value)).toFixed(6) : '0.000000'} ETH
+            </span>
+          </div>
+        </Card>
 
         <Card className="p-6 bg-card border-tech-border">
           <Tabs defaultValue="buy" className="w-full">
