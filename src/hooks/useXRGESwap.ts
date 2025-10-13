@@ -1,69 +1,69 @@
-import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
-import { parseEther, formatEther, Address } from 'viem';
-import { toast } from '@/hooks/use-toast';
+import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
+import { parseEther, formatEther, Address } from "viem";
+import { toast } from "@/hooks/use-toast";
 
 // XRGESwapper contract address on Base
-const XRGE_SWAPPER_ADDRESS = '0x0F02Dd18fE3C481483c1B1828C7A3Df01B9ed017' as Address;
-const XRGE_TOKEN_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
+const XRGE_SWAPPER_ADDRESS = "0xCa66BC3D6536cEaEE782633EF9CA72a4B3bd289C" as Address;
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as Address;
 
 // Contract ABI (only functions we need)
 const XRGE_SWAPPER_ABI = [
   {
-    inputs: [{ name: 'slippageBps', type: 'uint256' }],
-    name: 'swapETHForXRGESimple',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'payable',
-    type: 'function',
+    inputs: [{ name: "slippageBps", type: "uint256" }],
+    name: "swapETHForXRGESimple",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "payable",
+    type: "function",
   },
   {
     inputs: [
-      { name: 'xrgeAmount', type: 'uint256' },
-      { name: 'slippageBps', type: 'uint256' },
+      { name: "xrgeAmount", type: "uint256" },
+      { name: "slippageBps", type: "uint256" },
     ],
-    name: 'swapXRGEForETHSimple',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    name: "swapXRGEForETHSimple",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
   },
   {
-    inputs: [{ name: 'ethAmount', type: 'uint256' }],
-    name: 'getExpectedXRGEOutput',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
+    inputs: [{ name: "ethAmount", type: "uint256" }],
+    name: "getExpectedXRGEOutput",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
-    inputs: [{ name: 'xrgeAmount', type: 'uint256' }],
-    name: 'getExpectedETHOutput',
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
+    inputs: [{ name: "xrgeAmount", type: "uint256" }],
+    name: "getExpectedETHOutput",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
   },
   {
     inputs: [
-      { name: 'user', type: 'address' },
-      { name: 'amount', type: 'uint256' },
+      { name: "user", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    name: 'checkXRGEApproval',
+    name: "checkXRGEApproval",
     outputs: [
-      { name: 'hasApproval', type: 'bool' },
-      { name: 'currentAllowance', type: 'uint256' },
+      { name: "hasApproval", type: "bool" },
+      { name: "currentAllowance", type: "uint256" },
     ],
-    stateMutability: 'view',
-    type: 'function',
+    stateMutability: "view",
+    type: "function",
   },
 ] as const;
 
 const ERC20_ABI = [
   {
     inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    name: 'approve',
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
   },
 ] as const;
 
@@ -75,121 +75,121 @@ export const useXRGESwap = () => {
 
   // Buy XRGE with ETH
   const buyXRGE = async (ethAmount: string, slippageBps: number = 500) => {
-    console.log('buyXRGE called with:', { ethAmount, slippageBps, accountAddress, chainId });
-    
+    console.log("buyXRGE called with:", { ethAmount, slippageBps, accountAddress, chainId });
+
     if (!accountAddress || !chainId) {
-      console.error('Wallet not properly connected');
+      console.error("Wallet not properly connected");
       toast({
-        title: 'Wallet Error',
-        description: 'Please ensure your wallet is properly connected',
-        variant: 'destructive',
+        title: "Wallet Error",
+        description: "Please ensure your wallet is properly connected",
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
       const value = parseEther(ethAmount);
-      console.log('Parsed value:', value.toString());
-      
+      console.log("Parsed value:", value.toString());
+
       const config = {
         account: accountAddress,
         chainId: chainId,
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
-        functionName: 'swapETHForXRGESimple',
+        functionName: "swapETHForXRGESimple",
         args: [BigInt(slippageBps)],
         value,
       };
-      
-      console.log('Calling writeContractAsync with config:', config);
+
+      console.log("Calling writeContractAsync with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log('Transaction submitted (buy) hash:', submittedHash);
+      console.log("Transaction submitted (buy) hash:", submittedHash);
     } catch (err) {
-      console.error('Buy XRGE error:', err);
+      console.error("Buy XRGE error:", err);
       toast({
-        title: 'Transaction Failed',
-        description: err instanceof Error ? err.message : 'Failed to swap ETH for XRGE',
-        variant: 'destructive',
+        title: "Transaction Failed",
+        description: err instanceof Error ? err.message : "Failed to swap ETH for XRGE",
+        variant: "destructive",
       });
     }
   };
 
   // Approve XRGE for swapper contract
   const approveXRGE = async (amount: string) => {
-    console.log('approveXRGE called with:', { amount, accountAddress, chainId });
-    
+    console.log("approveXRGE called with:", { amount, accountAddress, chainId });
+
     if (!accountAddress || !chainId) {
-      console.error('Wallet not properly connected');
+      console.error("Wallet not properly connected");
       toast({
-        title: 'Wallet Error',
-        description: 'Please ensure your wallet is properly connected',
-        variant: 'destructive',
+        title: "Wallet Error",
+        description: "Please ensure your wallet is properly connected",
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
       const value = parseEther(amount);
-      console.log('Parsed value:', value.toString());
-      
+      console.log("Parsed value:", value.toString());
+
       const config = {
         account: accountAddress,
         chainId: chainId,
         address: XRGE_TOKEN_ADDRESS,
         abi: ERC20_ABI,
-        functionName: 'approve',
+        functionName: "approve",
         args: [XRGE_SWAPPER_ADDRESS, value],
       };
-      
-      console.log('Calling writeContractAsync for approval with config:', config);
+
+      console.log("Calling writeContractAsync for approval with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log('Transaction submitted (approve) hash:', submittedHash);
+      console.log("Transaction submitted (approve) hash:", submittedHash);
     } catch (err) {
-      console.error('Approve error:', err);
+      console.error("Approve error:", err);
       toast({
-        title: 'Approval Failed',
-        description: err instanceof Error ? err.message : 'Failed to approve XRGE',
-        variant: 'destructive',
+        title: "Approval Failed",
+        description: err instanceof Error ? err.message : "Failed to approve XRGE",
+        variant: "destructive",
       });
     }
   };
 
   // Sell XRGE for ETH
   const sellXRGE = async (xrgeAmount: string, slippageBps: number = 500) => {
-    console.log('sellXRGE called with:', { xrgeAmount, slippageBps, accountAddress, chainId });
-    
+    console.log("sellXRGE called with:", { xrgeAmount, slippageBps, accountAddress, chainId });
+
     if (!accountAddress || !chainId) {
-      console.error('Wallet not properly connected');
+      console.error("Wallet not properly connected");
       toast({
-        title: 'Wallet Error',
-        description: 'Please ensure your wallet is properly connected',
-        variant: 'destructive',
+        title: "Wallet Error",
+        description: "Please ensure your wallet is properly connected",
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
       const value = parseEther(xrgeAmount);
-      console.log('Parsed value:', value.toString());
-      
+      console.log("Parsed value:", value.toString());
+
       const config = {
         account: accountAddress,
         chainId: chainId,
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
-        functionName: 'swapXRGEForETHSimple',
+        functionName: "swapXRGEForETHSimple",
         args: [value, BigInt(slippageBps)],
       };
-      
-      console.log('Calling writeContractAsync for sell with config:', config);
+
+      console.log("Calling writeContractAsync for sell with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log('Transaction submitted (sell) hash:', submittedHash);
+      console.log("Transaction submitted (sell) hash:", submittedHash);
     } catch (err) {
-      console.error('Sell XRGE error:', err);
+      console.error("Sell XRGE error:", err);
       toast({
-        title: 'Transaction Failed',
-        description: err instanceof Error ? err.message : 'Failed to swap XRGE for ETH',
-        variant: 'destructive',
+        title: "Transaction Failed",
+        description: err instanceof Error ? err.message : "Failed to swap XRGE for ETH",
+        variant: "destructive",
       });
     }
   };
@@ -209,11 +209,11 @@ export const useXRGESwap = () => {
 // Hook to get quote for buying XRGE
 export const useXRGEQuote = (ethAmount: string) => {
   const value = ethAmount ? parseEther(ethAmount) : BigInt(0);
-  
+
   const { data, isLoading } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
-    functionName: 'getExpectedXRGEOutput',
+    functionName: "getExpectedXRGEOutput",
     args: [value],
     query: {
       enabled: !!ethAmount && Number(ethAmount) > 0,
@@ -221,7 +221,7 @@ export const useXRGEQuote = (ethAmount: string) => {
   });
 
   return {
-    expectedXRGE: data ? formatEther(data) : '0',
+    expectedXRGE: data ? formatEther(data) : "0",
     isLoading,
   };
 };
@@ -229,11 +229,11 @@ export const useXRGEQuote = (ethAmount: string) => {
 // Hook to get quote for selling XRGE
 export const useETHQuote = (xrgeAmount: string) => {
   const value = xrgeAmount ? parseEther(xrgeAmount) : BigInt(0);
-  
+
   const { data, isLoading } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
-    functionName: 'getExpectedETHOutput',
+    functionName: "getExpectedETHOutput",
     args: [value],
     query: {
       enabled: !!xrgeAmount && Number(xrgeAmount) > 0,
@@ -241,7 +241,7 @@ export const useETHQuote = (xrgeAmount: string) => {
   });
 
   return {
-    expectedETH: data ? formatEther(data) : '0',
+    expectedETH: data ? formatEther(data) : "0",
     isLoading,
   };
 };
@@ -249,11 +249,11 @@ export const useETHQuote = (xrgeAmount: string) => {
 // Hook to check XRGE approval status
 export const useXRGEApproval = (userAddress: Address | undefined, amount: string) => {
   const value = amount ? parseEther(amount) : BigInt(0);
-  
+
   const { data, isLoading, refetch } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
-    functionName: 'checkXRGEApproval',
+    functionName: "checkXRGEApproval",
     args: userAddress && value ? [userAddress, value] : undefined,
     query: {
       enabled: !!userAddress && !!amount && Number(amount) > 0,
@@ -262,7 +262,7 @@ export const useXRGEApproval = (userAddress: Address | undefined, amount: string
 
   return {
     hasApproval: data?.[0] ?? false,
-    currentAllowance: data?.[1] ? formatEther(data[1]) : '0',
+    currentAllowance: data?.[1] ? formatEther(data[1]) : "0",
     isLoading,
     refetch,
   };
