@@ -430,6 +430,7 @@ export type Database = {
           play_count: number
           ticker: string | null
           title: string
+          token_address: string | null
           updated_at: string
           wallet_address: string
         }
@@ -445,6 +446,7 @@ export type Database = {
           play_count?: number
           ticker?: string | null
           title: string
+          token_address?: string | null
           updated_at?: string
           wallet_address: string
         }
@@ -460,6 +462,7 @@ export type Database = {
           play_count?: number
           ticker?: string | null
           title?: string
+          token_address?: string | null
           updated_at?: string
           wallet_address?: string
         }

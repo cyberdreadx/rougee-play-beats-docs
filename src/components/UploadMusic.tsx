@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/hooks/useWallet";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
+import { useCreateSong } from "@/hooks/useSongBondingCurve";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ export default function UploadMusic() {
   const navigate = useNavigate();
   const { fullAddress: address } = useWallet();
   const { getAuthHeaders } = usePrivyToken();
+  const { createSong, isPending: isCreatingSong } = useCreateSong();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [title, setTitle] = useState("");
@@ -135,14 +137,36 @@ export default function UploadMusic() {
         ticker
       }));
 
-      const { data, error } = await supabase.functions.invoke('upload-to-lighthouse', {
+      // Step 1: Upload to IPFS
+      toast.success('Uploading to IPFS...');
+      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-lighthouse', {
         headers,
         body: formData
       });
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
-      toast.success(`Music uploaded! Audio: ${data.audioCid}${data.coverCid ? `, Cover: ${data.coverCid}` : ''}, Metadata: ${data.metadataCid}`);
+      // Step 2: Deploy song token on-chain
+      toast.success('Creating song token on Base...');
+      const tokenAddress = await createSong({
+        name: title || audioFile.name,
+        symbol: ticker || 'SONG',
+        ipfsHash: uploadData.metadataCid,
+      });
+
+      if (!tokenAddress) {
+        throw new Error("Failed to deploy song token");
+      }
+
+      // Step 3: Update database with token address
+      const { error: updateError } = await supabase
+        .from('songs')
+        .update({ token_address: tokenAddress })
+        .eq('id', uploadData.songId);
+
+      if (updateError) throw updateError;
+
+      toast.success(`Song launched! Token: ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`);
 
       // Reset form
       setTitle("");
@@ -279,11 +303,11 @@ export default function UploadMusic() {
 
           <Button
             onClick={handleUpload}
-            disabled={uploading || scanning || !audioFile || !address}
+            disabled={uploading || scanning || isCreatingSong || !audioFile || !address}
             className="w-full"
           >
             <Upload className="w-4 h-4 mr-2" />
-            {scanning ? "Scanning for copyright..." : uploading ? "Uploading to IPFS..." : "Upload to Lighthouse"}
+            {scanning ? "Scanning for copyright..." : uploading || isCreatingSong ? "Launching on ROUGEE..." : "Launch Song"}
           </Button>
 
           {!address && (
