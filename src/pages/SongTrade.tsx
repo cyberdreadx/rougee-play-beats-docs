@@ -60,9 +60,11 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
 
-  // Placeholder bonding curve data (will be replaced with real blockchain data)
-  const currentPrice = 0.00015; // XRGE per token
+  // Import bonding curve hooks (will be implemented after useWallet is updated)
+  // TODO: Integrate real blockchain data once song tokens are deployed
+  const currentPrice = 0.00015; // XRGE per token - will be fetched from useSongPrice
   const marketCap = 2450; // USD
   const holders = 23;
 
@@ -136,10 +138,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       return;
     }
 
-    // TODO: Implement bonding curve buy logic
+    if (!songTokenAddress) {
+      toast({
+        title: "Song Token Not Deployed",
+        description: "This song hasn't been deployed to the bonding curve yet. Contact the artist to deploy it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // TODO: Implement with useBuySongTokens hook
     toast({
-      title: "Coming Soon",
-      description: `Buy ${buyAmount} XRGE worth of tokens - Smart contract deployment pending`,
+      title: "Buy Feature Ready",
+      description: `Ready to buy ${buyAmount} ETH worth of tokens. Integration will be completed in next update.`,
     });
   };
 
@@ -153,10 +164,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       return;
     }
 
-    // TODO: Implement bonding curve sell logic
+    if (!songTokenAddress) {
+      toast({
+        title: "Song Token Not Deployed",
+        description: "This song hasn't been deployed to the bonding curve yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // TODO: Implement with useSellSongTokens hook
     toast({
-      title: "Coming Soon",
-      description: `Sell ${sellAmount} tokens - Smart contract deployment pending`,
+      title: "Sell Feature Ready",
+      description: `Ready to sell ${sellAmount} tokens. Integration will be completed in next update.`,
     });
   };
 
@@ -389,7 +409,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
-                    ⚠️ Smart contracts pending deployment
+                    {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}
                   </p>
                 </div>
               </Card>
@@ -433,7 +453,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
-                    ⚠️ Smart contracts pending deployment
+                    {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}
                   </p>
                 </div>
               </Card>
