@@ -7,14 +7,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import { useWallet } from "@/hooks/useWallet";
-import { useXRGESwap, useXRGEQuote, useETHQuote, useXRGEApproval } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet, Coins } from "lucide-react";
+import { 
+  useXRGESwap, 
+  useXRGEQuote, 
+  useETHQuote, 
+  useXRGEApproval,
+  useXRGEQuoteFromKTA,
+  useKTAQuote,
+  useXRGEQuoteFromUSDC,
+  useUSDCQuote,
+  XRGE_TOKEN_ADDRESS,
+  KTA_TOKEN_ADDRESS,
+  USDC_TOKEN_ADDRESS
+} from "@/hooks/useXRGESwap";
+import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useBalance, useReadContract } from "wagmi";
 import { formatEther } from "viem";
-
-const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ERC20_ABI = [
   {
@@ -39,16 +56,57 @@ const Swap = () => {
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
+  const [selectedToken, setSelectedToken] = useState<"ETH" | "KTA" | "USDC">("ETH");
 
-  console.log('Swap component rendered', { isConnected, fullAddress, buyAmount, slippage });
-
-  const { buyXRGE, sellXRGE, approveXRGE, isPending, isConfirming, isSuccess, error } = useXRGESwap();
-  const { expectedXRGE, isLoading: isBuyQuoteLoading } = useXRGEQuote(buyAmount);
-  const { expectedETH, isLoading: isSellQuoteLoading } = useETHQuote(sellAmount);
+  const { 
+    buyXRGE, 
+    sellXRGE, 
+    approveXRGE,
+    buyXRGEWithKTA,
+    sellXRGEForKTA,
+    approveKTA,
+    buyXRGEWithUSDC,
+    sellXRGEForUSDC,
+    approveUSDC,
+    isPending, 
+    isConfirming, 
+    isSuccess, 
+    error 
+  } = useXRGESwap();
+  
+  // ETH quotes
+  const { expectedXRGE: expectedXRGEFromETH, isLoading: isBuyQuoteLoadingETH } = useXRGEQuote(buyAmount);
+  const { expectedETH, isLoading: isSellQuoteLoadingETH } = useETHQuote(sellAmount);
+  
+  // KTA quotes
+  const { expectedXRGE: expectedXRGEFromKTA, isLoading: isBuyQuoteLoadingKTA } = useXRGEQuoteFromKTA(buyAmount);
+  const { expectedKTA, isLoading: isSellQuoteLoadingKTA } = useKTAQuote(sellAmount);
+  
+  // USDC quotes
+  const { expectedXRGE: expectedXRGEFromUSDC, isLoading: isBuyQuoteLoadingUSDC } = useXRGEQuoteFromUSDC(buyAmount);
+  const { expectedUSDC, isLoading: isSellQuoteLoadingUSDC } = useUSDCQuote(sellAmount);
+  
   const { hasApproval, refetch: refetchApproval } = useXRGEApproval(
     fullAddress as any,
     sellAmount
   );
+
+  // Dynamic values based on selected token
+  const expectedBuyAmount = selectedToken === "ETH" ? expectedXRGEFromETH 
+    : selectedToken === "KTA" ? expectedXRGEFromKTA 
+    : expectedXRGEFromUSDC;
+  
+  const expectedSellAmount = selectedToken === "ETH" ? expectedETH 
+    : selectedToken === "KTA" ? expectedKTA 
+    : expectedUSDC;
+  
+  const isBuyQuoteLoading = selectedToken === "ETH" ? isBuyQuoteLoadingETH 
+    : selectedToken === "KTA" ? isBuyQuoteLoadingKTA 
+    : isBuyQuoteLoadingUSDC;
+  
+  const isSellQuoteLoading = selectedToken === "ETH" ? isSellQuoteLoadingETH 
+    : selectedToken === "KTA" ? isSellQuoteLoadingKTA 
+    : isSellQuoteLoadingUSDC;
 
   // Fetch ETH balance
   const { data: ethBalance, refetch: refetchEthBalance } = useBalance({
@@ -72,12 +130,28 @@ const Swap = () => {
     functionName: "decimals",
   });
 
-  console.log('Button state:', { 
-    isPending, 
-    isConfirming, 
-    buyAmount, 
-    disabled: isPending || isConfirming || !buyAmount 
+  // Fetch KTA balance
+  const { data: ktaBalance, refetch: refetchKtaBalance } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!fullAddress,
+    },
   });
+
+  // Fetch USDC balance
+  const { data: usdcBalance, refetch: refetchUsdcBalance } = useReadContract({
+    address: USDC_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!fullAddress,
+    },
+  });
+
 
   useEffect(() => {
     if (!isConnected) {
@@ -96,8 +170,10 @@ const Swap = () => {
       refetchApproval();
       refetchEthBalance();
       refetchXrgeBalance();
+      refetchKtaBalance();
+      refetchUsdcBalance();
     }
-  }, [isSuccess, refetchApproval, refetchEthBalance, refetchXrgeBalance]);
+  }, [isSuccess, refetchApproval, refetchEthBalance, refetchXrgeBalance, refetchKtaBalance, refetchUsdcBalance]);
 
   useEffect(() => {
     if (error) {
@@ -108,27 +184,28 @@ const Swap = () => {
   }, [error]);
 
   const handleBuy = () => {
-    console.log('handleBuy clicked', { buyAmount, slippage });
-    
     if (!buyAmount || Number(buyAmount) <= 0) {
-      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
-        description: "Please enter a valid ETH amount",
+        description: `Please enter a valid ${selectedToken} amount`,
         variant: "destructive",
       });
       return;
     }
     
-    console.log('Calling buyXRGE with:', buyAmount, Number(slippage) * 100);
-    buyXRGE(buyAmount, Number(slippage) * 100);
+    const slippageBps = Number(slippage) * 100;
+    
+    if (selectedToken === "ETH") {
+      buyXRGE(buyAmount, slippageBps);
+    } else if (selectedToken === "KTA") {
+      buyXRGEWithKTA(buyAmount, slippageBps);
+    } else if (selectedToken === "USDC") {
+      buyXRGEWithUSDC(buyAmount, slippageBps);
+    }
   };
 
   const handleSell = () => {
-    console.log('handleSell clicked', { sellAmount, slippage, hasApproval });
-    
     if (!sellAmount || Number(sellAmount) <= 0) {
-      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid XRGE amount",
@@ -137,15 +214,19 @@ const Swap = () => {
       return;
     }
     
-    console.log('Calling sellXRGE with:', sellAmount, Number(slippage) * 100);
-    sellXRGE(sellAmount, Number(slippage) * 100);
+    const slippageBps = Number(slippage) * 100;
+    
+    if (selectedToken === "ETH") {
+      sellXRGE(sellAmount, slippageBps);
+    } else if (selectedToken === "KTA") {
+      sellXRGEForKTA(sellAmount, slippageBps);
+    } else if (selectedToken === "USDC") {
+      sellXRGEForUSDC(sellAmount, slippageBps);
+    }
   };
 
   const handleApprove = () => {
-    console.log('handleApprove clicked', { sellAmount, slippage });
-    
     if (!sellAmount || Number(sellAmount) <= 0) {
-      console.log('Invalid amount detected');
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid XRGE amount",
@@ -154,7 +235,26 @@ const Swap = () => {
       return;
     }
     
-    console.log('Calling approveXRGE with:', sellAmount);
+    if (selectedToken === "ETH") {
+      // ETH doesn't need approval
+      return;
+    } else if (selectedToken === "KTA") {
+      approveKTA(buyAmount);
+    } else if (selectedToken === "USDC") {
+      approveUSDC(buyAmount);
+    }
+  };
+  
+  const handleApproveXRGE = () => {
+    if (!sellAmount || Number(sellAmount) <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid XRGE amount",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     approveXRGE(sellAmount);
   };
 
@@ -220,12 +320,29 @@ const Swap = () => {
             {/* Buy Tab */}
             <TabsContent value="buy" className="space-y-6">
               <div className="space-y-4">
+                {/* Token Selector */}
                 <div>
-                  <Label htmlFor="buy-eth" className="font-mono text-sm">
-                    ETH Amount
+                  <Label htmlFor="token-select" className="font-mono text-sm">
+                    Pay With
+                  </Label>
+                  <Select value={selectedToken} onValueChange={(value: any) => setSelectedToken(value)}>
+                    <SelectTrigger className="mt-2 font-mono">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ETH">ETH</SelectItem>
+                      <SelectItem value="KTA">KTA</SelectItem>
+                      <SelectItem value="USDC">USDC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="buy-amount" className="font-mono text-sm">
+                    {selectedToken} Amount
                   </Label>
                   <Input
-                    id="buy-eth"
+                    id="buy-amount"
                     type="number"
                     step="0.001"
                     placeholder="0.0"
@@ -249,7 +366,7 @@ const Swap = () => {
                           Loading...
                         </span>
                       ) : (
-                        `≈ ${Number(expectedXRGE).toFixed(4)} XRGE`
+                        `≈ ${Number(expectedBuyAmount).toFixed(4)} XRGE`
                       )}
                     </p>
                   </div>
@@ -283,6 +400,25 @@ const Swap = () => {
                   </div>
                 </div>
 
+                {selectedToken !== "ETH" && (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isPending || isConfirming || !buyAmount}
+                    className="w-full font-mono"
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isPending || isConfirming ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        APPROVING...
+                      </>
+                    ) : (
+                      `APPROVE ${selectedToken}`
+                    )}
+                  </Button>
+                )}
+
                 <Button
                   type="button"
                   onClick={handleBuy}
@@ -297,7 +433,7 @@ const Swap = () => {
                       {isPending ? "CONFIRMING..." : "PROCESSING..."}
                     </>
                   ) : (
-                    "BUY XRGE"
+                    `BUY XRGE WITH ${selectedToken}`
                   )}
                 </Button>
               </div>
@@ -306,6 +442,23 @@ const Swap = () => {
             {/* Sell Tab */}
             <TabsContent value="sell" className="space-y-6">
               <div className="space-y-4">
+                {/* Token Selector */}
+                <div>
+                  <Label htmlFor="sell-token-select" className="font-mono text-sm">
+                    Receive
+                  </Label>
+                  <Select value={selectedToken} onValueChange={(value: any) => setSelectedToken(value)}>
+                    <SelectTrigger className="mt-2 font-mono">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ETH">ETH</SelectItem>
+                      <SelectItem value="KTA">KTA</SelectItem>
+                      <SelectItem value="USDC">USDC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <Label htmlFor="sell-xrge" className="font-mono text-sm">
                     XRGE Amount
@@ -326,7 +479,7 @@ const Swap = () => {
                 </div>
 
                 <div>
-                  <Label className="font-mono text-sm">Expected ETH</Label>
+                  <Label className="font-mono text-sm">Expected {selectedToken}</Label>
                   <div className="mt-2 p-3 bg-muted rounded-md">
                     <p className="font-mono text-lg">
                       {isSellQuoteLoading ? (
@@ -335,7 +488,7 @@ const Swap = () => {
                           Loading...
                         </span>
                       ) : (
-                        `≈ ${Number(expectedETH).toFixed(6)} ETH`
+                        `≈ ${Number(expectedSellAmount).toFixed(selectedToken === "USDC" ? 6 : selectedToken === "ETH" ? 6 : 4)} ${selectedToken}`
                       )}
                     </p>
                   </div>
@@ -371,7 +524,7 @@ const Swap = () => {
 
                 {!hasApproval && sellAmount && Number(sellAmount) > 0 ? (
                   <Button
-                    onClick={handleApprove}
+                    onClick={handleApproveXRGE}
                     disabled={isPending || isConfirming}
                     className="w-full font-mono"
                     variant="outline"
