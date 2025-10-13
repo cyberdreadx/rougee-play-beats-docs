@@ -1,4 +1,4 @@
-import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
 import { parseEther, formatEther, Address } from 'viem';
 import { toast } from '@/hooks/use-toast';
 
@@ -68,15 +68,16 @@ const ERC20_ABI = [
 ] as const;
 
 export const useXRGESwap = () => {
-  const { address: accountAddress, chain } = useAccount();
+  const { address: accountAddress } = useAccount();
+  const chainId = useChainId();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   // Buy XRGE with ETH
   const buyXRGE = (ethAmount: string, slippageBps: number = 500) => {
-    console.log('buyXRGE called with:', { ethAmount, slippageBps, accountAddress, chain });
+    console.log('buyXRGE called with:', { ethAmount, slippageBps, accountAddress, chainId });
     
-    if (!accountAddress || !chain) {
+    if (!accountAddress || !chainId) {
       console.error('Wallet not properly connected');
       toast({
         title: 'Wallet Error',
@@ -92,7 +93,7 @@ export const useXRGESwap = () => {
       
       const config = {
         account: accountAddress,
-        chain: chain,
+        chainId: chainId,
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
         functionName: 'swapETHForXRGESimple',
@@ -114,7 +115,7 @@ export const useXRGESwap = () => {
 
   // Approve XRGE for swapper contract
   const approveXRGE = (amount: string) => {
-    if (!accountAddress || !chain) {
+    if (!accountAddress || !chainId) {
       console.error('Wallet not properly connected');
       toast({
         title: 'Wallet Error',
@@ -129,7 +130,7 @@ export const useXRGESwap = () => {
       
       writeContract({
         account: accountAddress,
-        chain: chain,
+        chainId: chainId,
         address: XRGE_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: 'approve',
@@ -147,7 +148,7 @@ export const useXRGESwap = () => {
 
   // Sell XRGE for ETH
   const sellXRGE = (xrgeAmount: string, slippageBps: number = 500) => {
-    if (!accountAddress || !chain) {
+    if (!accountAddress || !chainId) {
       console.error('Wallet not properly connected');
       toast({
         title: 'Wallet Error',
@@ -162,7 +163,7 @@ export const useXRGESwap = () => {
       
       writeContract({
         account: accountAddress,
-        chain: chain,
+        chainId: chainId,
         address: XRGE_SWAPPER_ADDRESS,
         abi: XRGE_SWAPPER_ABI,
         functionName: 'swapXRGEForETHSimple',
