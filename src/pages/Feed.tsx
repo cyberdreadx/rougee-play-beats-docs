@@ -76,6 +76,8 @@ export default function Feed() {
       const {
         data: profilesData
       } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
+      
+      console.log('Profiles data:', profilesData);
 
       // Merge data
       const postsWithProfiles = postsData?.map(post => ({
@@ -194,6 +196,8 @@ export default function Feed() {
       const {
         data: profilesData
       } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
+      
+      console.log('Comment profiles data:', profilesData);
       const commentsWithProfiles = commentsData?.map(comment => ({
         ...comment,
         profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null
@@ -283,10 +287,10 @@ export default function Feed() {
       <Header />
       <Navigation />
       <StoriesBar />
-      <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-4 py-[35px]">
-        <div className="max-w-2xl md:max-w-5xl lg:max-w-7xl mx-auto">
+      <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-4">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-2 glitch-text my-0 py-0">GLTCH Feed</h1>
+            <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
             <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
           </div>
 
