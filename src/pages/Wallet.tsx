@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { useFundWallet } from "@privy-io/react-auth";
 import { useIPLogger } from "@/hooks/useIPLogger";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
@@ -53,6 +54,7 @@ const Wallet = () => {
   const { address: accountAddress, chain } = useAccount();
   const { fundWallet } = useFundWallet();
   const { logIP } = useIPLogger('wallet_visit');
+  const { prices, calculateUsdValue } = useTokenPrices();
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showMintDialog, setShowMintDialog] = useState(false);
@@ -358,6 +360,9 @@ const Wallet = () => {
                     </>
                   )}
                 </div>
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                  ≈ ${calculateUsdValue(parseFloat(formatXrgeBalance()), 'xrge').toFixed(2)} USD
+                </p>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-xs font-mono text-muted-foreground">{formatAddress(XRGE_TOKEN_ADDRESS)}</p>
                   <Button
@@ -409,12 +414,17 @@ const Wallet = () => {
                 <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold font-mono text-neon-green">
-                  {formatKtaBalance()}
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">KTA</span>
-              </div>
+              <>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold font-mono text-neon-green">
+                    {formatKtaBalance()}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">KTA</span>
+                </div>
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                  ≈ ${calculateUsdValue(parseFloat(formatKtaBalance()), 'kta').toFixed(2)} USD
+                </p>
+              </>
             )}
             <div className="flex items-center gap-2 mt-1">
               <p className="text-xs font-mono text-muted-foreground">{formatAddress(KTA_TOKEN_ADDRESS)}</p>
@@ -444,12 +454,17 @@ const Wallet = () => {
                 <span className="text-sm font-mono text-muted-foreground">Loading...</span>
               </div>
             ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-bold font-mono text-neon-green">
-                  {balance ? parseFloat(balance.formatted).toFixed(4) : "0.0000"}
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">ETH</span>
-              </div>
+              <>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold font-mono text-neon-green">
+                    {balance ? parseFloat(balance.formatted).toFixed(4) : "0.0000"}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">ETH</span>
+                </div>
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">
+                  ≈ ${balance ? calculateUsdValue(parseFloat(balance.formatted), 'eth').toFixed(2) : '0.00'} USD
+                </p>
+              </>
             )}
           </div>
 
