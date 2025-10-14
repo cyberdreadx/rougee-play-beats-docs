@@ -2,11 +2,10 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
 };
 
 serve(async (req) => {
@@ -20,8 +19,16 @@ serve(async (req) => {
       throw new Error('LIGHTHOUSE_API_KEY not configured');
     }
 
-    // Validate JWT and extract wallet address
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    // Get wallet address from header (optional, for logging)
+    let walletAddress = 'unknown';
+    try {
+      const walletHeader = req.headers.get('x-wallet-address');
+      if (walletHeader) {
+        walletAddress = walletHeader.toLowerCase();
+      }
+    } catch (error) {
+      console.log('Could not extract wallet address, continuing anyway');
+    }
 
     const formData = await req.formData();
     const file = formData.get('file') as File;

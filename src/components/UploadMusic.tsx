@@ -154,7 +154,10 @@ export default function UploadMusic() {
       // Upload to IPFS
       toast.success('Uploading to IPFS...');
       const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-to-lighthouse', {
-        headers,
+        headers: {
+          ...headers,
+          'x-wallet-address': address, // Send wallet address in header
+        },
         body: formData
       });
 
