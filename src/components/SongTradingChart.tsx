@@ -80,25 +80,25 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
   }
 
   return (
-    <Card className="console-bg tech-border p-4 md:p-6">
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-mono font-bold neon-text flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+    <Card className="console-bg tech-border p-3 sm:p-4 md:p-6">
+      <div className="mb-3 md:mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-base sm:text-lg font-mono font-bold neon-text flex items-center gap-2">
+            <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
             PRICE HISTORY
           </h3>
         </div>
         
-        <p className="text-xs text-muted-foreground font-mono mb-2">
+        <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-2">
           Complete price progression from inception to present using bonding curve math
         </p>
       </div>
 
       {/* Chart */}
-      <div className="h-[250px] md:h-[300px] mb-4">
+      <div className="h-[200px] sm:h-[250px] md:h-[300px] mb-4">
         {priceHistory.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={priceHistory}>
+            <AreaChart data={priceHistory} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
               <defs>
                 <linearGradient id="priceGradientUSD" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#00ff9f" stopOpacity={0.4}/>
@@ -109,32 +109,38 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
               <XAxis 
                 dataKey="supply" 
                 stroke="#888"
-                style={{ fontSize: '10px' }}
-                label={{ value: 'Tokens Bought (Millions)', position: 'insideBottom', offset: -5, fill: '#888', fontSize: 11 }}
+                style={{ fontSize: '9px' }}
                 tickFormatter={(value) => `${value.toFixed(1)}M`}
+                tick={{ fill: '#888' }}
               />
               <YAxis 
                 stroke="#888"
-                style={{ fontSize: '10px' }}
-                tickFormatter={(value) => `$${value < 0.01 ? value.toFixed(8) : value.toFixed(6)}`}
-                label={{ value: 'Price (USD)', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 11 }}
+                style={{ fontSize: '9px' }}
+                tickFormatter={(value) => {
+                  if (value < 0.00001) return `$${value.toExponential(2)}`;
+                  if (value < 0.01) return `$${value.toFixed(6)}`;
+                  return `$${value.toFixed(4)}`;
+                }}
+                tick={{ fill: '#888' }}
+                width={60}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#1a1a1a',
                   border: '1px solid #00ff9f',
                   borderRadius: '4px',
-                  fontSize: '12px',
-                  fontFamily: 'monospace'
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  padding: '6px 8px'
                 }}
-                labelStyle={{ color: '#00ff9f' }}
+                labelStyle={{ color: '#00ff9f', fontSize: '10px' }}
                 formatter={(value: number, name: string) => {
                   if (name === 'priceUSD') {
                     return [`$${value < 0.01 ? value.toFixed(10) : value.toFixed(6)}`, 'Price'];
                   }
                   return [value, name];
                 }}
-                labelFormatter={(label) => `${label}M tokens bought`}
+                labelFormatter={(label) => `${label}M bought`}
               />
               <Area
                 type="monotone"
@@ -147,16 +153,16 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-muted-foreground font-mono">Loading price data...</p>
+            <p className="text-xs sm:text-sm text-muted-foreground font-mono">Loading price data...</p>
           </div>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
-        <div>
-          <p className="text-xs text-muted-foreground font-mono mb-1">Current Price</p>
-          <p className="text-base font-mono font-bold text-neon-green">
+      <div className="grid grid-cols-3 gap-2 md:gap-3 pt-4 border-t border-border">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-1 truncate">Current Price</p>
+          <p className="text-xs sm:text-sm md:text-base font-mono font-bold text-neon-green truncate">
             {currentPriceUSD > 0 ? (
               currentPriceUSD < 0.01 
                 ? `$${currentPriceUSD.toFixed(10).replace(/\.?0+$/, '')}` 
@@ -166,32 +172,32 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
             )}
           </p>
           {priceInXRGE && (
-            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
               {priceInXRGE.toFixed(6)} XRGE
             </p>
           )}
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground font-mono mb-1">Tokens Bought</p>
-          <p className="text-base font-mono font-bold text-blue-400">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-1 truncate">Tokens Bought</p>
+          <p className="text-xs sm:text-sm md:text-base font-mono font-bold text-blue-400 truncate">
             {currentSupplyFromData > 0 
               ? `${(currentSupplyFromData / 1_000_000).toFixed(2)}M`
               : "0.00M"
             }
           </p>
-          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
             {currentSupplyFromData > 0
               ? `${(currentSupplyFromData / BONDING_CURVE_TOTAL * 100).toFixed(2)}%`
               : "Just deployed"
             }
           </p>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground font-mono mb-1">Initial Price</p>
-          <p className="text-base font-mono font-bold text-purple-400">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-1 truncate">Initial Price</p>
+          <p className="text-xs sm:text-sm md:text-base font-mono font-bold text-purple-400 truncate">
             ${(0.001 * (prices.xrge || 0)).toFixed(8)}
           </p>
-          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
             0.001 XRGE
           </p>
         </div>
