@@ -18,6 +18,7 @@ interface Song {
   wallet_address: string;
   audio_cid: string;
   cover_cid: string | null;
+  token_address?: string | null;
   play_count: number;
   created_at: string;
 }

@@ -35,6 +35,7 @@ interface Song {
   wallet_address: string;
   cover_cid: string | null;
   play_count: number;
+  token_address?: string | null;
   ticker: string | null;
   genre: string | null;
   created_at: string;

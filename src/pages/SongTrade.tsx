@@ -18,6 +18,7 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata } from "@/hooks/useSongBondingCurve";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
 
 interface Song {
@@ -29,6 +30,7 @@ interface Song {
   cover_cid: string | null;
   play_count: number;
   created_at: string;
+  token_address?: string | null;
 }
 
 interface Comment {
@@ -63,11 +65,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [loadingComments, setLoadingComments] = useState(false);
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
 
-  // Import bonding curve hooks (will be implemented after useWallet is updated)
-  // TODO: Integrate real blockchain data once song tokens are deployed
-  const currentPrice = 0.00015; // XRGE per token - will be fetched from useSongPrice
-  const marketCap = 2450; // USD
-  const holders = 23;
+  // Bonding curve hooks
+  const { buyWithETH, buyWithXRGE, isPending: isBuying } = useBuySongTokens();
+  const { sell, isPending: isSelling } = useSellSongTokens();
+  const { price: priceData } = useSongPrice(songTokenAddress);
+  const { metadata: metadataData } = useSongMetadata(songTokenAddress);
+
+  const currentPrice = priceData ? parseFloat(priceData) : 0.00015;
+  const marketCap = 2450; // Calculate from supply * price
+  const holders = 23; // Fetch from blockchain events
 
   useEffect(() => {
     if (songId) {
@@ -75,6 +81,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       fetchComments();
     }
   }, [songId]);
+
+  useEffect(() => {
+    // Load token address from database
+    const loadTokenAddress = async () => {
+      if (!song) return;
+      
+      if (song.token_address) {
+        setSongTokenAddress(song.token_address as `0x${string}`);
+      }
+    };
+    
+    loadTokenAddress();
+  }, [song]);
 
   const fetchSong = async () => {
     try {
@@ -129,7 +148,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
   };
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!isConnected) {
       toast({
         title: "Wallet not connected",
@@ -148,14 +167,33 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       return;
     }
 
-    // TODO: Implement with useBuySongTokens hook
-    toast({
-      title: "Buy Feature Ready",
-      description: `Ready to buy ${buyAmount} ETH worth of tokens. Integration will be completed in next update.`,
-    });
+    if (!buyAmount || parseFloat(buyAmount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await buyWithXRGE(songTokenAddress, buyAmount, "100"); // 1% slippage (100 bps)
+      toast({
+        title: "Purchase successful!",
+        description: `Bought tokens for ${buyAmount} XRGE`,
+      });
+      setBuyAmount("");
+    } catch (error) {
+      console.error("Buy error:", error);
+      toast({
+        title: "Purchase failed",
+        description: error instanceof Error ? error.message : "Failed to buy tokens",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleSell = () => {
+  const handleSell = async () => {
     if (!isConnected) {
       toast({
         title: "Wallet not connected",
@@ -174,11 +212,30 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       return;
     }
 
-    // TODO: Implement with useSellSongTokens hook
-    toast({
-      title: "Sell Feature Ready",
-      description: `Ready to sell ${sellAmount} tokens. Integration will be completed in next update.`,
-    });
+    if (!sellAmount || parseFloat(sellAmount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await sell(songTokenAddress, sellAmount, "100"); // 1% slippage (100 bps)
+      toast({
+        title: "Sale successful!",
+        description: `Sold ${sellAmount} tokens`,
+      });
+      setSellAmount("");
+    } catch (error) {
+      console.error("Sell error:", error);
+      toast({
+        title: "Sale failed",
+        description: error instanceof Error ? error.message : "Failed to sell tokens",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePostComment = async () => {
@@ -410,8 +467,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     </div>
                   </div>
 
-                  <Button onClick={handleBuy} className="w-full" variant="neon" size="sm">
-                    BUY NOW
+                  <Button onClick={handleBuy} className="w-full" variant="neon" size="sm" disabled={isBuying}>
+                    {isBuying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {isBuying ? "BUYING..." : "BUY NOW"}
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
@@ -454,8 +512,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     </div>
                   </div>
 
-                  <Button onClick={handleSell} className="w-full" variant="outline" size="sm">
-                    SELL NOW
+                  <Button onClick={handleSell} className="w-full" variant="outline" size="sm" disabled={isSelling}>
+                    {isSelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {isSelling ? "SELLING..." : "SELL NOW"}
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
