@@ -69,7 +69,14 @@ export default function UploadMusic() {
         body: formData,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a service unavailable error
+        if (error.message?.includes('unavailable')) {
+          toast.error('Copyright verification service is temporarily unavailable. Please try again in a few minutes.');
+          return;
+        }
+        throw error;
+      }
 
       if (data.isCopyrighted) {
         setCopyrightWarning({
@@ -80,7 +87,7 @@ export default function UploadMusic() {
       }
     } catch (error) {
       console.error('Error scanning for copyright:', error);
-      toast.error('Failed to scan audio file');
+      toast.error('Copyright check failed. Please try again.');
     } finally {
       setScanning(false);
     }
@@ -92,9 +99,13 @@ export default function UploadMusic() {
 
     setAudioFile(file);
 
-    // Scan for copyright
+    // Scan for copyright - block upload if scan fails
     if (address) {
       await scanForCopyright(file);
+      // If scan failed, clear the file
+      if (!file) {
+        setAudioFile(null);
+      }
     }
   };
 

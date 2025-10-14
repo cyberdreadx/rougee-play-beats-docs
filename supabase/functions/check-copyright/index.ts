@@ -79,24 +79,22 @@ serve(async (req) => {
         body: acrFormData,
         signal: controller.signal,
       });
+      clearTimeout(timeoutId);
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      // If ACRCloud times out, return clean result without copyright check
-      console.warn('ACRCloud API timeout or error:', fetchError);
+      // If ACRCloud fails, block the upload for safety
+      console.error('ACRCloud API timeout or error:', fetchError);
       return new Response(
         JSON.stringify({
-          isCopyrighted: false,
-          detectedInfo: null,
-          violationCount: 0,
-          warning: 'Copyright check service temporarily unavailable',
+          error: 'Copyright verification service unavailable. Please try again later.',
+          canProceed: false,
         }),
         {
-          status: 200,
+          status: 503,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
-    clearTimeout(timeoutId);
 
     const acrResult = await acrResponse.json();
     console.log('ACRCloud response:', JSON.stringify(acrResult));
