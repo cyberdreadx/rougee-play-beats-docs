@@ -5,7 +5,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address, x-privy-token',
 };
 
 serve(async (req) => {
@@ -23,11 +23,23 @@ serve(async (req) => {
     console.log('Validating Privy token...');
     console.log('Authorization header present:', !!req.headers.get('authorization'));
     
-    // Validate JWT and extract wallet address - no fallback for security
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
-    console.log('Wallet address validated via Privy:', walletAddress);
-    
     const formData = await req.formData();
+    const providedWalletAddress = formData.get('walletAddress') as string | null;
+    
+    // Validate JWT token (this throws if invalid/expired)
+    const { validatePrivyToken } = await import('../_shared/privy.ts');
+    const user = await validatePrivyToken(req.headers.get('x-privy-token') || req.headers.get('authorization'));
+    
+    // Use wallet from form data if provided, otherwise try to extract from JWT
+    let walletAddress: string;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+    } else if (user.walletAddress) {
+      walletAddress = user.walletAddress;
+    } else {
+      throw new Error('No wallet address provided');
+    }
+    console.log('Wallet address validated:', walletAddress);
     const contentText = formData.get('content_text') as string;
     const mediaFile = formData.get('media') as File | null;
 

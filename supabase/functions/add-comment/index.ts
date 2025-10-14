@@ -4,12 +4,13 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-privy-token',
 };
 
 const commentSchema = z.object({
   postId: z.string().uuid(),
   commentText: z.string().min(1).max(1000),
+  walletAddress: z.string().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -18,10 +19,22 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
-    
     const body = await req.json();
-    const { postId, commentText } = commentSchema.parse(body);
+    const { postId, commentText, walletAddress: providedWalletAddress } = commentSchema.parse(body);
+    
+    // Validate JWT token (this throws if invalid/expired)
+    const { validatePrivyToken } = await import('../_shared/privy.ts');
+    const user = await validatePrivyToken(req.headers.get('x-privy-token') || req.headers.get('authorization'));
+    
+    // Use wallet from request body if provided, otherwise try to extract from JWT
+    let walletAddress: string;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+    } else if (user.walletAddress) {
+      walletAddress = user.walletAddress;
+    } else {
+      throw new Error('No wallet address provided');
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

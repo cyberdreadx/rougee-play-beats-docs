@@ -3,7 +3,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-privy-token',
 };
 
 Deno.serve(async (req) => {
@@ -12,9 +12,21 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    const { postId, action, walletAddress: providedWalletAddress } = await req.json();
     
-    const { postId, action } = await req.json();
+    // Validate JWT token (this throws if invalid/expired)
+    const { validatePrivyToken } = await import('../_shared/privy.ts');
+    const user = await validatePrivyToken(req.headers.get('x-privy-token') || req.headers.get('authorization'));
+    
+    // Use wallet from request body if provided, otherwise try to extract from JWT
+    let walletAddress: string;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+    } else if (user.walletAddress) {
+      walletAddress = user.walletAddress;
+    } else {
+      throw new Error('No wallet address provided');
+    }
     
     if (!postId || !action) {
       throw new Error('Missing required fields: postId and action');

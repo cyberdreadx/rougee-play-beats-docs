@@ -189,13 +189,13 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
       const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
       const { data: profilesData } = await supabase
-        .from('public_profiles')
+        .from('profiles')
         .select('wallet_address, artist_name, avatar_cid')
         .in('wallet_address', walletAddresses);
 
       const commentsWithProfiles = commentsData?.map(comment => ({
         ...comment,
-        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null,
+        profiles: profilesData?.find(p => p.wallet_address?.toLowerCase() === comment.wallet_address?.toLowerCase()) || null,
       })) || [];
 
       setComments(prev => ({ ...prev, [postId]: commentsWithProfiles as FeedComment[] }));

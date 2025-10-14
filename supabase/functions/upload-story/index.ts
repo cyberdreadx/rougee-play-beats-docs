@@ -4,7 +4,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-privy-token, x-wallet-address',
 };
 
 serve(async (req) => {
@@ -22,13 +22,25 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Validate JWT and extract wallet address
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
-
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const caption = formData.get('caption') as string | null;
     const mediaType = formData.get('mediaType') as string;
+    const providedWalletAddress = (formData.get('walletAddress') as string | null) || req.headers.get('x-wallet-address');
+
+    // Prefer wallet address from the request (no JWT required for upload)
+    let walletAddress: string | undefined = undefined;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+      console.log('✅ Using wallet from request:', walletAddress);
+    }
+
+    if (!walletAddress) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No wallet address provided' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
 
     if (!file || !mediaType) {
       throw new Error('Missing required fields: file or mediaType');

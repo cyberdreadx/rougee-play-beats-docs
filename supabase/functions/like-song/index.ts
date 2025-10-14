@@ -12,9 +12,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    const authHeader = req.headers.get('x-privy-token');
+    console.log('🔐 Auth header present:', !!authHeader);
     
-    const { songId, action } = await req.json();
+    const { songId, action, walletAddress: providedWalletAddress } = await req.json();
+    
+    // Validate JWT token (this throws if invalid/expired)
+    const { validatePrivyToken } = await import('../_shared/privy.ts');
+    const user = await validatePrivyToken(authHeader);
+    console.log('✅ JWT validated, user:', user.userId);
+    
+    // Use wallet from request body if provided, otherwise try to extract from JWT
+    let walletAddress: string;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+      console.log('✅ Using wallet from request body:', walletAddress);
+    } else if (user.walletAddress) {
+      walletAddress = user.walletAddress;
+      console.log('✅ Using wallet from JWT:', walletAddress);
+    } else {
+      throw new Error('No wallet address provided');
+    }
     
     if (!songId || !action) {
       throw new Error('Missing required fields: songId and action');

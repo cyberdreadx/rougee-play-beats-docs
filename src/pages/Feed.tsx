@@ -71,13 +71,13 @@ export default function Feed() {
       }).limit(50);
       if (error) throw error;
 
-      // Fetch profiles separately (case-insensitive by using ilike OR filter)
+      // Fetch profiles separately (case-insensitive matching)
       const walletAddresses = [...new Set(postsData?.map(p => p.wallet_address) || [])];
       let profilesData: { wallet_address: string; artist_name: string | null; avatar_cid: string | null; verified: boolean | null }[] = [];
       if (walletAddresses.length) {
         const orFilter = walletAddresses.map((a) => `wallet_address.ilike.${a}`).join(',');
         const { data } = await supabase
-          .from('public_profiles')
+          .from('profiles')
           .select('wallet_address, artist_name, avatar_cid, verified')
           .or(orFilter);
         profilesData = data || [];
@@ -153,6 +153,7 @@ export default function Feed() {
       const formData = new FormData();
       if (contentText) formData.append('content_text', contentText);
       if (mediaFile) formData.append('media', mediaFile);
+      if (fullAddress) formData.append('walletAddress', fullAddress);
       const response = await supabase.functions.invoke('create-feed-post', {
         headers,
         body: formData
@@ -200,16 +201,23 @@ export default function Feed() {
       });
       if (error) throw error;
 
-      // Fetch profiles for comment authors
+      // Fetch profiles for comment authors (case-insensitive)
       const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
-      const {
-        data: profilesData
-      } = await supabase.from('public_profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
+      let profilesData: { wallet_address: string; artist_name: string | null; avatar_cid: string | null; verified: boolean | null }[] = [];
+      
+      if (walletAddresses.length) {
+        const orFilter = walletAddresses.map((a) => `wallet_address.ilike.${a}`).join(',');
+        const { data } = await supabase
+          .from('profiles')
+          .select('wallet_address, artist_name, avatar_cid, verified')
+          .or(orFilter);
+        profilesData = data || [];
+      }
       
       console.log('Comment profiles data:', profilesData);
       const commentsWithProfiles = commentsData?.map(comment => ({
         ...comment,
-        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null
+        profiles: profilesData?.find(p => p.wallet_address?.toLowerCase() === comment.wallet_address?.toLowerCase()) || null
       })) || [];
       setComments(prev => ({
         ...prev,
@@ -239,6 +247,7 @@ export default function Feed() {
         body: {
           postId,
           commentText: text,
+          walletAddress: fullAddress,
         },
       });
       if (error) throw error;
@@ -385,7 +394,7 @@ export default function Feed() {
 
                     <button onClick={() => toggleComments(post.id)} className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors">
                       <MessageCircle className="w-4 h-4" />
-                      <span>{post.comment_count}</span>
+                      <span>{comments[post.id]?.length || post.comment_count || 0}</span>
                     </button>
 
                     <button className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors ml-auto">

@@ -66,6 +66,7 @@ const StoryUpload = () => {
       formData.append("file", file);
       formData.append("caption", caption);
       formData.append("mediaType", mediaType);
+      formData.append("walletAddress", fullAddress);
 
       const { data, error } = await supabase.functions.invoke("upload-story", {
         headers,

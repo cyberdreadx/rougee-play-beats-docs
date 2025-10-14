@@ -89,23 +89,41 @@ export default function LikeButton({
     setIsLoading(true);
     try {
       const headers = await getAuthHeaders();
+      console.log('🔐 Auth headers obtained:', { hasAuth: !!headers.Authorization });
+      
       const functionName = entityType === 'post' ? 'like-post' : 'like-song';
       const body = entityType === 'post' 
-        ? { postId: songId, action: isLiked ? 'unlike' : 'like' }
-        : { songId, action: isLiked ? 'unlike' : 'like' };
+        ? { postId: songId, action: isLiked ? 'unlike' : 'like', walletAddress: address }
+        : { songId, action: isLiked ? 'unlike' : 'like', walletAddress: address };
 
-      const { error } = await (supabase as any).functions.invoke(functionName, {
+      console.log('📤 Calling edge function:', functionName, body);
+
+      const { data, error } = await (supabase as any).functions.invoke(functionName, {
         headers,
         body,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        console.error('Error details:', { message: error.message, context: error.context });
+        
+        // Try to get the actual error message from the response
+        try {
+          const errorResponse = await error.context?.json();
+          console.error('📝 Server error response:', errorResponse);
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+        
+        throw error;
+      }
 
+      console.log('✅ Edge function success:', data);
       setIsLiked(!isLiked);
       setLikeCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
     } catch (error: any) {
       console.error('Error toggling like:', error);
-      toast.error("Failed to update like");
+      toast.error(error.message || "Failed to update like");
     } finally {
       setIsLoading(false);
     }

@@ -1,25 +1,21 @@
 import { createRemoteJWKSet, createLocalJWKSet, jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts';
 
-const PRIVY_APP_ID = Deno.env.get('PRIVY_APP_ID');
-
-if (!PRIVY_APP_ID) {
-  console.error('CRITICAL: PRIVY_APP_ID environment variable is not set');
-  throw new Error('PRIVY_APP_ID not configured');
-}
-
-const PRIVY_JWKS_URL_PRIMARY = `https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/jwks.json`;
-const PRIVY_JWKS_URL_FALLBACK = `https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/.well-known/jwks.json`;
-console.log('Privy JWKS URL (primary):', PRIVY_JWKS_URL_PRIMARY);
-console.log('Privy JWKS URL (fallback):', PRIVY_JWKS_URL_FALLBACK);
+const ENV_PRIVY_APP_ID = Deno.env.get('PRIVY_APP_ID') || Deno.env.get('VITE_PRIVY_APP_ID');
 
 // Resolve and cache the first working JWKS endpoint at runtime
 let cachedJwks: ReturnType<typeof createLocalJWKSet> | null = null;
 let cachedJwksUrl: string | null = null;
+let cachedAppId: string | null = null;
 
-async function resolveJwks(): Promise<ReturnType<typeof createLocalJWKSet>> {
-  if (cachedJwks) return cachedJwks;
+async function resolveJwks(appId: string): Promise<ReturnType<typeof createLocalJWKSet>> {
+  if (cachedJwks && cachedAppId === appId) return cachedJwks;
 
-  const candidates = [PRIVY_JWKS_URL_PRIMARY, PRIVY_JWKS_URL_FALLBACK];
+  const primary = `https://auth.privy.io/api/v1/apps/${appId}/jwks.json`;
+  const fallback = `https://auth.privy.io/api/v1/apps/${appId}/.well-known/jwks.json`;
+  console.log('Privy JWKS URL (primary):', primary);
+  console.log('Privy JWKS URL (fallback):', fallback);
+
+  const candidates = [primary, fallback];
 
   for (const url of candidates) {
     try {
@@ -29,6 +25,7 @@ async function resolveJwks(): Promise<ReturnType<typeof createLocalJWKSet>> {
         const jwksJson = await res.json();
         cachedJwksUrl = url;
         cachedJwks = createLocalJWKSet(jwksJson);
+        cachedAppId = appId;
         return cachedJwks;
       }
       console.warn('Privy JWKS candidate not OK:', url, 'status:', res.status);
@@ -49,10 +46,17 @@ export interface PrivyUser {
 // Attempt to extract a wallet address from various possible Privy token shapes
 function extractWalletAddress(payload: any): string | undefined {
   try {
+    console.log('🔍 Extracting wallet from JWT payload...');
+    console.log('Payload keys:', Object.keys(payload || {}));
+    
     const linkedAccounts = payload?.linked_accounts ?? [];
+    console.log('Linked accounts in JWT:', JSON.stringify(linkedAccounts, null, 2));
+    
     const walletAccount = Array.isArray(linkedAccounts)
       ? linkedAccounts.find((acc: any) => ['wallet', 'smart_wallet', 'embedded_wallet'].includes(acc?.type))
       : undefined;
+    
+    console.log('Found wallet account:', walletAccount);
 
     const candidates = [
       walletAccount?.address,
@@ -65,9 +69,14 @@ function extractWalletAddress(payload: any): string | undefined {
       payload?.evm_address,
     ].filter(Boolean) as string[];
 
+    console.log('Wallet address candidates:', candidates);
+
     const found = candidates.find((a) => typeof a === 'string' && a.toLowerCase().startsWith('0x'));
+    console.log('Selected wallet address:', found);
+    
     return found?.toLowerCase();
-  } catch (_e) {
+  } catch (e) {
+    console.error('Error extracting wallet:', e);
     return undefined;
   }
 }
@@ -81,18 +90,21 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
     throw new Error('Missing or invalid Authorization header');
   }
 
-  if (!PRIVY_APP_ID) {
-    throw new Error('PRIVY_APP_ID environment variable not set');
-  }
-
   const token = authHeader.replace('Bearer ', '');
 
   try {
-    // Strict verification with issuer and audience
-    const jwks = await resolveJwks();
+    // Decode token payload to derive appId (aud) for JWKS resolution
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const payloadPreview = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0))));
+    const appId = payloadPreview?.aud || ENV_PRIVY_APP_ID;
+    if (!appId) throw new Error('Privy app id not available');
+
+    // Strict verification with issuer and audience derived from token
+    const jwks = await resolveJwks(appId);
     const { payload } = await jwtVerify(token, jwks, {
       issuer: 'privy.io',
-      audience: PRIVY_APP_ID,
+      audience: appId,
     });
 
     const userId = payload.sub;
@@ -112,7 +124,12 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
     console.error('JWT validation (strict) failed. Trying relaxed verification using the resolved JWKS:', strictError);
     try {
       // Relaxed verification (no issuer/audience) if strict fails due to claim mismatch
-      const jwks = await resolveJwks();
+      // Derive app id from token again
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payloadPreview = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0))));
+      const appId = payloadPreview?.aud || ENV_PRIVY_APP_ID || '';
+      const jwks = await resolveJwks(appId);
       const { payload } = await jwtVerify(token, jwks);
 
       const userId = payload.sub as string | undefined;
