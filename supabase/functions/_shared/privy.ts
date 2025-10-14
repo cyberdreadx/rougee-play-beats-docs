@@ -12,8 +12,32 @@ const PRIVY_JWKS_URL_FALLBACK = `https://auth.privy.io/api/v1/apps/${PRIVY_APP_I
 console.log('Privy JWKS URL (primary):', PRIVY_JWKS_URL_PRIMARY);
 console.log('Privy JWKS URL (fallback):', PRIVY_JWKS_URL_FALLBACK);
 
-// Cache the JWKS for performance (primary by default)
-let jwks = createRemoteJWKSet(new URL(PRIVY_JWKS_URL_PRIMARY));
+// Resolve and cache the first working JWKS endpoint at runtime
+let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksUrl: string | null = null;
+
+async function resolveJwks(): Promise<ReturnType<typeof createRemoteJWKSet>> {
+  if (cachedJwks) return cachedJwks;
+
+  const candidates = [PRIVY_JWKS_URL_PRIMARY, PRIVY_JWKS_URL_FALLBACK];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+      if (res.ok) {
+        console.log('Using Privy JWKS URL:', url, 'status:', res.status);
+        cachedJwksUrl = url;
+        cachedJwks = createRemoteJWKSet(new URL(url));
+        return cachedJwks;
+      }
+      console.warn('Privy JWKS candidate not OK:', url, 'status:', res.status);
+    } catch (e) {
+      console.error('Privy JWKS candidate fetch error:', url, e);
+    }
+  }
+
+  throw new Error('Failed to resolve Privy JWKS URL (none returned 200)');
+}
 
 export interface PrivyUser {
   userId: string;
@@ -37,7 +61,8 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
   const token = authHeader.replace('Bearer ', '');
 
   try {
-    // Try primary JWKS with strict claim checks
+    // Strict verification with issuer and audience
+    const jwks = await resolveJwks();
     const { payload } = await jwtVerify(token, jwks, {
       issuer: 'privy.io',
       audience: PRIVY_APP_ID,
@@ -58,11 +83,11 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
     const email = linkedAccounts.find((acc: any) => acc.type === 'email')?.address;
 
     return { userId, walletAddress, email };
-  } catch (primaryError) {
-    console.error('JWT validation failed with primary JWKS/claims. Retrying with fallback JWKS and relaxed claims:', primaryError);
+  } catch (strictError) {
+    console.error('JWT validation (strict) failed. Trying relaxed verification using the resolved JWKS:', strictError);
     try {
-      // Switch to fallback JWKS URL
-      jwks = createRemoteJWKSet(new URL(PRIVY_JWKS_URL_FALLBACK));
+      // Relaxed verification (no issuer/audience) if strict fails due to claim mismatch
+      const jwks = await resolveJwks();
       const { payload } = await jwtVerify(token, jwks);
 
       const userId = payload.sub as string | undefined;
@@ -79,8 +104,8 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
       const email = linkedAccounts.find((acc: any) => acc.type === 'email')?.address;
 
       return { userId, walletAddress, email };
-    } catch (fallbackError) {
-      console.error('JWT validation failed (fallback):', fallbackError);
+    } catch (relaxedError) {
+      console.error('JWT validation failed (relaxed):', relaxedError, 'JWKS URL used:', cachedJwksUrl);
       throw new Error('Invalid or expired token');
     }
   }
