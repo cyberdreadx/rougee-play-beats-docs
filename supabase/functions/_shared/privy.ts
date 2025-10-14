@@ -1,7 +1,14 @@
 import { createRemoteJWKSet, jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts';
 
 const PRIVY_APP_ID = Deno.env.get('PRIVY_APP_ID');
+
+if (!PRIVY_APP_ID) {
+  console.error('CRITICAL: PRIVY_APP_ID environment variable is not set');
+  throw new Error('PRIVY_APP_ID not configured');
+}
+
 const PRIVY_JWKS_URL = `https://auth.privy.io/api/v1/apps/${PRIVY_APP_ID}/.well-known/jwks.json`;
+console.log('Privy JWKS URL:', PRIVY_JWKS_URL);
 
 // Cache the JWKS for performance
 const jwks = createRemoteJWKSet(new URL(PRIVY_JWKS_URL));
