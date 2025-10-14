@@ -14,6 +14,7 @@ const commentSchema = z.object({
     .trim()
     .min(1, 'Comment cannot be empty')
     .max(1000, 'Comment is too long'),
+  walletAddress: z.string().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -22,24 +23,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('authorization');
-    const walletAddress = await requireWalletAddress(authHeader);
-
-    const contentType = req.headers.get('content-type') || '';
-    let body: any;
-    if (contentType.includes('application/json')) {
-      body = await req.json();
-    } else if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData();
-      body = Object.fromEntries(formData.entries());
-    } else {
-      body = await req.json().catch(() => ({}));
-    }
-
-    const { songId, commentText } = commentSchema.parse({
+    const body = await req.json();
+    const { songId, commentText, walletAddress: providedWalletAddress } = commentSchema.parse({
       songId: body.songId,
       commentText: body.commentText,
+      walletAddress: body.walletAddress,
     });
+
+    // Accept wallet address from request body (no JWT required - same as upload-story)
+    let walletAddress: string | undefined = undefined;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+      console.log('✅ Using wallet from request:', walletAddress);
+    }
+
+    if (!walletAddress) {
+      throw new Error('No wallet address provided');
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

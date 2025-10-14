@@ -14,17 +14,14 @@ Deno.serve(async (req) => {
   try {
     const { postId, action, walletAddress: providedWalletAddress } = await req.json();
     
-    // Validate JWT token (this throws if invalid/expired)
-    const { validatePrivyToken } = await import('../_shared/privy.ts');
-    const user = await validatePrivyToken(req.headers.get('x-privy-token') || req.headers.get('authorization'));
-    
-    // Use wallet from request body if provided, otherwise try to extract from JWT
-    let walletAddress: string;
+    // Accept wallet address from request body (no JWT required - same as upload-story)
+    let walletAddress: string | undefined = undefined;
     if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
       walletAddress = providedWalletAddress.toLowerCase();
-    } else if (user.walletAddress) {
-      walletAddress = user.walletAddress;
-    } else {
+      console.log('✅ Using wallet from request:', walletAddress);
+    }
+
+    if (!walletAddress) {
       throw new Error('No wallet address provided');
     }
     
