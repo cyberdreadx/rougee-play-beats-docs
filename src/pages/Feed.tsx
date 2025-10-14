@@ -381,7 +381,7 @@ export default function Feed() {
 
                   {/* Post Actions */}
                   <div className="flex items-center gap-4 pt-3 mt-auto border-t border-border">
-                    <LikeButton songId={post.id} initialLikeCount={post.like_count} size="sm" showCount={true} />
+                    <LikeButton songId={post.id} initialLikeCount={post.like_count} size="sm" showCount={true} entityType="post" />
 
                     <button onClick={() => toggleComments(post.id)} className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors">
                       <MessageCircle className="w-4 h-4" />

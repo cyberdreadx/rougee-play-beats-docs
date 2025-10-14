@@ -11,13 +11,15 @@ interface LikeButtonProps {
   initialLikeCount?: number;
   size?: "sm" | "md" | "lg";
   showCount?: boolean;
+  entityType?: 'song' | 'post';
 }
 
 export default function LikeButton({ 
   songId, 
   initialLikeCount = 0, 
   size = "md",
-  showCount = true 
+  showCount = true,
+  entityType = 'song',
 }: LikeButtonProps) {
   const { isConnected, fullAddress: address, connect } = useWallet();
   const { getAuthHeaders } = usePrivyToken();
@@ -36,11 +38,14 @@ export default function LikeButton({
     if (!address) return;
 
     try {
-      const { data, error } = await supabase
-        .from('feed_likes')
+      const table = entityType === 'post' ? 'feed_likes' : 'song_likes';
+      const idColumn = entityType === 'post' ? 'post_id' : 'song_id';
+
+      const { data, error } = await (supabase as any)
+        .from(table)
         .select('id')
         .eq('wallet_address', address)
-        .eq('post_id', songId)
+        .eq(idColumn, songId)
         .maybeSingle();
 
       if (error) throw error;
@@ -52,10 +57,13 @@ export default function LikeButton({
 
   const fetchLikeCount = async () => {
     try {
-      const { count, error } = await supabase
-        .from('feed_likes')
+      const table = entityType === 'post' ? 'feed_likes' : 'song_likes';
+      const idColumn = entityType === 'post' ? 'post_id' : 'song_id';
+
+      const { count, error } = await (supabase as any)
+        .from(table)
         .select('*', { count: 'exact', head: true })
-        .eq('post_id', songId);
+        .eq(idColumn, songId);
 
       if (error) throw error;
       setLikeCount(count || 0);
@@ -81,12 +89,14 @@ export default function LikeButton({
     setIsLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const { error } = await supabase.functions.invoke('like-song', {
+      const functionName = entityType === 'post' ? 'like-post' : 'like-song';
+      const body = entityType === 'post' 
+        ? { postId: songId, action: isLiked ? 'unlike' : 'like' }
+        : { songId, action: isLiked ? 'unlike' : 'like' };
+
+      const { error } = await (supabase as any).functions.invoke(functionName, {
         headers,
-        body: { 
-          songId, 
-          action: isLiked ? 'unlike' : 'like',
-        },
+        body,
       });
 
       if (error) throw error;

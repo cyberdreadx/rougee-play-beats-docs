@@ -568,7 +568,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground font-mono border-t border-border pt-4 mt-4">
                       <div className="flex items-center gap-2">
-                        <LikeButton songId={post.id} size="sm" showCount={true} />
+                        <LikeButton songId={post.id} size="sm" showCount={true} entityType="post" />
                       </div>
                       <Button
                         variant="ghost"
