@@ -139,11 +139,13 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             
             console.log('Extracted token address:', tokenAddress);
 
-            // Update database with token address via edge function (works with Privy auth)
-            const headers = await getAuthHeaders();
+            // Update database with token address
             const { data: fnData, error: fnError } = await supabase.functions.invoke('update-song-token', {
-              body: { songId: song.id, tokenAddress },
-              headers,
+              body: { 
+                songId: song.id, 
+                tokenAddress,
+                walletAddress: fullAddress?.toLowerCase() || '',
+              },
             });
 
             console.log('Edge function update result:', { fnData, fnError });
