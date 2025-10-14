@@ -836,7 +836,7 @@ const Wallet = () => {
                       {token.balance.toLocaleString(undefined, {maximumFractionDigits: 2})}
                     </p>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {token.valueInUSD ? `$${token.valueInUSD.toFixed(2)}` : '$0.00'}
+                      ${(token.valueInUSD || 0).toFixed(2)}
                     </p>
                     {token.priceInUSD && (
                       <p className="text-[10px] text-muted-foreground/70 font-mono">
