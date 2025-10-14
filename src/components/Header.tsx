@@ -21,17 +21,13 @@ const Header = () => {
       
       if (isConnected && fullAddress) {
         const walletLower = fullAddress.toLowerCase();
-        console.log('Checking admin status for:', walletLower);
+        console.log('Checking admin status (RPC) for:', walletLower);
         
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("wallet_address", walletLower)
-          .eq("role", "admin")
-          .maybeSingle();
+        const { data: isAdminResp, error } = await supabase
+          .rpc('is_admin', { check_wallet: walletLower });
         
-        console.log('Admin check result:', { data, error, walletLower });
-        setIsAdmin(!!data);
+        console.log('Admin RPC result:', { isAdminResp, error, walletLower });
+        setIsAdmin(Boolean(isAdminResp));
       } else {
         setIsAdmin(false);
       }
