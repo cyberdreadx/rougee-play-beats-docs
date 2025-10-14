@@ -27,7 +27,7 @@ const NetworkInfo = () => {
           </span>
         </div>
         
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           {networks.map(({ chain, name }) => (
             <Button
               key={chain.id}
@@ -39,6 +39,9 @@ const NetworkInfo = () => {
               {name}
             </Button>
           ))}
+          <span className="text-xs font-mono text-muted-foreground/60">
+            KEETA coming soon
+          </span>
         </div>
       </div>
     </div>
