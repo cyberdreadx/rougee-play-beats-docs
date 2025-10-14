@@ -7,8 +7,8 @@ export const privyAppId = "cmfr2qk33005dl20dh3yirnho";
 
 // RPC endpoints - QuickNode with fallback
 const RPC_URLS = [
-  "https://white-proportionate-daylight.base-mainnet.quiknode.pro/b4737d76d6e952b68f1182898c7191ef88e90ee4/", // QuickNode (CORS enabled)
-  "https://mainnet.base.org", // Fallback: Public Base RPC
+  "https://base-mainnet.g.alchemy.com/v2/24-aCNa8b19h_zgsR_292", // Alchemy Base mainnet (primary for transactions)
+  "https://rpc.ankr.com/base", // Ankr public RPC (fallback)
 ];
 
 // Define the chains

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { useAccount } from "wagmi";
 import { supabase } from "@/integrations/supabase/client";
+import xrgeLogo from "@/assets/tokens/xrge.png";
+import ktaLogo from "@/assets/tokens/kta.png";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
@@ -18,10 +22,12 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, XRGE_TOKEN_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance } from "@/hooks/useSongBondingCurve";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance } from "@/hooks/useSongBondingCurve";
+import { useBalance } from "wagmi";
+import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
-import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
+import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check } from "lucide-react";
 
 interface Song {
   id: string;
@@ -58,8 +64,17 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
+  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount(); // Wagmi account check
   const { getAuthHeaders } = usePrivyToken();
   const { prices } = useTokenPrices();
+  
+  // Debug wallet state
+  useEffect(() => {
+    console.log('💳 Wallet State:', {
+      privy: { isConnected, address: fullAddress },
+      wagmi: { isConnected: wagmiConnected, address: wagmiAddress },
+    });
+  }, [isConnected, fullAddress, wagmiConnected, wagmiAddress]);
 
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +85,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [loadingComments, setLoadingComments] = useState(false);
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
   const [isProcessingBuy, setIsProcessingBuy] = useState(false);
-  const [chartKey, setChartKey] = useState(0);
+  const [paymentToken, setPaymentToken] = useState<'XRGE' | 'ETH' | 'KTA' | 'USDC'>('XRGE');
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Bonding curve hooks
   const { createSong, isPending: isDeploying, isConfirming, isSuccess: deploySuccess, hash, receipt } = useCreateSong();
@@ -82,8 +98,28 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { balance: userBalance, refetch: refetchBalance } = useSongTokenBalance(songTokenAddress, fullAddress as `0x${string}` | undefined);
   const { approve, isPending: isApproving } = useApproveToken();
   
+  // Swap hooks for other payment tokens
+  const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, isPending: isSwapping } = useXRGESwap();
+  
+  // Get all token balances
+  const { data: ethBalance } = useBalance({ address: wagmiAddress });
+  const { data: xrgeBalance } = useBalance({ address: wagmiAddress, token: XRGE_TOKEN });
+  const { data: ktaBalance } = useBalance({ address: wagmiAddress, token: KTA_TOKEN_ADDRESS });
+  const { data: usdcBalance } = useBalance({ address: wagmiAddress, token: USDC_TOKEN_ADDRESS });
+  
+  // Get XRGE quotes based on payment token
+  const { expectedXRGE: xrgeFromETH } = useXRGEQuote(paymentToken === 'ETH' ? buyAmount : '0');
+  const { expectedXRGE: xrgeFromKTA } = useXRGEQuoteFromKTA(paymentToken === 'KTA' ? buyAmount : '0');
+  const { expectedXRGE: xrgeFromUSDC } = useXRGEQuoteFromUSDC(paymentToken === 'USDC' ? buyAmount : '0');
+  
+  // Calculate XRGE equivalent based on selected payment token
+  const xrgeEquivalent = paymentToken === 'ETH' ? xrgeFromETH :
+                         paymentToken === 'KTA' ? xrgeFromKTA :
+                         paymentToken === 'USDC' ? xrgeFromUSDC :
+                         buyAmount; // Already XRGE
+  
   // Quote hooks for accurate bonding curve calculations
-  const { tokensOut: buyQuote, isLoading: buyQuoteLoading } = useBuyQuote(songTokenAddress, buyAmount);
+  const { tokensOut: buyQuote, isLoading: buyQuoteLoading } = useBuyQuote(songTokenAddress, xrgeEquivalent);
   const { xrgeOut: sellQuote, isLoading: sellQuoteLoading } = useSellQuote(songTokenAddress, sellAmount);
 
   // Real blockchain data or undefined if not deployed
@@ -94,6 +130,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   
   // Convert XRGE price to USD price
   const currentPrice = priceInXRGE && prices.xrge ? priceInXRGE * prices.xrge : undefined;
+  const currentPriceAfterFee = currentPrice ? currentPrice * 0.97 : undefined; // After 3% sell fee
   const xrgeUsdPrice = prices.xrge || 0;
   
   // Calculate different market cap metrics in USD
@@ -156,7 +193,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         refetchMetadata();
         refetchSupply();
         refetchBalance();
-        setChartKey(prev => prev + 1); // Force chart refresh
         toast({
           title: "Data refreshed!",
           description: "Your balance and prices have been updated",
@@ -291,10 +327,26 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   };
 
   const handleBuy = async () => {
-    if (!isConnected) {
+    if (!isConnected || !fullAddress) {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet to buy",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('🔍 Wallet check:', { 
+      isConnected, 
+      privyAddress: fullAddress, 
+      wagmiAddress,
+      paymentToken 
+    });
+    
+    if (!wagmiAddress) {
+      toast({
+        title: "Wallet sync issue",
+        description: "Privy wallet not synced with wagmi. Try refreshing the page.",
         variant: "destructive",
       });
       return;
@@ -320,26 +372,101 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
     setIsProcessingBuy(true);
     try {
-      // 1) Approve XRGE spend for the bonding curve
-      toast({
-        title: "Approval required",
-        description: "Please approve XRGE spending in your wallet",
-      });
+      if (paymentToken === 'ETH') {
+        // Buy directly with ETH (bonding curve handles swap internally)
+        toast({
+          title: "Transaction pending",
+          description: "Please confirm ETH payment in your wallet",
+        });
+        
+        await buyWithETH(songTokenAddress, buyAmount, 500); // 5% slippage
+        
+        toast({
+          title: "Purchase successful!",
+          description: `Bought tokens with ${buyAmount} ETH`,
+        });
+      } else if (paymentToken === 'XRGE') {
+        // Buy with XRGE (2-step: approve then buy)
+        toast({
+          title: "Approval required",
+          description: "Please approve XRGE spending in your wallet",
+        });
+        
+        await approve(XRGE_TOKEN, buyAmount);
+        
+        toast({
+          title: "Approval confirmed",
+          description: "Now processing your purchase...",
+        });
+        
+        await buyWithXRGE(songTokenAddress, buyAmount, "0");
+        
+        toast({
+          title: "Purchase successful!",
+          description: `Bought tokens for ${buyAmount} XRGE`,
+        });
+      } else if (paymentToken === 'KTA') {
+        // Swap KTA to XRGE first, then buy (requires 2 approvals)
+        toast({
+          title: "Step 1/3: Approve KTA",
+          description: "Please approve KTA for swapping",
+        });
+        
+        await approveKTA(buyAmount);
+        
+        toast({
+          title: "Step 2/3: Swapping KTA to XRGE",
+          description: "Converting your KTA to XRGE...",
+        });
+        
+        await buyXRGEWithKTA(buyAmount, 500);
+        
+        // Wait a bit for swap to complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        toast({
+          title: "Step 3/3: Buying song tokens",
+          description: "Purchasing with swapped XRGE...",
+        });
+        
+        await buyWithXRGE(songTokenAddress, buyAmount, "0");
+        
+        toast({
+          title: "Purchase successful!",
+          description: `Bought tokens using ${buyAmount} KTA`,
+        });
+      } else if (paymentToken === 'USDC') {
+        // Swap USDC to XRGE first, then buy
+        toast({
+          title: "Step 1/3: Approve USDC",
+          description: "Please approve USDC for swapping",
+        });
+        
+        await approveUSDC(buyAmount);
+        
+        toast({
+          title: "Step 2/3: Swapping USDC to XRGE",
+          description: "Converting your USDC to XRGE...",
+        });
+        
+        await buyXRGEWithUSDC(buyAmount, 500);
+        
+        // Wait a bit for swap to complete
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        toast({
+          title: "Step 3/3: Buying song tokens",
+          description: "Purchasing with swapped XRGE...",
+        });
+        
+        await buyWithXRGE(songTokenAddress, buyAmount, "0");
+        
+        toast({
+          title: "Purchase successful!",
+          description: `Bought tokens using ${buyAmount} USDC`,
+        });
+      }
       
-      await approve(XRGE_TOKEN_ADDRESS, buyAmount);
-      
-      toast({
-        title: "Approval confirmed",
-        description: "Now processing your purchase...",
-      });
-      
-      // 2) Execute buy
-      await buyWithXRGE(songTokenAddress, buyAmount, "0"); // no min tokens
-      
-      toast({
-        title: "Purchase successful!",
-        description: `Bought tokens for ${buyAmount} XRGE`,
-      });
       setBuyAmount("");
     } catch (error) {
       console.error("Buy error:", error);
@@ -433,6 +560,62 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         description: error instanceof Error ? error.message : "Failed to deploy to bonding curve",
         variant: "destructive",
       });
+    }
+  };
+
+  const addTokenToWallet = async () => {
+    if (!songTokenAddress || !song) {
+      toast({
+        title: "Token not available",
+        description: "Song token hasn't been deployed yet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const wasAdded = await (window as any).ethereum?.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: songTokenAddress,
+            symbol: song.ticker || 'SONG',
+            decimals: 18,
+            image: song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : undefined,
+          },
+        },
+      });
+
+      if (wasAdded) {
+        toast({
+          title: "Token added!",
+          description: `${song.ticker} has been added to your wallet`,
+        });
+      }
+    } catch (error) {
+      console.error('Error adding token:', error);
+      toast({
+        title: "Could not add token",
+        description: "You can manually add it using the contract address",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyTokenAddress = async () => {
+    if (!songTokenAddress) return;
+    
+    try {
+      await navigator.clipboard.writeText(songTokenAddress);
+      setCopiedAddress(true);
+      toast({
+        title: "Address copied!",
+        description: "Token address copied to clipboard",
+      });
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (error) {
+      console.error('Error copying:', error);
     }
   };
 
@@ -631,21 +814,51 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 
                 {userBalance && parseFloat(userBalance) > 0 && (
                   <div className="mb-3 p-3 bg-neon-green/10 border border-neon-green/30 rounded">
-                    <div className="text-xs text-muted-foreground font-mono mb-1">Your Holdings</div>
-                    <div className="text-lg font-mono font-bold text-neon-green">
-                      {parseFloat(userBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
-                    </div>
-                    {currentPrice && (
-                      <div className="text-xs text-muted-foreground font-mono mt-1">
-                        Value: ${(parseFloat(userBalance) * currentPrice).toFixed(4)}
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="text-xs text-muted-foreground font-mono mb-1">Your Holdings</div>
+                        <div className="text-lg font-mono font-bold text-neon-green">
+                          {parseFloat(userBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} {song?.ticker || 'tokens'}
+                        </div>
+                        {currentPriceAfterFee && (
+                          <div className="text-xs text-muted-foreground font-mono mt-1">
+                            Value: ${(parseFloat(userBalance) * currentPriceAfterFee).toFixed(4)}
+                            <span className="opacity-50 ml-1">(after 3% sell fee)</span>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <button
+                        onClick={addTokenToWallet}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-neon-green/20 hover:bg-neon-green/30 text-neon-green rounded font-mono transition-colors"
+                        title="Add to wallet"
+                      >
+                        <Wallet className="h-3 w-3" />
+                        Add
+                      </button>
+                    </div>
+                    <button
+                      onClick={copyTokenAddress}
+                      className="w-full mt-2 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-black/20 hover:bg-black/30 text-muted-foreground rounded font-mono transition-colors"
+                    >
+                      {copiedAddress ? (
+                        <>
+                          <Check className="h-3 w-3" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span className="truncate">{songTokenAddress}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
                 
                 {xrgeUsdPrice > 0 && (
-                  <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono">
-                    💱 XRGE = ${xrgeUsdPrice.toFixed(6)} USD
+                  <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono flex items-center gap-2">
+                    <img src={xrgeLogo} alt="XRGE" className="w-4 h-4" />
+                    <span>XRGE = ${xrgeUsdPrice.toFixed(6)} USD</span>
                   </div>
                 )}
                 
@@ -655,9 +868,40 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </div>
                 )}
                 
-                <div className="space-y-2 text-xs md:text-sm font-mono">
-                  {hasRealisticData ? (
-                    <>
+                  {songTokenAddress && !userBalance && (
+                    <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-blue-400 font-mono">Add token to wallet:</span>
+                        <button
+                          onClick={addTokenToWallet}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded font-mono transition-colors"
+                        >
+                          <Wallet className="h-3 w-3" />
+                          Add to Wallet
+                        </button>
+                      </div>
+                      <button
+                        onClick={copyTokenAddress}
+                        className="w-full flex items-center justify-center gap-1 px-2 py-1 text-xs bg-black/20 hover:bg-black/30 text-muted-foreground rounded font-mono transition-colors"
+                      >
+                        {copiedAddress ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            <span className="truncate">{songTokenAddress}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2 text-xs md:text-sm font-mono">
+                    {hasRealisticData ? (
+                      <>
                       {circulatingMarketCap !== undefined && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Market Cap:</span>
@@ -737,7 +981,11 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
         {/* Trading Chart */}
         <div className="mb-6 md:mb-8">
-          <SongTradingChart key={chartKey} songTokenAddress={songTokenAddress} />
+          <SongTradingChart 
+            songTokenAddress={songTokenAddress} 
+            priceInXRGE={priceInXRGE}
+            bondingSupply={bondingSupply}
+          />
         </div>
 
         {/* Main Content */}
@@ -762,10 +1010,124 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
+                  {/* Payment Token Selector */}
                   <div>
                     <label className="text-xs md:text-sm font-mono text-muted-foreground mb-2 block">
-                      Amount (XRGE)
+                      Pay with
                     </label>
+                    <Select value={paymentToken} onValueChange={(value: any) => setPaymentToken(value)}>
+                      <SelectTrigger className="font-mono">
+                        <SelectValue>
+                          {paymentToken === 'ETH' && (
+                            <div className="flex items-center gap-2">
+                              <span>💎</span>
+                              <span>ETH (Ethereum)</span>
+                            </div>
+                          )}
+                          {paymentToken === 'XRGE' && (
+                            <div className="flex items-center gap-2">
+                              <img src={xrgeLogo} alt="XRGE" className="w-4 h-4" />
+                              <span>XRGE (Recommended)</span>
+                            </div>
+                          )}
+                          {paymentToken === 'KTA' && (
+                            <div className="flex items-center gap-2">
+                              <img src={ktaLogo} alt="KTA" className="w-4 h-4" />
+                              <span>KTA</span>
+                            </div>
+                          )}
+                          {paymentToken === 'USDC' && (
+                            <div className="flex items-center gap-2">
+                              <span>💵</span>
+                              <span>USDC (Stablecoin)</span>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ETH" className="font-mono">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span>💎</span>
+                              <span>ETH</span>
+                            </div>
+                            {wagmiAddress && ethBalance && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {parseFloat(ethBalance.formatted).toFixed(4)}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="XRGE" className="font-mono">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <img src={xrgeLogo} alt="XRGE" className="w-4 h-4" />
+                              <span>XRGE ⭐</span>
+                            </div>
+                            {wagmiAddress && xrgeBalance && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {parseFloat(xrgeBalance.formatted).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="KTA" className="font-mono">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <img src={ktaLogo} alt="KTA" className="w-4 h-4" />
+                              <span>KTA</span>
+                            </div>
+                            {wagmiAddress && ktaBalance && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {parseFloat(ktaBalance.formatted).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="USDC" className="font-mono">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span>💵</span>
+                              <span>USDC</span>
+                            </div>
+                            {wagmiAddress && usdcBalance && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {parseFloat(usdcBalance.formatted).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs md:text-sm font-mono text-muted-foreground">
+                        Amount ({paymentToken})
+                      </label>
+                      {wagmiAddress && (
+                        <button
+                          onClick={() => {
+                            const balance = paymentToken === 'ETH' ? ethBalance :
+                                          paymentToken === 'XRGE' ? xrgeBalance :
+                                          paymentToken === 'KTA' ? ktaBalance :
+                                          usdcBalance;
+                            if (balance?.formatted) {
+                              setBuyAmount(balance.formatted);
+                            }
+                          }}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-mono"
+                        >
+                          Balance: {
+                            paymentToken === 'ETH' ? (ethBalance?.formatted ? parseFloat(ethBalance.formatted).toFixed(4) : '0') :
+                            paymentToken === 'XRGE' ? (xrgeBalance?.formatted ? parseFloat(xrgeBalance.formatted).toFixed(2) : '0') :
+                            paymentToken === 'KTA' ? (ktaBalance?.formatted ? parseFloat(ktaBalance.formatted).toFixed(2) : '0') :
+                            (usdcBalance?.formatted ? parseFloat(usdcBalance.formatted).toFixed(2) : '0')
+                          } (MAX)
+                        </button>
+                      )}
+                    </div>
                     <Input
                       type="number"
                       placeholder="0.0"
@@ -776,6 +1138,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </div>
 
                   <div className="console-bg p-3 md:p-4 rounded-lg border border-border">
+                    {paymentToken !== 'XRGE' && buyAmount && parseFloat(buyAmount) > 0 && (
+                      <div className="flex justify-between text-xs md:text-sm font-mono mb-2 pb-2 border-b border-border">
+                        <span className="text-muted-foreground">XRGE equivalent:</span>
+                        <span className="text-blue-400 flex items-center gap-1">
+                          <img src={xrgeLogo} alt="XRGE" className="w-3 h-3" />
+                          ~{parseFloat(xrgeEquivalent).toFixed(4)} XRGE
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs md:text-sm font-mono mb-2">
                       <span className="text-muted-foreground">You will receive:</span>
                       <span className="text-foreground">
@@ -789,8 +1160,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <div className="flex justify-between text-xs md:text-sm font-mono">
                       <span className="text-muted-foreground">Price impact:</span>
                       <span className="text-green-500">
-                        {buyAmount && currentPrice && buyQuote && parseFloat(buyQuote) > 0 ? (
-                          `~${(((parseFloat(buyAmount) / parseFloat(buyQuote)) - currentPrice) / currentPrice * 100).toFixed(2)}%`
+                        {xrgeEquivalent && priceInXRGE && buyQuote && parseFloat(buyQuote) > 0 && activeTradingSupply ? (
+                          (() => {
+                            // Calculate market cap change: (new supply * final price) - (current supply * current price)
+                            const newSupply = activeTradingSupply + parseFloat(buyQuote);
+                            const avgPricePerToken = parseFloat(xrgeEquivalent) / parseFloat(buyQuote);
+                            const currentMC = activeTradingSupply * priceInXRGE;
+                            const newMC = newSupply * avgPricePerToken;
+                            const mcImpact = ((newMC - currentMC) / currentMC) * 100;
+                            return `~${mcImpact.toFixed(2)}%`;
+                          })()
                         ) : (
                           "~0%"
                         )}
@@ -803,11 +1182,17 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     className="w-full" 
                     variant="neon" 
                     size="sm"
-                    disabled={isProcessingBuy || isBuying || isApproving || !songTokenAddress}
+                    disabled={isProcessingBuy || isBuying || isApproving || isSwapping || !songTokenAddress}
                   >
-                    {(isProcessingBuy || isBuying || isApproving) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    {isApproving ? "APPROVING..." : isProcessingBuy || isBuying ? "BUYING..." : `BUY ${song?.ticker ? song.ticker.toUpperCase() : ''}`}
+                    {(isProcessingBuy || isBuying || isApproving || isSwapping) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {isApproving || isSwapping ? "PROCESSING..." : isProcessingBuy || isBuying ? "BUYING..." : `BUY WITH ${paymentToken}`}
                   </Button>
+
+                  {(paymentToken === 'KTA' || paymentToken === 'USDC') && (
+                    <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono text-center">
+                      💡 {paymentToken} purchase requires 3 steps: Approve → Swap to XRGE → Buy
+                    </div>
+                  )}
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
                     {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}
@@ -850,8 +1235,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <div className="flex justify-between text-xs md:text-sm font-mono">
                       <span className="text-muted-foreground">Price impact:</span>
                       <span className="text-red-500">
-                        {sellAmount && currentPrice && sellQuote && parseFloat(sellAmount) > 0 ? (
-                          `~${((currentPrice - (parseFloat(sellQuote) / parseFloat(sellAmount))) / currentPrice * 100).toFixed(2)}%`
+                        {sellAmount && priceInXRGE && sellQuote && parseFloat(sellAmount) > 0 && activeTradingSupply ? (
+                          (() => {
+                            // Calculate market cap change when selling
+                            const newSupply = activeTradingSupply - parseFloat(sellAmount);
+                            const avgPricePerToken = parseFloat(sellQuote) / parseFloat(sellAmount);
+                            const currentMC = activeTradingSupply * priceInXRGE;
+                            const newMC = newSupply > 0 ? newSupply * avgPricePerToken : 0;
+                            const mcImpact = ((newMC - currentMC) / currentMC) * 100;
+                            return `~${Math.abs(mcImpact).toFixed(2)}%`;
+                          })()
                         ) : (
                           "~0%"
                         )}

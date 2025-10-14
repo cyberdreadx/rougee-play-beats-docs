@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 // XRGESwapper contract address on Base
 const XRGE_SWAPPER_ADDRESS = "0x53BeF6a3e261798246919854bC3ACCab2576F31F" as Address;
 export const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as Address;
-export const KTA_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24318" as Address; // Update with actual KTA address
+export const KTA_TOKEN_ADDRESS = "0xc0634090F2Fe6c6d75e61Be2b949464aBB498973" as Address; // KTA Token on Base
 export const USDC_TOKEN_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address;
 
 // Contract ABI (only functions we need)
