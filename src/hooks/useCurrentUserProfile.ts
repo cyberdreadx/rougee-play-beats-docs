@@ -29,6 +29,7 @@ export const useCurrentUserProfile = () => {
       const response = await supabase.functions.invoke('update-artist-profile', {
         headers: {
           Authorization: `Bearer ${token}`,
+          'x-wallet-address': fullAddress,
         },
         body: formData,
       });
