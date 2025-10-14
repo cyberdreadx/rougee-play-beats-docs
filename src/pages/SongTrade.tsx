@@ -524,6 +524,28 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         });
       }
       
+      // Record purchase in database
+      if (song && fullAddress) {
+        try {
+          const { error: purchaseError } = await supabase
+            .from('song_purchases')
+            .insert({
+              song_id: song.id,
+              buyer_wallet_address: fullAddress.toLowerCase(),
+              artist_wallet_address: song.wallet_address.toLowerCase(),
+            });
+          
+          if (purchaseError) {
+            console.error('Failed to record purchase:', purchaseError);
+            // Don't fail the whole transaction, just log it
+          } else {
+            console.log('✅ Purchase recorded in database');
+          }
+        } catch (dbError) {
+          console.error('Database error recording purchase:', dbError);
+        }
+      }
+      
       setBuyAmount("");
     } catch (error) {
       console.error("Buy error:", error);
