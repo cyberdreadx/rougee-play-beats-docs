@@ -146,7 +146,7 @@ const SearchBar = () => {
                     <div className="w-10 h-10 rounded-full bg-neon-green/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {result.avatar_cid ? (
                         <img
-                          src={getIPFSGatewayUrl(result.avatar_cid)}
+                          src={getIPFSGatewayUrl(result.avatar_cid, undefined, true)}
                           alt={result.name}
                           className="w-full h-full object-cover"
                         />
@@ -178,7 +178,7 @@ const SearchBar = () => {
                     <div className="w-10 h-10 rounded bg-neon-green/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {result.cover_cid ? (
                         <img
-                          src={getIPFSGatewayUrl(result.cover_cid)}
+                          src={getIPFSGatewayUrl(result.cover_cid, undefined, true)}
                           alt={result.name}
                           className="w-full h-full object-cover"
                         />

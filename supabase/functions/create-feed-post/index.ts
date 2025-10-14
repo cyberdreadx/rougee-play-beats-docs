@@ -125,7 +125,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         post,
-        mediaUrl: mediaCid ? `https://gateway.lighthouse.storage/ipfs/${mediaCid}` : null,
+        mediaUrl: mediaCid ? `https://ipfs.io/ipfs/${mediaCid}` : null,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

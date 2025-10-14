@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
 
 interface Song {
   id: string;
@@ -62,6 +63,8 @@ const AudioPlayer = ({
   const [isMuted, setIsMuted] = useState(false);
   const [artistTicker, setArtistTicker] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
+  const [currentAudioUrlIndex, setCurrentAudioUrlIndex] = useState(0);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Fetch artist ticker and verified status
   useEffect(() => {
@@ -126,6 +129,7 @@ const AudioPlayer = ({
     if (currentSong) {
       setCurrentTime(0);
       setDuration(0);
+      setCurrentAudioUrlIndex(0); // Reset to first URL
     }
   }, [currentSong?.id]);
 
@@ -180,20 +184,52 @@ const AudioPlayer = ({
   const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
   const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
   const displayCover = isAd 
-    ? (currentAd.image_cid ? `https://gateway.lighthouse.storage/ipfs/${currentAd.image_cid}` : "") 
-    : (currentSong?.cover_cid ? `https://gateway.lighthouse.storage/ipfs/${currentSong.cover_cid}` : "");
+    ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
+    : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
   const audioSource = isAd 
-    ? `https://gateway.lighthouse.storage/ipfs/${currentAd.audio_cid}`
-    : (currentSong ? `https://gateway.lighthouse.storage/ipfs/${currentSong.audio_cid}` : "");
+    ? getIPFSGatewayUrl(currentAd.audio_cid) // Use Lighthouse first (was working)
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid) : "");
+
+  // Get fallback URLs for robust loading (Lighthouse first, then proxy, then others)
+  const fallbackUrls = isAd 
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4) // More fallbacks
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4) : []);
+
+  // Debug logging
+  useEffect(() => {
+    if (audioSource) {
+      console.log('Audio source URL:', audioSource);
+      console.log('Fallback URLs:', fallbackUrls);
+    }
+  }, [audioSource, fallbackUrls]);
+
+  // Handle audio loading errors with fallback
+  const handleAudioError = () => {
+    console.error('Audio loading failed, trying fallback URLs...');
+    if (currentAudioUrlIndex < fallbackUrls.length - 1) {
+      const nextIndex = currentAudioUrlIndex + 1;
+      setCurrentAudioUrlIndex(nextIndex);
+      console.log('Trying fallback URL:', fallbackUrls[nextIndex]);
+      
+      // Update the audio source
+      const audio = audioRef.current;
+      if (audio) {
+        audio.src = fallbackUrls[nextIndex];
+        audio.load();
+      }
+    } else {
+      console.error('All audio URLs failed to load');
+    }
+  };
 
   if (!currentSong && !currentAd) {
     return null;
   }
 
   return (
-    <Card className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 glass border-0 overflow-hidden">
+    <Card className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
       {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-neon-green/5 via-transparent to-neon-green/5 animate-pulse opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />
       
       {/* Visualizer bars */}
       {isPlaying && (
@@ -213,10 +249,10 @@ const AudioPlayer = ({
       
       {/* Mobile Compact Player */}
       <div className="md:hidden relative z-10">
-        <div className="flex items-center gap-2 p-2 pb-1">
+        <div className="flex items-center gap-3 p-3 pb-2">
           {displayCover && (
             <div 
-              className="relative w-10 h-10 rounded overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
+              className="relative w-12 h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
               onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
               <img 
@@ -230,25 +266,40 @@ const AudioPlayer = ({
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-1">
+            <div className="font-mono text-base font-semibold text-foreground truncate flex items-center gap-2">
               <span className="truncate">{displayTitle}</span>
               {!isAd && currentSong?.ticker && (
-                <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
+                <span className="text-neon-green text-sm flex-shrink-0">${currentSong.ticker}</span>
               )}
             </div>
-            <div className="font-mono text-xs text-muted-foreground truncate">
-              {displayArtist}
+            <div 
+              className="font-mono text-sm text-muted-foreground hover:text-neon-green cursor-pointer truncate flex items-center gap-1 transition-colors"
+              onClick={() => !isAd && currentSong && navigate(`/artist/${currentSong.wallet_address}`)}
+            >
+              <span className="truncate">{displayArtist}</span>
+              {!isAd && isVerified && (
+                <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+              )}
+              {!isAd && artistTicker && <span className="text-neon-green flex-shrink-0">${artistTicker}</span>}
             </div>
+            {/* Additional info line for mobile */}
+            {!isAd && currentSong && (
+              <div className="font-mono text-xs text-muted-foreground flex items-center gap-2">
+                <span>{currentSong.play_count} plays</span>
+                <span>•</span>
+                <span>{new Date(currentSong.created_at).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {onShuffle && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onShuffle}
-                className={`h-7 w-7 ${shuffleEnabled ? 'text-neon-green' : 'text-muted-foreground'}`}
+                className={`h-8 w-8 ${shuffleEnabled ? 'text-neon-green' : 'text-muted-foreground'}`}
               >
-                <Shuffle className="w-3 h-3" />
+                <Shuffle className="w-4 h-4" />
               </Button>
             )}
             {onPrevious && (
@@ -256,7 +307,7 @@ const AudioPlayer = ({
                 variant="ghost"
                 size="icon"
                 onClick={onPrevious}
-                className="h-8 w-8 text-muted-foreground"
+                className="h-9 w-9 text-muted-foreground"
               >
                 <SkipBack className="w-4 h-4" />
               </Button>
@@ -265,7 +316,7 @@ const AudioPlayer = ({
               variant="ghost"
               size="sm"
               onClick={onPlayPause}
-              className="h-10 w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
+              className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
             >
               {isPlaying ? (
                 <Pause className="w-5 h-5 text-neon-green" />
@@ -313,9 +364,9 @@ const AudioPlayer = ({
         </div>
         
         {/* Mobile progress slider */}
-        <div className="px-2 pb-1">
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-[10px] text-muted-foreground min-w-[30px]">
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
               {formatTime(currentTime)}
             </span>
             <Slider
@@ -325,21 +376,27 @@ const AudioPlayer = ({
               className="flex-1"
               onValueChange={handleSeek}
             />
-            <span className="font-mono text-[10px] text-muted-foreground min-w-[30px]">
+            <span className="font-mono text-xs text-muted-foreground min-w-[35px]">
               {formatTime(duration)}
             </span>
           </div>
         </div>
         
         {/* Mobile volume slider */}
-        <div className="px-2 pb-1">
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            max={1}
-            step={0.1}
-            className="w-full"
-            onValueChange={handleVolumeChange}
-          />
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-4 h-4 text-muted-foreground" />
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              max={1}
+              step={0.1}
+              className="flex-1"
+              onValueChange={handleVolumeChange}
+            />
+            <span className="font-mono text-xs text-muted-foreground min-w-[30px]">
+              {Math.round((isMuted ? 0 : volume) * 100)}%
+            </span>
+          </div>
         </div>
       </div>
 
@@ -471,6 +528,15 @@ const AudioPlayer = ({
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setShowDebugInfo(!showDebugInfo)}
+            className="text-neon-green hover:text-neon-green/80"
+            title="Debug Info"
+          >
+            🔧
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={toggleMute}
           >
             {isMuted ? (
@@ -489,11 +555,36 @@ const AudioPlayer = ({
         </div>
       </div>
 
+      {/* Debug Info */}
+      {showDebugInfo && (
+        <div className="absolute top-0 left-0 right-0 bg-black/90 text-white p-4 text-xs font-mono z-50">
+          <div className="space-y-1">
+            <div><strong>Current URL:</strong> {fallbackUrls[currentAudioUrlIndex] || audioSource}</div>
+            <div><strong>URL Index:</strong> {currentAudioUrlIndex} / {fallbackUrls.length}</div>
+            <div><strong>Fallback URLs:</strong></div>
+            {fallbackUrls.map((url, index) => (
+              <div key={index} className={`ml-2 ${index === currentAudioUrlIndex ? 'text-green-400' : 'text-gray-400'}`}>
+                {index}: {url}
+              </div>
+            ))}
+            <div><strong>Duration:</strong> {duration}s</div>
+            <div><strong>Current Time:</strong> {currentTime}s</div>
+          </div>
+        </div>
+      )}
+
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
-        src={audioSource}
+        src={fallbackUrls[currentAudioUrlIndex] || audioSource}
         preload="metadata"
+        onError={handleAudioError}
+        onLoadStart={() => {
+          console.log('Audio loading started for:', fallbackUrls[currentAudioUrlIndex] || audioSource);
+        }}
+        onCanPlay={() => {
+          console.log('Audio can play:', fallbackUrls[currentAudioUrlIndex] || audioSource);
+        }}
       />
     </Card>
   );

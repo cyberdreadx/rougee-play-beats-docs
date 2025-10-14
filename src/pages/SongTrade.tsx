@@ -23,8 +23,8 @@ import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance } from "@/hooks/useSongBondingCurve";
-import { useBalance, useConnect } from "wagmi";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance, BONDING_CURVE_ADDRESS } from "@/hooks/useSongBondingCurve";
+import { useBalance, useConnect, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
@@ -108,6 +108,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { balance: userBalance, refetch: refetchBalance } = useSongTokenBalance(songTokenAddress, fullAddress as `0x${string}` | undefined);
   const { approve, isPending: isApproving } = useApproveToken();
   const { connectors, connectAsync } = useConnect();
+  const publicClient = usePublicClient();
   
   const ensureWagmiConnected = async () => {
     if (wagmiConnected) return;
@@ -125,7 +126,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       throw e;
     }
   };
-  const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, isPending: isSwapping } = useXRGESwap();
+  const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, approveXRGE, getXRGEBalance, isPending: isSwapping } = useXRGESwap();
   
   // Get all token balances - use fullAddress as wagmi should sync with Privy
   const walletForBalance = (wagmiAddress || fullAddress) as `0x${string}` | undefined;
@@ -487,35 +488,161 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           description: `Bought tokens for ${buyAmount} XRGE`,
         });
       } else if (paymentToken === 'KTA') {
-        // Swap KTA to XRGE first, then buy (requires 2 approvals)
-        toast({
-          title: "Step 1/3: Approve KTA",
-          description: "Please approve KTA for swapping",
-        });
-        
-        await approveKTA(buyAmount);
-        
-        toast({
-          title: "Step 2/3: Swapping KTA to XRGE",
-          description: "Converting your KTA to XRGE...",
-        });
-        
-        await buyXRGEWithKTA(buyAmount, 500);
-        
-        // Wait a bit for swap to complete
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        toast({
-          title: "Step 3/3: Buying song tokens",
-          description: "Purchasing with swapped XRGE...",
-        });
-        
-        await buyWithXRGE(songTokenAddress, buyAmount, "0");
-        
-        toast({
-          title: "Purchase successful!",
-          description: `Bought tokens using ${buyAmount} KTA`,
-        });
+        try {
+          console.log("=== Starting KTA to Song Token Swap Process ===");
+          console.log("KTA amount:", buyAmount);
+          console.log("Expected XRGE from quote:", xrgeEquivalent);
+          
+          // Calculate the XRGE amount we'll use (from the quote)
+          const xrgeAmountToUse = xrgeEquivalent || "0";
+          
+          if (parseFloat(xrgeAmountToUse) === 0) {
+            throw new Error("Cannot calculate XRGE amount from KTA. Please try again.");
+          }
+          
+          console.log("🎯 Will use XRGE amount for purchase:", xrgeAmountToUse);
+          
+          // Step 1: Approve KTA for swap
+          toast({
+            title: "Step 1/3: Approve KTA",
+            description: "⏳ Please confirm the transaction in your wallet popup...",
+          });
+          
+          console.log("Requesting KTA approval...");
+          const approveHash = await approveKTA(buyAmount);
+          console.log("✅ KTA approval hash:", approveHash);
+          
+          // Wait for approval to be mined
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Step 2: Swap KTA to XRGE
+          toast({
+            title: "Step 2/3: Swapping KTA to XRGE",
+            description: `⏳ Swapping ${buyAmount} KTA for ~${parseFloat(xrgeAmountToUse).toFixed(2)} XRGE...`,
+          });
+          
+          console.log("Requesting KTA to XRGE swap...");
+          const swapHash = await buyXRGEWithKTA(buyAmount, 500);
+          console.log("✅ KTA to XRGE swap hash:", swapHash);
+          console.log("🔗 Check transaction on BaseScan:", `https://basescan.org/tx/${swapHash}`);
+          
+          // Wait for swap transaction to be mined (3 seconds should be enough on Base)
+          toast({
+            title: "Waiting for swap confirmation...",
+            description: "This usually takes a few seconds on Base",
+          });
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Step 3: Approve XRGE and buy song tokens
+          toast({
+            title: "Step 3/3: Buying song tokens",
+            description: `⏳ Approving and purchasing with ~${parseFloat(xrgeAmountToUse).toFixed(2)} XRGE...`,
+          });
+          
+          console.log("🔐 Approving XRGE for bonding curve...");
+          console.log("Bonding curve address:", BONDING_CURVE_ADDRESS);
+          const approveXRGEHash = await approveXRGE(xrgeAmountToUse, BONDING_CURVE_ADDRESS as `0x${string}`);
+          console.log("✅ XRGE approval hash:", approveXRGEHash);
+          console.log("🔗 Check approval on BaseScan:", `https://basescan.org/tx/${approveXRGEHash}`);
+          
+          // Wait for the approval transaction to be confirmed on-chain
+          console.log("⏳ Waiting for XRGE approval to be confirmed on-chain...");
+          if (publicClient && approveXRGEHash) {
+            try {
+              const receipt = await publicClient.waitForTransactionReceipt({
+                hash: approveXRGEHash as `0x${string}`,
+                confirmations: 1,
+                timeout: 30000, // 30 second timeout
+              });
+              console.log("✅ XRGE approval confirmed! Block:", receipt.blockNumber);
+            } catch (waitError) {
+              console.warn("Could not wait for receipt, falling back to fixed delay:", waitError);
+              await new Promise(resolve => setTimeout(resolve, 6000));
+            }
+          } else {
+            // Fallback to fixed delay if publicClient not available
+            console.log("No publicClient available, using fixed delay");
+            await new Promise(resolve => setTimeout(resolve, 6000));
+          }
+          
+          // Final check: verify we actually have the XRGE balance
+          console.log("🔍 Verifying XRGE balance before purchase...");
+          const actualBalance = await getXRGEBalance();
+          console.log("Actual XRGE balance:", actualBalance);
+          console.log("Expected from quote:", xrgeAmountToUse);
+          
+          // Use the smaller of: actual balance or 98% of expected (conservative)
+          const expectedAmount = parseFloat(xrgeAmountToUse);
+          const actualAmount = parseFloat(actualBalance);
+          
+          let amountToSpend: number;
+          if (actualAmount < expectedAmount * 0.5) {
+            // Balance is way less than expected - something went wrong
+            throw new Error(`XRGE balance too low after swap. Have: ${actualBalance}, Expected: ${xrgeAmountToUse}. Please check the swap transaction on BaseScan.`);
+          } else if (actualAmount < expectedAmount) {
+            // Use 98% of actual balance (conservative)
+            amountToSpend = actualAmount * 0.98;
+            console.log("⚠️ Using 98% of actual balance (less than expected):", amountToSpend);
+          } else {
+            // Use 98% of expected amount
+            amountToSpend = expectedAmount * 0.98;
+            console.log("✅ Using 98% of expected amount:", amountToSpend);
+          }
+          
+          const safeAmount = amountToSpend.toFixed(18); // Keep 18 decimals
+          console.log("Final safe amount to spend:", safeAmount);
+          
+          if (parseFloat(safeAmount) <= 0) {
+            throw new Error("Cannot proceed with zero XRGE amount");
+          }
+          
+          // Check how many tokens we'd get with this amount
+          console.log("🔍 Checking bonding curve quote for amount:", safeAmount);
+          console.log("Current bonding curve price (XRGE):", priceData);
+          console.log("Bonding curve supply:", bondingSupply);
+          
+          console.log("🎵 Buying song tokens with XRGE amount:", safeAmount);
+          
+          const buyHash = await buyWithXRGE(songTokenAddress, safeAmount, "0");
+          console.log("✅ Song token purchase hash:", buyHash);
+          console.log("🔗 Check transaction on BaseScan:", `https://basescan.org/tx/${buyHash}`);
+          
+          toast({
+            title: "Purchase successful!",
+            description: `Bought tokens using ${buyAmount} KTA`,
+          });
+        } catch (error) {
+          console.error("❌ KTA swap process failed:", error);
+          console.error("Full error object:", JSON.stringify(error, null, 2));
+          
+          // Provide specific error messages based on the error
+          let errorMessage = "Failed to complete KTA swap process";
+          if (error instanceof Error) {
+            console.error("Error details:", error.message);
+            console.error("Error stack:", error.stack);
+            
+            if (error.message.includes("User rejected") || error.message.includes("user rejected") || error.message.includes("User denied")) {
+              errorMessage = "Transaction was cancelled. Please try again and approve all transactions.";
+            } else if (error.message.includes("Insufficient XRGE balance") || error.message.includes("insufficient funds")) {
+              errorMessage = "Insufficient funds for transaction. The XRGE approval may not have been mined yet. Please wait a moment and try again.";
+            } else if (error.message.includes("execution reverted") || error.message.includes("ERC20: insufficient allowance")) {
+              errorMessage = "Transaction reverted. The XRGE approval may not have been mined yet. Please wait a moment and try again.";
+            } else if (error.message.includes("Swap transaction may have failed")) {
+              errorMessage = error.message; // Use the full error message with BaseScan link
+            } else {
+              errorMessage = error.message;
+            }
+          }
+          
+          toast({
+            title: "Swap Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          
+          // Don't throw - just stop the process
+          return;
+        }
       } else if (paymentToken === 'USDC') {
         // Swap USDC to XRGE first, then buy
         toast({
@@ -706,7 +833,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             address: songTokenAddress,
             symbol: song.ticker || 'SONG',
             decimals: 18,
-            image: song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : undefined,
+            image: song.cover_cid ? getIPFSGatewayUrl(song.cover_cid, undefined, true) : undefined,
           },
         },
       });
@@ -812,7 +939,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     );
   }
 
-  const coverImageUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : '/og-image.png';
+  const coverImageUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid, undefined, true) : '/og-image.png';
   const pageUrl = `https://edbd29f5-fe8e-435d-b3d2-8111ac95287a.lovableproject.com/song/${song.id}`;
 
   return (

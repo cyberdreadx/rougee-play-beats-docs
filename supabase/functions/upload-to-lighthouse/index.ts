@@ -198,9 +198,9 @@ serve(async (req) => {
         metadataCid: metadataCid,
         song: data,
         lighthouse: {
-          audio: `https://gateway.lighthouse.storage/ipfs/${audioCid}`,
-          cover: coverCid ? `https://gateway.lighthouse.storage/ipfs/${coverCid}` : null,
-          metadata: `https://gateway.lighthouse.storage/ipfs/${metadataCid}`
+          audio: `https://ipfs.io/ipfs/${audioCid}`,
+          cover: coverCid ? `https://ipfs.io/ipfs/${coverCid}` : null,
+          metadata: `https://ipfs.io/ipfs/${metadataCid}`
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

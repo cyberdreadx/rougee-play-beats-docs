@@ -77,29 +77,32 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     <>
       {/* Desktop Navigation */}
       <nav className="hidden md:block w-full px-6 py-4">
-        <div className="flex items-center space-x-2">
-          <MusicBars bars={4} className="mr-2" />
+        <div className="flex items-center space-x-2 bg-black/10 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+          <MusicBars bars={4} className="mr-3 text-neon-green/80" />
           {tabs.map((tab) => (
             <Button
               key={tab.name}
-              variant="tab"
+              variant="ghost"
               size="sm"
               className={`
-                ${isActive(tab) ? 'text-neon-green border-neon-green' : ''}
-                hover:text-neon-green hover:border-neon-green
+                font-mono text-sm px-4 py-2 rounded-xl transition-all duration-300 backdrop-blur-sm
+                ${isActive(tab) 
+                  ? 'bg-white/10 text-neon-green border border-neon-green/30 shadow-lg shadow-neon-green/20' 
+                  : 'text-white/60 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                }
               `}
               onClick={() => handleTabClick(tab)}
             >
               [{tab.name}]
             </Button>
           ))}
-          <MusicBars bars={4} className="ml-2" />
+          <MusicBars bars={4} className="ml-3 text-neon-green/80" />
         </div>
       </nav>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border pb-safe">
-        <div className="flex justify-around items-center h-12">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border-t border-white/10 pb-safe">
+        <div className="flex justify-around items-center h-16 px-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -108,13 +111,15 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                 variant="ghost"
                 size="icon"
                 className={`
-                  h-8 w-8
-                  ${isActive(tab) ? 'text-primary' : 'text-muted-foreground'}
-                  hover:text-primary hover:bg-transparent
+                  h-12 w-12 rounded-xl transition-all duration-300 backdrop-blur-sm
+                  ${isActive(tab) 
+                    ? 'bg-white/10 text-neon-green border border-neon-green/30 shadow-lg shadow-neon-green/20' 
+                    : 'text-white/60 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                  }
                 `}
                 onClick={() => handleTabClick(tab)}
               >
-                <Icon className="h-3 w-3" />
+                <Icon className="h-5 w-5" />
               </Button>
             );
           })}

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { KTA_TOKEN_ADDRESS } from "@/hooks/useXRGESwap";
 
 interface TokenPrices {
   eth: number;
@@ -8,7 +9,6 @@ interface TokenPrices {
 }
 
 const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317";
-const KTA_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24318";
 
 export const useTokenPrices = () => {
   const { data: prices, isLoading } = useQuery<TokenPrices>({

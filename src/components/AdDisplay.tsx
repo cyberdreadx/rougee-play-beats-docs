@@ -38,7 +38,7 @@ export const AdDisplay = ({ ad, isOpen, onClose }: AdDisplayProps) => {
           {ad.image_cid && (
             <div className="w-full aspect-video rounded-lg overflow-hidden bg-muted">
               <img 
-                src={getIPFSGatewayUrl(ad.image_cid)}
+                src={getIPFSGatewayUrl(ad.image_cid, undefined, true)}
                 alt={ad.title}
                 className="w-full h-full object-cover"
               />

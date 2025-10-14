@@ -76,6 +76,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const isOwnProfile = fullAddress?.toLowerCase() === walletAddress?.toLowerCase();
 
@@ -114,13 +115,18 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
       try {
         setLoadingPosts(true);
+        console.log('Fetching posts for wallet:', walletAddress);
+        
         const { data, error } = await supabase
           .from("feed_posts")
           .select("*")
-          .eq("wallet_address", walletAddress)
+          .ilike("wallet_address", walletAddress)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
+        
+        console.log('Found posts:', data?.length || 0, 'posts for wallet:', walletAddress);
+        console.log('Posts data:', data);
         setPosts(data || []);
       } catch (err) {
         console.error("Error fetching artist posts:", err);
@@ -130,7 +136,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
     };
 
     fetchArtistPosts();
-  }, [walletAddress]);
+  }, [walletAddress, refreshKey]);
 
   useEffect(() => {
     const fetchSocialStats = async () => {
@@ -446,12 +452,18 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
         {/* Tabs for Music and Posts */}
         <Tabs defaultValue="music" className="w-full">
-          <TabsList className="w-full justify-start mb-6">
-            <TabsTrigger value="music" className="font-mono">
+          <TabsList className="w-full justify-start mb-6 bg-black/20 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl">
+            <TabsTrigger 
+              value="music" 
+              className="font-mono data-[state=active]:bg-white/10 data-[state=active]:text-neon-green data-[state=active]:shadow-lg data-[state=active]:shadow-neon-green/20 data-[state=active]:border data-[state=active]:border-neon-green/30 data-[state=inactive]:text-white/60 data-[state=inactive]:hover:text-white/80 data-[state=inactive]:hover:bg-white/5 transition-all duration-300 rounded-xl px-6 py-3 backdrop-blur-sm"
+            >
               <Music className="h-4 w-4 mr-2" />
               MUSIC
             </TabsTrigger>
-            <TabsTrigger value="posts" className="font-mono">
+            <TabsTrigger 
+              value="posts" 
+              className="font-mono data-[state=active]:bg-white/10 data-[state=active]:text-neon-green data-[state=active]:shadow-lg data-[state=active]:shadow-neon-green/20 data-[state=active]:border data-[state=active]:border-neon-green/30 data-[state=inactive]:text-white/60 data-[state=inactive]:hover:text-white/80 data-[state=inactive]:hover:bg-white/5 transition-all duration-300 rounded-xl px-6 py-3 backdrop-blur-sm"
+            >
               <MessageSquare className="h-4 w-4 mr-2" />
               POSTS
             </TabsTrigger>
@@ -530,6 +542,18 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
           </TabsContent>
 
           <TabsContent value="posts">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-mono text-lg">Posts ({posts.length})</h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setRefreshKey(prev => prev + 1)}
+                disabled={loadingPosts}
+              >
+                {loadingPosts ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
+            
             {loadingPosts ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
@@ -537,6 +561,9 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
             ) : posts.length === 0 ? (
               <Card className="console-bg tech-border p-6 text-center">
                 <p className="font-mono text-muted-foreground">No posts yet</p>
+                <p className="font-mono text-xs text-muted-foreground mt-2">
+                  Posts you create will appear here
+                </p>
               </Card>
             ) : (
               <div className="space-y-6">

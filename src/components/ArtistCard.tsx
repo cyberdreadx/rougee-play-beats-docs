@@ -30,8 +30,8 @@ const ArtistCard = ({
 }: ArtistCardProps) => {
   const navigate = useNavigate();
 
-  const coverUrl = coverCid ? getIPFSGatewayUrl(coverCid) : null;
-  const avatarUrl = avatarCid ? getIPFSGatewayUrl(avatarCid) : null;
+  const coverUrl = coverCid ? getIPFSGatewayUrl(coverCid, undefined, true) : null;
+  const avatarUrl = avatarCid ? getIPFSGatewayUrl(avatarCid, undefined, true) : null;
 
   const sizeClasses = {
     small: 'h-32 w-48',

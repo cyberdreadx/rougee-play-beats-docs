@@ -254,16 +254,50 @@ export const useBuySongTokens = () => {
     }
 
     try {
+      const xrgeAmountWei = parseEther(xrgeAmount);
+      const minTokensWei = parseEther(minTokens);
+      
+      console.log('Buying song tokens with XRGE:', { 
+        songTokenAddress, 
+        xrgeAmount, 
+        xrgeAmountWei: xrgeAmountWei.toString(),
+        minTokens,
+        minTokensWei: minTokensWei.toString(),
+        address,
+        BONDING_CURVE_ADDRESS 
+      });
+      
+      // Let wagmi estimate gas automatically for better compatibility with Privy
       const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
         abi: BONDING_CURVE_ABI,
         functionName: 'buyWithXRGE',
-        args: [songTokenAddress, parseEther(xrgeAmount), parseEther(minTokens)],
+        args: [songTokenAddress, xrgeAmountWei, minTokensWei],
       } as any);
+      
+      console.log('Song token purchase transaction hash:', txHash);
+      toast.success("Song token purchase transaction submitted successfully");
+      
       return txHash;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error buying with XRGE:', err);
-      toast.error('Failed to buy with XRGE');
+      console.error('Error details:', {
+        message: err?.message,
+        reason: err?.reason,
+        code: err?.code,
+        data: err?.data,
+      });
+      
+      let errorMsg = "Failed to buy song tokens with XRGE";
+      if (err?.reason) {
+        errorMsg = `Transaction failed: ${err.reason}`;
+      } else if (err?.message?.includes('execution reverted')) {
+        errorMsg = "Transaction reverted by contract. The bonding curve may not have enough liquidity or there may be a contract restriction.";
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+      
+      toast.error(errorMsg);
       throw err;
     }
   };

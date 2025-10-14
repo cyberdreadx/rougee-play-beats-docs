@@ -7,6 +7,7 @@ import { Play, Trash2, Pause, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 interface Song {
   id: string;
@@ -156,52 +157,153 @@ const fetchSongs = async () => {
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-2 md:p-3 hover:bg-neon-green/5 rounded-lg cursor-pointer transition-all duration-300 border border-transparent hover:border-neon-green/20 group gap-1 md:gap-2"
+              className="flex items-center justify-between p-3 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg group gap-2 md:gap-3 active:scale-95"
+              style={{ 
+                transition: 'all 0.3s ease',
+                ':hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderColor: 'white',
+                  borderWidth: '2px',
+                  transform: 'scale(1.02)',
+                  boxShadow: '0 25px 50px -12px rgba(0, 255, 0, 0.25)'
+                }
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.borderColor = 'white';
+                e.currentTarget.style.borderWidth = '2px';
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 255, 0, 0.25)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.borderWidth = '1px';
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+              }}
+              onTouchStart={(e) => {
+                // Touch feedback for mobile
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.borderColor = 'white';
+                e.currentTarget.style.borderWidth = '2px';
+                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 255, 0, 0.25)';
+              }}
+              onTouchEnd={(e) => {
+                // Keep the effect for a moment on mobile
+                setTimeout(() => {
+                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.borderWidth = '1px';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                }, 150);
+              }}
             >
-              <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-                <span className="text-neon-green font-mono font-bold text-sm md:text-lg w-5 md:w-8 flex-shrink-0">
+              <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                <span className="text-neon-green font-mono font-bold text-base md:text-lg w-6 md:w-8 flex-shrink-0 group-hover:scale-110 group-hover:drop-shadow-lg group-hover:drop-shadow-neon-green/50 transition-all duration-300">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
-                  <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-md group-hover:shadow-neon-green/20 transition-shadow flex-shrink-0">
+                  <div 
+                    className="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-neon-green/30 shadow-md flex-shrink-0"
+                    onMouseEnter={(e) => {
+                      const img = e.currentTarget.querySelector('img');
+                      const overlay = e.currentTarget.querySelector('.play-overlay');
+                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
+                      if (img) img.style.filter = 'brightness(1.1)';
+                      if (overlay) overlay.style.opacity = '1';
+                      if (gradient) gradient.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      const img = e.currentTarget.querySelector('img');
+                      const overlay = e.currentTarget.querySelector('.play-overlay');
+                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
+                      if (img) img.style.filter = 'brightness(1)';
+                      if (overlay) overlay.style.opacity = '0';
+                      if (gradient) gradient.style.opacity = '0';
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onTouchStart={(e) => {
+                      // Touch feedback for mobile album art
+                      const img = e.currentTarget.querySelector('img');
+                      const overlay = e.currentTarget.querySelector('.play-overlay');
+                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
+                      if (img) img.style.filter = 'brightness(1.1)';
+                      if (overlay) overlay.style.opacity = '1';
+                      if (gradient) gradient.style.opacity = '1';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
+                    }}
+                    onTouchEnd={(e) => {
+                      // Keep the effect for a moment on mobile
+                      setTimeout(() => {
+                        const img = e.currentTarget.querySelector('img');
+                        const overlay = e.currentTarget.querySelector('.play-overlay');
+                        const gradient = e.currentTarget.querySelector('.gradient-overlay');
+                        if (img) img.style.filter = 'brightness(1)';
+                        if (overlay) overlay.style.opacity = '0';
+                        if (gradient) gradient.style.opacity = '0';
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                      }, 200);
+                    }}
+                    style={{ transition: 'all 0.3s ease' }}
+                  >
                     <img 
-                      src={`https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`}
+                      src={getIPFSGatewayUrl(song.cover_cid)}
                       alt={song.title}
                       className="w-full h-full object-cover"
+                      style={{ transition: 'filter 0.3s ease' }}
                     />
+                    <div className="gradient-overlay absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0" style={{ transition: 'opacity 0.3s ease' }} />
+                    {/* Play button overlay on hover */}
+                    <div className="play-overlay absolute inset-0 flex items-center justify-center opacity-0" style={{ transition: 'opacity 0.3s ease' }}>
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
+                        {isCurrentSong(song) && isPlaying ? (
+                          <Pause className="w-4 h-4 md:w-5 md:h-5 text-black" />
+                        ) : (
+                          <Play className="w-4 h-4 md:w-5 md:h-5 text-black fill-black" />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-xs md:text-sm text-foreground font-semibold flex items-center gap-1">
+                  <div className="font-mono text-sm md:text-base text-foreground font-semibold flex items-center gap-2 group-hover:text-neon-green transition-colors duration-300 group-hover:!text-neon-green">
                     <span className="truncate">{song.title}</span>
                     {song.ticker && (
-                      <span className="text-neon-green text-[10px] md:text-xs flex-shrink-0">${song.ticker}</span>
+                      <span className="text-neon-green text-xs md:text-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110">${song.ticker}</span>
                     )}
                   </div>
                   {song.artist && (
                     <Link
                       to={`/artist/${song.wallet_address}`}
-                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green transition-colors truncate flex items-center gap-1"
+                      className="font-mono text-xs md:text-sm text-muted-foreground hover:text-neon-green transition-colors truncate flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300 group-hover:!translate-x-1"
                     >
                       <span className="truncate">{song.artist}</span>
                       {verifiedMap[song.wallet_address] && (
-                        <CheckCircle className="h-3 w-3 text-neon-green" aria-label="Verified artist" />
+                        <CheckCircle className="h-3 w-3 text-neon-green group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110" aria-label="Verified artist" />
                       )}
                     </Link>
                   )}
-                  <div className="font-mono text-[10px] md:text-xs text-muted-foreground md:hidden">
+                  <div className="font-mono text-xs text-muted-foreground group-hover:text-white/80 transition-colors duration-300 group-hover:!text-white/80">
                     {song.play_count} plays
                   </div>
                 </div>
-                <div className="hidden md:block font-mono text-xs md:text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
-                  {song.play_count} plays
-                </div>
               </div>
-              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                <div className="hidden md:block">
+              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+                {/* Mobile: Show like button */}
+                <div className="md:hidden">
                   <LikeButton songId={song.id} size="sm" showCount={false} />
                 </div>
-                <div className="hidden md:block">
+                {/* Desktop: Show like and report buttons */}
+                <div className="hidden md:flex items-center gap-2">
+                  <LikeButton songId={song.id} size="sm" showCount={false} />
                   <ReportButton songId={song.id} />
                 </div>
                 <Button 
@@ -211,7 +313,7 @@ const fetchSongs = async () => {
                     e.stopPropagation();
                     handlePlayClick(song);
                   }}
-                  className={`h-9 w-9 md:h-10 md:w-10 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110 ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-lg shadow-neon-green/50' : ''}`}
+                  className={`h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}
                 >
                   {isCurrentSong(song) && isPlaying ? (
                     <Pause className="w-4 h-4 md:w-5 md:h-5 text-neon-green" />

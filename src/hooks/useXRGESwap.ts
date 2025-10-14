@@ -1,5 +1,5 @@
-import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
-import { parseEther, formatEther, Address } from "viem";
+import { useWriteContract, useReadContract, useWaitForTransactionReceipt, useAccount, useChainId, usePublicClient } from "wagmi";
+import { parseEther, parseUnits, formatEther, Address } from "viem";
 import { toast } from "@/hooks/use-toast";
 
 // XRGESwapper contract address on Base
@@ -47,6 +47,32 @@ const XRGE_SWAPPER_ABI = [
       { name: "amount", type: "uint256" },
     ],
     name: "checkXRGEApproval",
+    outputs: [
+      { name: "hasApproval", type: "bool" },
+      { name: "currentAllowance", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "checkUSDCApproval",
+    outputs: [
+      { name: "hasApproval", type: "bool" },
+      { name: "currentAllowance", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "user", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "checkKTAApproval",
     outputs: [
       { name: "hasApproval", type: "bool" },
       { name: "currentAllowance", type: "uint256" },
@@ -135,11 +161,19 @@ const ERC20_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export const useXRGESwap = () => {
   const { address: accountAddress } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
   const { writeContract, writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -185,8 +219,9 @@ export const useXRGESwap = () => {
   };
 
   // Approve XRGE for swapper contract
-  const approveXRGE = async (amount: string) => {
-    console.log("approveXRGE called with:", { amount, accountAddress, chainId });
+  const approveXRGE = async (amount: string, spenderAddress?: Address) => {
+    const spender = spenderAddress || XRGE_SWAPPER_ADDRESS; // Default to swapper if not specified
+    console.log("approveXRGE called with:", { amount, spender, accountAddress, chainId });
 
     if (!accountAddress || !chainId) {
       console.error("Wallet not properly connected");
@@ -195,7 +230,7 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
@@ -208,12 +243,13 @@ export const useXRGESwap = () => {
         address: XRGE_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [XRGE_SWAPPER_ADDRESS, value],
+        args: [spender, value],
       };
 
       console.log("Calling writeContractAsync for approval with config:", config);
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (approve) hash:", submittedHash);
+      return submittedHash;
     } catch (err) {
       console.error("Approve error:", err);
       toast({
@@ -221,6 +257,7 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to approve XRGE",
         variant: "destructive",
       });
+      throw err;
     }
   };
 
@@ -272,10 +309,11 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
+      console.log("Swapping KTA to XRGE:", { ktaAmount, slippageBps, accountAddress, chainId, XRGE_SWAPPER_ADDRESS });
       const value = parseEther(ktaAmount);
       const config = {
         account: accountAddress,
@@ -288,6 +326,13 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (buy with KTA) hash:", submittedHash);
+      
+      toast({
+        title: "KTA to XRGE Swap",
+        description: "Swap transaction submitted successfully",
+      });
+      
+      return submittedHash;
     } catch (err) {
       console.error("Buy XRGE with KTA error:", err);
       toast({
@@ -295,6 +340,7 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to swap KTA for XRGE",
         variant: "destructive",
       });
+      throw err;
     }
   };
 
@@ -306,10 +352,12 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
+      console.log("Selling XRGE for KTA:", { xrgeAmount, slippageBps, accountAddress, chainId });
+      
       const value = parseEther(xrgeAmount);
       const config = {
         account: accountAddress,
@@ -322,6 +370,11 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (sell for KTA) hash:", submittedHash);
+      toast({
+        title: "Swap Submitted",
+        description: "Please wait for confirmation...",
+      });
+      return submittedHash;
     } catch (err) {
       console.error("Sell XRGE for KTA error:", err);
       toast({
@@ -329,6 +382,7 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to swap XRGE for KTA",
         variant: "destructive",
       });
+      throw err;
     }
   };
 
@@ -340,10 +394,11 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
+      console.log("Approving KTA:", { amount, accountAddress, chainId, KTA_TOKEN_ADDRESS, XRGE_SWAPPER_ADDRESS });
       const value = parseEther(amount);
       const config = {
         account: accountAddress,
@@ -356,6 +411,13 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (approve KTA) hash:", submittedHash);
+      
+      toast({
+        title: "KTA Approved",
+        description: "KTA approval transaction submitted successfully",
+      });
+      
+      return submittedHash;
     } catch (err) {
       console.error("Approve KTA error:", err);
       toast({
@@ -363,6 +425,7 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to approve KTA",
         variant: "destructive",
       });
+      throw err;
     }
   };
 
@@ -378,7 +441,8 @@ export const useXRGESwap = () => {
     }
 
     try {
-      const value = parseEther(usdcAmount);
+      // USDC has 6 decimals
+      const value = parseUnits(usdcAmount, 6);
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -442,11 +506,12 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
-      const value = parseEther(amount);
+      // USDC has 6 decimals
+      const value = parseUnits(amount, 6);
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -458,6 +523,7 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (approve USDC) hash:", submittedHash);
+      return submittedHash;
     } catch (err) {
       console.error("Approve USDC error:", err);
       toast({
@@ -465,6 +531,45 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to approve USDC",
         variant: "destructive",
       });
+      throw err;
+    }
+  };
+
+  // Get XRGE balance using wagmi hook with refetch capability
+  const { data: xrgeBalanceData, refetch: refetchXRGEBalance } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: accountAddress ? [accountAddress] : undefined,
+    query: {
+      enabled: !!accountAddress,
+      refetchInterval: 2000, // Auto-refetch every 2 seconds
+    },
+  });
+
+  const getXRGEBalance = async () => {
+    if (!accountAddress || !publicClient) {
+      console.log("Cannot get XRGE balance: missing accountAddress or publicClient");
+      return "0";
+    }
+    
+    try {
+      console.log("Getting XRGE balance for address:", accountAddress);
+      
+      // Use publicClient to directly read from the blockchain (bypasses cache)
+      const balance = await publicClient.readContract({
+        address: XRGE_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [accountAddress],
+      } as any) as bigint;
+      
+      const formattedBalance = formatEther(balance);
+      console.log("XRGE balance fetched:", formattedBalance, "for address:", accountAddress);
+      return formattedBalance;
+    } catch (error) {
+      console.error("Error fetching XRGE balance:", error);
+      return "0";
     }
   };
 
@@ -478,6 +583,7 @@ export const useXRGESwap = () => {
     buyXRGEWithUSDC,
     sellXRGEForUSDC,
     approveUSDC,
+    getXRGEBalance,
     isPending,
     isConfirming,
     isSuccess,
@@ -548,6 +654,50 @@ export const useXRGEApproval = (userAddress: Address | undefined, amount: string
   };
 };
 
+// Hook to check USDC approval for buying XRGE
+export const useUSDCApproval = (userAddress: Address | undefined, amount: string) => {
+  const value = amount ? parseUnits(amount, 6) : BigInt(0); // USDC has 6 decimals
+
+  const { data, isLoading, refetch } = useReadContract({
+    address: XRGE_SWAPPER_ADDRESS,
+    abi: XRGE_SWAPPER_ABI,
+    functionName: "checkUSDCApproval",
+    args: userAddress && value ? [userAddress, value] : undefined,
+    query: {
+      enabled: !!userAddress && !!amount && Number(amount) > 0,
+    },
+  });
+
+  return {
+    hasApproval: data?.[0] ?? false,
+    currentAllowance: data?.[1] ? (Number(data[1]) / 1e6).toFixed(6) : "0", // USDC has 6 decimals
+    isLoading,
+    refetch,
+  };
+};
+
+// Hook to check KTA approval for buying XRGE
+export const useKTAApproval = (userAddress: Address | undefined, amount: string) => {
+  const value = amount ? parseEther(amount) : BigInt(0); // KTA has 18 decimals
+
+  const { data, isLoading, refetch } = useReadContract({
+    address: XRGE_SWAPPER_ADDRESS,
+    abi: XRGE_SWAPPER_ABI,
+    functionName: "checkKTAApproval",
+    args: userAddress && value ? [userAddress, value] : undefined,
+    query: {
+      enabled: !!userAddress && !!amount && Number(amount) > 0,
+    },
+  });
+
+  return {
+    hasApproval: data?.[0] ?? false,
+    currentAllowance: data?.[1] ? formatEther(data[1]) : "0",
+    isLoading,
+    refetch,
+  };
+};
+
 // Hook to get quote for buying XRGE with KTA
 export const useXRGEQuoteFromKTA = (ktaAmount: string) => {
   const value = ktaAmount ? parseEther(ktaAmount) : BigInt(0);
@@ -590,7 +740,7 @@ export const useKTAQuote = (xrgeAmount: string) => {
 
 // Hook to get quote for buying XRGE with USDC
 export const useXRGEQuoteFromUSDC = (usdcAmount: string) => {
-  const value = usdcAmount ? parseEther(usdcAmount) : BigInt(0);
+  const value = usdcAmount ? parseUnits(usdcAmount, 6) : BigInt(0);
 
   const { data, isLoading } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
@@ -623,7 +773,7 @@ export const useUSDCQuote = (xrgeAmount: string) => {
   });
 
   return {
-    expectedUSDC: data ? formatEther(data) : "0",
+    expectedUSDC: data ? (Number(data) / 1e6).toFixed(6) : "0", // USDC has 6 decimals
     isLoading,
   };
 };

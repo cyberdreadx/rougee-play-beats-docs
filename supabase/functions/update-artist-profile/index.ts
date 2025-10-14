@@ -261,9 +261,9 @@ Deno.serve(async (req) => {
           cover: coverCid,
         },
         gatewayUrls: {
-          metadata: `https://gateway.lighthouse.storage/ipfs/${metadataCid}`,
-          avatar: avatarCid ? `https://gateway.lighthouse.storage/ipfs/${avatarCid}` : null,
-          cover: coverCid ? `https://gateway.lighthouse.storage/ipfs/${coverCid}` : null,
+          metadata: `https://ipfs.io/ipfs/${metadataCid}`,
+          avatar: avatarCid ? `https://ipfs.io/ipfs/${avatarCid}` : null,
+          cover: coverCid ? `https://ipfs.io/ipfs/${coverCid}` : null,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

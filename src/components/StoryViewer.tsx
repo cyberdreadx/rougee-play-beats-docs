@@ -103,7 +103,7 @@ const StoryViewer = ({
             <AvatarImage
               src={
                 currentProfile?.avatar_cid
-                  ? getIPFSGatewayUrl(currentProfile.avatar_cid)
+                  ? getIPFSGatewayUrl(currentProfile.avatar_cid, undefined, true)
                   : undefined
               }
             />

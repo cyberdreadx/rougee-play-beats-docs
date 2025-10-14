@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
 import NetworkInfo from "@/components/NetworkInfo";
 import { Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import {
   Table,
   TableBody,
@@ -165,7 +166,7 @@ const Trending = () => {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 border border-neon-green/20">
                           <AvatarImage
-                                src={artist.avatar_cid ? `https://gateway.lighthouse.storage/ipfs/${artist.avatar_cid}` : undefined}
+                                src={artist.avatar_cid ? getIPFSGatewayUrl(artist.avatar_cid) : undefined}
                                 alt={artist.artist_name || 'Artist'}
                               />
                               <AvatarFallback className="bg-neon-green/10 text-neon-green font-mono">
@@ -247,7 +248,7 @@ const Trending = () => {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 border border-neon-green/20 rounded-sm">
                               <AvatarImage
-                                src={song.cover_cid ? `https://gateway.lighthouse.storage/ipfs/${song.cover_cid}` : undefined}
+                                src={song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : undefined}
                                 alt={song.title || 'Song'}
                               />
                               <AvatarFallback className="bg-neon-green/10 text-neon-green font-mono rounded-sm">

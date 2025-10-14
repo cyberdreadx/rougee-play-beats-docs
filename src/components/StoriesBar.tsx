@@ -129,7 +129,7 @@ const StoriesBar = () => {
                           <AvatarImage
                             src={
                               profiles[fullAddress]?.avatar_cid
-                                ? getIPFSGatewayUrl(profiles[fullAddress].avatar_cid)
+                                ? getIPFSGatewayUrl(profiles[fullAddress].avatar_cid, undefined, true)
                                 : undefined
                             }
                           />

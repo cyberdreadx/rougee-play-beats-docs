@@ -77,7 +77,7 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
     <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col overflow-x-hidden">
       <Header />
       <NetworkInfo />
-      <div className="flex items-center justify-between px-3 md:px-4 py-3 gap-2">
+      <div className="flex items-center justify-between px-4 md:px-6 py-4 gap-3">
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         {onToggleRadio && (
           <RadioToggle 
@@ -87,21 +87,27 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
         )}
       </div>
       <div className="flex-1 w-full overflow-x-hidden">
-        <div className="flex items-center justify-center py-2 md:py-3">
-          <MusicBars bars={6} className="h-5 md:h-6" />
+        <div className="flex items-center justify-center py-3 md:py-4">
+          <MusicBars bars={6} className="h-6 md:h-8" />
         </div>
-        <div className="px-2 md:px-0">
+        <div className="px-4 md:px-6">
           <SearchBar />
         </div>
-        <StoriesBar />
-        <TrendingArtists />
-        <TopSongs 
-          ref={topSongsRef}
-          onPlaySong={playSong}
-          currentSong={currentSong}
-          isPlaying={isPlaying}
-          onPlayCountUpdate={handlePlayCountUpdate}
-        />
+        <div className="px-2 md:px-0">
+          <StoriesBar />
+        </div>
+        <div className="px-2 md:px-0">
+          <TrendingArtists />
+        </div>
+        <div className="px-2 md:px-0">
+          <TopSongs 
+            ref={topSongsRef}
+            onPlaySong={playSong}
+            currentSong={currentSong}
+            isPlaying={isPlaying}
+            onPlayCountUpdate={handlePlayCountUpdate}
+          />
+        </div>
       </div>
     </div>
   );
