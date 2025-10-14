@@ -15,6 +15,10 @@ interface Song {
 export const useAudioPlayer = () => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playlist, setPlaylist] = useState<Song[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
 
   const incrementPlayCount = useCallback(async (songId: string) => {
     try {
@@ -30,17 +34,65 @@ export const useAudioPlayer = () => {
     }
   }, []);
 
-  const playSong = useCallback((song: Song) => {
+  const playSong = useCallback((song: Song, newPlaylist?: Song[]) => {
     if (currentSong?.id === song.id) {
-      // Toggle play/pause for the same song
       setIsPlaying(!isPlaying);
     } else {
-      // Play new song and increment play count
       setCurrentSong(song);
       setIsPlaying(true);
       incrementPlayCount(song.id);
+      
+      if (newPlaylist && newPlaylist.length > 0) {
+        setPlaylist(newPlaylist);
+        const index = newPlaylist.findIndex(s => s.id === song.id);
+        setCurrentIndex(index >= 0 ? index : 0);
+      }
     }
   }, [currentSong, isPlaying, incrementPlayCount]);
+
+  const playNext = useCallback(() => {
+    if (playlist.length === 0) return;
+    
+    let nextIndex: number;
+    if (shuffleEnabled) {
+      nextIndex = Math.floor(Math.random() * playlist.length);
+    } else {
+      nextIndex = (currentIndex + 1) % playlist.length;
+    }
+    
+    const nextSong = playlist[nextIndex];
+    if (nextSong) {
+      setCurrentSong(nextSong);
+      setCurrentIndex(nextIndex);
+      setIsPlaying(true);
+      incrementPlayCount(nextSong.id);
+    }
+  }, [playlist, currentIndex, shuffleEnabled, incrementPlayCount]);
+
+  const playPrevious = useCallback(() => {
+    if (playlist.length === 0) return;
+    
+    const prevIndex = currentIndex === 0 ? playlist.length - 1 : currentIndex - 1;
+    const prevSong = playlist[prevIndex];
+    if (prevSong) {
+      setCurrentSong(prevSong);
+      setCurrentIndex(prevIndex);
+      setIsPlaying(true);
+      incrementPlayCount(prevSong.id);
+    }
+  }, [playlist, currentIndex, incrementPlayCount]);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffleEnabled(!shuffleEnabled);
+  }, [shuffleEnabled]);
+
+  const toggleRepeat = useCallback(() => {
+    setRepeatMode(mode => {
+      if (mode === 'off') return 'all';
+      if (mode === 'all') return 'one';
+      return 'off';
+    });
+  }, []);
 
   const togglePlayPause = useCallback(() => {
     setIsPlaying(!isPlaying);
@@ -52,8 +104,14 @@ export const useAudioPlayer = () => {
   }, []);
 
   const onSongEnd = useCallback(() => {
-    setIsPlaying(false);
-  }, []);
+    if (repeatMode === 'one') {
+      setIsPlaying(true);
+    } else if (repeatMode === 'all' || (playlist.length > 0 && currentIndex < playlist.length - 1)) {
+      playNext();
+    } else {
+      setIsPlaying(false);
+    }
+  }, [repeatMode, playlist.length, currentIndex, playNext]);
 
   return {
     currentSong,
@@ -62,5 +120,12 @@ export const useAudioPlayer = () => {
     togglePlayPause,
     stopSong,
     onSongEnd,
+    playNext,
+    playPrevious,
+    toggleShuffle,
+    toggleRepeat,
+    shuffleEnabled,
+    repeatMode,
+    playlist,
   };
 };

@@ -92,6 +92,12 @@ const AppContent = () => {
         isPlaying={activeIsPlaying}
         onPlayPause={isRadioActive ? radioPlayer.togglePlayPause : audioPlayer.togglePlayPause}
         onSongEnd={isRadioActive ? radioPlayer.onMediaEnd : audioPlayer.onSongEnd}
+        onNext={!isRadioActive ? audioPlayer.playNext : undefined}
+        onPrevious={!isRadioActive ? audioPlayer.playPrevious : undefined}
+        onShuffle={!isRadioActive ? audioPlayer.toggleShuffle : undefined}
+        onRepeat={!isRadioActive ? audioPlayer.toggleRepeat : undefined}
+        shuffleEnabled={audioPlayer.shuffleEnabled}
+        repeatMode={audioPlayer.repeatMode}
       />
     </>
   );
