@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWallet } from "@/hooks/useWallet";
-import { usePrivy } from '@privy-io/react-auth';
 
 interface LikeButtonProps {
   songId: string;
@@ -20,7 +19,6 @@ export default function LikeButton({
   showCount = true 
 }: LikeButtonProps) {
   const { isConnected, fullAddress: address, connect } = useWallet();
-  const { getAccessToken } = usePrivy();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,14 +78,11 @@ export default function LikeButton({
 
     setIsLoading(true);
     try {
-      const token = await getAccessToken();
       const { error } = await supabase.functions.invoke('like-song', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: { 
           songId, 
-          action: isLiked ? 'unlike' : 'like' 
+          action: isLiked ? 'unlike' : 'like',
+          walletAddress: address.toLowerCase(),
         },
       });
 

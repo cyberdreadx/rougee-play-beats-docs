@@ -1,10 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
-import { requireWalletAddress } from '../_shared/privy.ts';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const BodySchema = z.object({
+  songId: z.string().uuid(),
+  action: z.enum(['like', 'unlike']),
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,14 +18,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    const body = await req.json();
+    const { songId, action, walletAddress } = BodySchema.parse(body);
     
-    const { songId, action } = await req.json();
-    
-    if (!songId || !action) {
-      throw new Error('Missing required fields: songId and action');
-    }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -27,19 +28,17 @@ Deno.serve(async (req) => {
 
     if (action === 'like') {
       const { error } = await supabase.from('song_likes').insert({
-        wallet_address: walletAddress,
+        wallet_address: walletAddress.toLowerCase(),
         song_id: songId
       });
       if (error) throw error;
-    } else if (action === 'unlike') {
+    } else {
       const { error } = await supabase
         .from('song_likes')
         .delete()
-        .eq('wallet_address', walletAddress)
+        .eq('wallet_address', walletAddress.toLowerCase())
         .eq('song_id', songId);
       if (error) throw error;
-    } else {
-      throw new Error('Invalid action. Must be "like" or "unlike"');
     }
 
     return new Response(
