@@ -120,14 +120,17 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   }, [isConfirming]);
 
   useEffect(() => {
+    // Use a ref to prevent multiple executions
+    let hasRun = false;
+    
     const updateTokenAddress = async () => {
-      if (deploySuccess && receipt && song) {
+      if (deploySuccess && receipt && song && !hasRun) {
+        hasRun = true;
         console.log('Deployment successful, processing receipt...', { receipt, songId: song.id });
         
         try {
           // Find the SongCreated event in the logs
           const songCreatedLog = receipt.logs.find((log: any) => {
-            console.log('Checking log:', { address: log.address, factory: SONG_FACTORY_ADDRESS });
             return log.address?.toLowerCase() === SONG_FACTORY_ADDRESS.toLowerCase();
           });
 
@@ -174,7 +177,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               variant: "destructive",
             });
           }
-          // No page reload; UI updated via state
         } catch (error) {
           console.error('Error processing deployment:', error);
           toast({
@@ -187,7 +189,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     };
 
     updateTokenAddress();
-  }, [deploySuccess, receipt, song]);
+  }, [deploySuccess, receipt]);
 
   const fetchSong = async () => {
     try {

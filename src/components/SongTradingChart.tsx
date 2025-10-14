@@ -113,7 +113,7 @@ export const SongTradingChart = ({ songTokenAddress }: SongTradingChartProps) =>
         </div>
         
         <p className="text-xs text-yellow-500 font-mono">
-          ⚠️ Demo chart - Real blockchain data coming soon
+          ⚠️ Trading history will populate as buy/sell transactions occur
         </p>
       </div>
 
