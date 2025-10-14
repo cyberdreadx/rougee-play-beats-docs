@@ -23,7 +23,9 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
         defaultChain: base,
         supportedChains: [base],
         embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
         },
         appearance: {
           theme: 'dark',
