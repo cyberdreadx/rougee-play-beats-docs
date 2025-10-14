@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts';
+import { createRemoteJWKSet, createLocalJWKSet, jwtVerify } from 'https://deno.land/x/jose@v5.2.0/index.ts';
 
 const PRIVY_APP_ID = Deno.env.get('PRIVY_APP_ID');
 
@@ -13,10 +13,10 @@ console.log('Privy JWKS URL (primary):', PRIVY_JWKS_URL_PRIMARY);
 console.log('Privy JWKS URL (fallback):', PRIVY_JWKS_URL_FALLBACK);
 
 // Resolve and cache the first working JWKS endpoint at runtime
-let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwks: ReturnType<typeof createLocalJWKSet> | null = null;
 let cachedJwksUrl: string | null = null;
 
-async function resolveJwks(): Promise<ReturnType<typeof createRemoteJWKSet>> {
+async function resolveJwks(): Promise<ReturnType<typeof createLocalJWKSet>> {
   if (cachedJwks) return cachedJwks;
 
   const candidates = [PRIVY_JWKS_URL_PRIMARY, PRIVY_JWKS_URL_FALLBACK];
@@ -26,8 +26,9 @@ async function resolveJwks(): Promise<ReturnType<typeof createRemoteJWKSet>> {
       const res = await fetch(url, { method: 'GET', redirect: 'follow' });
       if (res.ok) {
         console.log('Using Privy JWKS URL:', url, 'status:', res.status);
+        const jwksJson = await res.json();
         cachedJwksUrl = url;
-        cachedJwks = createRemoteJWKSet(new URL(url));
+        cachedJwks = createLocalJWKSet(jwksJson);
         return cachedJwks;
       }
       console.warn('Privy JWKS candidate not OK:', url, 'status:', res.status);
