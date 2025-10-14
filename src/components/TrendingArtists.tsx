@@ -22,7 +22,7 @@ const TrendingArtists = () => {
     const fetchTrendingArtists = async () => {
       try {
         const { data, error } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("wallet_address, artist_name, artist_ticker, avatar_cid, cover_cid, total_songs, total_plays, verified")
           .not("artist_name", "is", null)
           .gt("total_songs", 0)

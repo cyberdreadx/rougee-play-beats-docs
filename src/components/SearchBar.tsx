@@ -52,7 +52,7 @@ const SearchBar = () => {
       try {
         // Search artists
         const { data: artists } = await supabase
-          .from("profiles")
+          .from("public_profiles")
           .select("wallet_address, artist_name, avatar_cid, artist_ticker, verified")
           .ilike("artist_name", searchTerm)
           .limit(5);

@@ -72,7 +72,7 @@ const AudioPlayer = ({
       }
 
       const { data } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("artist_ticker, verified")
         .eq("wallet_address", currentSong.wallet_address)
         .maybeSingle();

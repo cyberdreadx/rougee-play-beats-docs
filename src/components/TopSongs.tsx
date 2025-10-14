@@ -82,7 +82,7 @@ const fetchSongs = async () => {
     if (data && data.length > 0) {
       const wallets = Array.from(new Set(data.map((s) => s.wallet_address)));
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('wallet_address, verified')
         .in('wallet_address', wallets);
       if (!profilesError && profiles) {

@@ -78,7 +78,7 @@ const StoriesBar = () => {
     // Fetch profiles for these wallets
     if (walletAddresses.size > 0) {
       const { data: profileData } = await supabase
-        .from("profiles")
+        .from("public_profiles")
         .select("*")
         .in("wallet_address", Array.from(walletAddresses));
 

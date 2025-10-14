@@ -77,7 +77,7 @@ export default function Feed() {
       if (walletAddresses.length) {
         const orFilter = walletAddresses.map((a) => `wallet_address.ilike.${a}`).join(',');
         const { data } = await supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('wallet_address, artist_name, avatar_cid, verified')
           .or(orFilter);
         profilesData = data || [];
@@ -203,7 +203,7 @@ export default function Feed() {
       const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
       const {
         data: profilesData
-      } = await supabase.from('profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
+      } = await supabase.from('public_profiles').select('wallet_address, artist_name, avatar_cid, verified').in('wallet_address', walletAddresses);
       
       console.log('Comment profiles data:', profilesData);
       const commentsWithProfiles = commentsData?.map(comment => ({

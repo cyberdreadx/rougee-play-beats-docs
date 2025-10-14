@@ -188,7 +188,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
       const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('wallet_address, artist_name, avatar_cid')
         .in('wallet_address', walletAddresses);
 
