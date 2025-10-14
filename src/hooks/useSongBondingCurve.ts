@@ -541,55 +541,78 @@ export const useSongTradeEvents = (songTokenAddress: Address | undefined) => {
         // Get current block number
         const currentBlock = await publicClient.getBlockNumber();
         
-        // With QuickNode, we can fetch more history (Base has ~2 second block time)
-        // 500,000 blocks = ~11.5 days of history
-        const blocksToFetch = 500000n;
+        // Fetch recent history - 100,000 blocks (~2.3 days)
+        // Reduced from 500k to avoid RPC timeouts
+        const blocksToFetch = 100000n;
         const fromBlock = currentBlock > blocksToFetch ? currentBlock - blocksToFetch : 0n;
         
-        console.log(`📊 Fetching trade events from block ${fromBlock} to ${currentBlock} (~${(Number(blocksToFetch) * 2 / 86400).toFixed(1)} days)`);
+        console.log(`📊 Fetching trade events for ${songTokenAddress}`);
+        console.log(`📊 From block ${fromBlock} to ${currentBlock}`);
 
-        // Fetch buy events
-        const buyLogs = await publicClient.getLogs({
-          address: BONDING_CURVE_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'SongTokenBought',
-            inputs: [
-              { indexed: true, name: 'buyer', type: 'address' },
-              { indexed: true, name: 'songToken', type: 'address' },
-              { indexed: false, name: 'xrgeSpent', type: 'uint256' },
-              { indexed: false, name: 'tokensBought', type: 'uint256' }
-            ]
-          },
-          args: {
-            songToken: songTokenAddress
-          },
-          fromBlock,
-          toBlock: 'latest',
-        });
+        // Fetch buy events with timeout handling
+        const buyLogs = await Promise.race([
+          publicClient.getLogs({
+            address: BONDING_CURVE_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'SongTokenBought',
+              inputs: [
+                { indexed: true, name: 'buyer', type: 'address' },
+                { indexed: true, name: 'songToken', type: 'address' },
+                { indexed: false, name: 'xrgeSpent', type: 'uint256' },
+                { indexed: false, name: 'tokensBought', type: 'uint256' }
+              ]
+            },
+            args: {
+              songToken: songTokenAddress
+            },
+            fromBlock,
+            toBlock: 'latest',
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('RPC timeout on buy events')), 15000)
+          )
+        ]) as any[];
 
-        // Fetch sell events
-        const sellLogs = await publicClient.getLogs({
-          address: BONDING_CURVE_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'SongTokenSold',
-            inputs: [
-              { indexed: true, name: 'seller', type: 'address' },
-              { indexed: true, name: 'songToken', type: 'address' },
-              { indexed: false, name: 'tokensSold', type: 'uint256' },
-              { indexed: false, name: 'xrgeReceived', type: 'uint256' }
-            ]
-          },
-          args: {
-            songToken: songTokenAddress
-          },
-          fromBlock,
-          toBlock: 'latest',
-        });
+        console.log(`📊 Found ${buyLogs.length} buy events`);
+
+        // Fetch sell events with timeout handling
+        const sellLogs = await Promise.race([
+          publicClient.getLogs({
+            address: BONDING_CURVE_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'SongTokenSold',
+              inputs: [
+                { indexed: true, name: 'seller', type: 'address' },
+                { indexed: true, name: 'songToken', type: 'address' },
+                { indexed: false, name: 'tokensSold', type: 'uint256' },
+                { indexed: false, name: 'xrgeReceived', type: 'uint256' }
+              ]
+            },
+            args: {
+              songToken: songTokenAddress
+            },
+            fromBlock,
+            toBlock: 'latest',
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('RPC timeout on sell events')), 15000)
+          )
+        ]) as any[];
+
+        console.log(`📊 Found ${sellLogs.length} sell events`);
 
         // Get block details for timestamps
         const allLogs = [...buyLogs, ...sellLogs];
+        
+        if (allLogs.length === 0) {
+          console.log('📊 No trade events found');
+          setEvents([]);
+          setIsLoading(false);
+          return;
+        }
+
         const blockNumbers = [...new Set(allLogs.map(log => log.blockNumber))];
         const blocks = await Promise.all(
           blockNumbers.map(blockNumber => publicClient.getBlock({ blockNumber }))
@@ -633,15 +656,13 @@ export const useSongTradeEvents = (songTokenAddress: Address | undefined) => {
         // Combine and sort by timestamp
         const allEvents = [...buyEvents, ...sellEvents].sort((a, b) => a.timestamp - b.timestamp);
         setEvents(allEvents);
-        console.log(`✅ Fetched ${allEvents.length} trade events`);
+        console.log(`✅ Fetched ${allEvents.length} total trade events`);
       } catch (error: any) {
-        console.error('Error fetching trade events:', error);
+        console.error('❌ Error fetching trade events:', error);
+        console.error('Error details:', error?.message);
         
-        // If RPC fails, set empty array so UI shows "no trades yet" instead of loading forever
-        if (error?.message?.includes('503') || error?.message?.includes('backend') || error?.message?.includes('HTTP request failed')) {
-          console.warn('⚠️ RPC endpoint unavailable. Chart will show when endpoint is healthy or after next trade.');
-          setEvents([]);
-        }
+        // Set empty array so UI shows "no trades yet" instead of loading forever
+        setEvents([]);
       } finally {
         setIsLoading(false);
       }
