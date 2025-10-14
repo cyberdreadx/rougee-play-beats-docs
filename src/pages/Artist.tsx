@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle, Upload } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -349,10 +349,16 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
           </div>
 
           {isOwnProfile && (
-            <Button variant="neon" onClick={() => navigate("/profile/edit")}>
-              <Edit className="h-4 w-4 mr-2" />
-              EDIT PROFILE
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button variant="neon" onClick={() => navigate("/upload")}>
+                <Upload className="h-4 w-4 mr-2" />
+                UPLOAD MUSIC
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/profile/edit")}>
+                <Edit className="h-4 w-4 mr-2" />
+                EDIT PROFILE
+              </Button>
+            </div>
           )}
         </div>
 

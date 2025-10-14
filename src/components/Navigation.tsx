@@ -16,7 +16,8 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const { fullAddress } = useWallet();
   const { isArtist } = useCurrentUserProfile();
   
-  const tabs = [
+  // Desktop tabs - show all (How It Works moved to header)
+  const desktopTabs = [
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
@@ -26,11 +27,23 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     ),
     { name: "WALLET", path: "/wallet", icon: Wallet },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
-    { name: "HOW IT WORKS", path: "/how-it-works", icon: HelpCircle },
     { name: "UPLOAD", path: "/upload", icon: Upload },
   ];
 
-  const handleTabClick = (tab: typeof tabs[0]) => {
+  // Mobile tabs - essential only (no How It Works, no Upload, no Become Artist)
+  const mobileTabs = [
+    { name: "DISCOVER", path: "/", icon: Compass },
+    { name: "GLTCH FEED", path: "/feed", icon: Radio },
+    { name: "TRENDING", path: "/trending", icon: TrendingUp },
+    { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
+    { name: "WALLET", path: "/wallet", icon: Wallet },
+    ...(isArtist 
+      ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
+      : []
+    ),
+  ];
+
+  const handleTabClick = (tab: typeof desktopTabs[0]) => {
     if (tab.path !== "/" || location.pathname !== "/") {
       // Always navigate if going to a different path or if we're not on home page
       navigate(tab.path);
@@ -40,7 +53,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
   };
 
-  const isActive = (tab: typeof tabs[0]) => {
+  const isActive = (tab: typeof desktopTabs[0]) => {
     if (tab.path === "/feed") {
       return location.pathname === "/feed";
     }
@@ -59,9 +72,6 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     if (tab.path === "/swap") {
       return location.pathname === "/swap";
     }
-    if (tab.path === "/how-it-works") {
-      return location.pathname === "/how-it-works";
-    }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
     }
@@ -79,7 +89,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       <nav className="hidden md:block w-full px-6 py-4">
         <div className="flex items-center space-x-2 bg-black/10 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
           <MusicBars bars={4} className="mr-3 text-neon-green/80" />
-          {tabs.map((tab) => (
+          {desktopTabs.map((tab) => (
             <Button
               key={tab.name}
               variant="ghost"
@@ -100,10 +110,10 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation - Essential tabs only (Upload from desktop/profile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border-t border-white/10 pb-safe">
-        <div className="flex justify-around items-center h-16 px-4">
-          {tabs.map((tab) => {
+        <div className="flex justify-around items-center h-16 px-1">
+          {mobileTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <Button

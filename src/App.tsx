@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Web3Provider from "@/providers/Web3Provider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import ScrollToTop from "@/components/ScrollToTop";
 import { useRadioPlayer } from "@/hooks/useRadioPlayer";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AdDisplay } from "@/components/AdDisplay";
@@ -23,6 +24,7 @@ import Admin from "./pages/Admin";
 import Feed from "./pages/Feed";
 import Swap from "./pages/Swap";
 import HowItWorks from "./pages/HowItWorks";
+import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -77,6 +79,7 @@ const AppContent = () => {
         <Route path="/wallet" element={<Wallet />} />
         <Route path="/swap" element={<Swap />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/feed" element={<Feed />} />
         <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
@@ -111,6 +114,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <AppContent />
           </BrowserRouter>
         </TooltipProvider>

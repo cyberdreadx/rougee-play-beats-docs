@@ -136,7 +136,7 @@ const FeaturedSong = ({ song }: { song: Song }) => {
 };
 
 // Component for individual song row with real-time data
-const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; onStatsUpdate?: (volume: number, change: number) => void }) => {
+const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number) => void }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
   const publicClient = usePublicClient();
@@ -228,9 +228,9 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
   // Report stats to parent for aggregation
   useEffect(() => {
     if (onStatsUpdate && volumeUSD > 0) {
-      onStatsUpdate(volumeUSD, change24h);
+      onStatsUpdate(song.id, volumeUSD, change24h);
     }
-  }, [volumeUSD, change24h, onStatsUpdate]);
+  }, [song.id, volumeUSD, change24h, onStatsUpdate]);
   
   return (
     <TableRow 
@@ -343,13 +343,19 @@ const Trending = () => {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalVolume, setTotalVolume] = useState(0);
-  const [topGainerPercent, setTopGainerPercent] = useState(0);
+  const [songStats, setSongStats] = useState<Map<string, { volume: number; change: number }>>(new Map());
   const navigate = useNavigate();
   
-  const handleStatsUpdate = (volume: number, change: number) => {
-    setTotalVolume(prev => prev + volume);
-    setTopGainerPercent(prev => Math.max(prev, change));
+  // Calculate aggregated stats from individual song stats
+  const totalVolume = Array.from(songStats.values()).reduce((sum, stat) => sum + stat.volume, 0);
+  const topGainerPercent = Array.from(songStats.values()).reduce((max, stat) => Math.max(max, stat.change), 0);
+  
+  const handleStatsUpdate = (songId: string, volume: number, change: number) => {
+    setSongStats(prev => {
+      const newMap = new Map(prev);
+      newMap.set(songId, { volume, change });
+      return newMap;
+    });
   };
 
   useEffect(() => {

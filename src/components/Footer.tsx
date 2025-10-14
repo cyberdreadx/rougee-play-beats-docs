@@ -14,10 +14,10 @@ const Footer = () => {
       { name: "Wallet", path: "/wallet" },
     ],
     resources: [
+      { name: "How It Works", path: "/how-it-works" },
       { name: "Documentation", href: "#" },
-      { name: "API", href: "#" },
-      { name: "Support", href: "#" },
-      { name: "Terms", href: "#" },
+      { name: "Support", href: "https://discord.gg/Vumf5tcMTp" },
+      { name: "Terms", path: "/terms-of-service" },
     ],
     community: [
       { name: "X", href: "https://x.com/rougeenetwork", icon: FaXTwitter },
@@ -70,12 +70,23 @@ const Footer = () => {
             <ul className="space-y-2">
               {footerLinks.resources.map((link) => (
                 <li key={link.name}>
-                  <a
-                    href={link.href}
-                    className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono"
-                  >
-                    {link.name}
-                  </a>
+                  {'path' in link ? (
+                    <button
+                      onClick={() => navigate(link.path)}
+                      className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono"
+                    >
+                      {link.name}
+                    </button>
+                  ) : (
+                    <a
+                      href={link.href}
+                      target={link.href?.startsWith('http') ? '_blank' : undefined}
+                      rel={link.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors font-mono"
+                    >
+                      {link.name}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -112,17 +123,17 @@ const Footer = () => {
             © {currentYear} ROUGEE.PLAY. All rights reserved.
           </p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">
-            <a href="#" className="hover:text-neon-green transition-colors">
+            <button onClick={() => navigate("/terms-of-service")} className="hover:text-neon-green transition-colors">
               Privacy Policy
-            </a>
+            </button>
             <span>|</span>
-            <a href="#" className="hover:text-neon-green transition-colors">
+            <button onClick={() => navigate("/terms-of-service")} className="hover:text-neon-green transition-colors">
               Terms of Service
-            </a>
+            </button>
             <span>|</span>
-            <a href="#" className="hover:text-neon-green transition-colors">
+            <button onClick={() => navigate("/terms-of-service")} className="hover:text-neon-green transition-colors">
               Cookie Policy
-            </a>
+            </button>
           </div>
         </div>
       </div>

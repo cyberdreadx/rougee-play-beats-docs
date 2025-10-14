@@ -6,7 +6,7 @@ import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
-import { User, Shield, CheckCircle } from "lucide-react";
+import { User, Shield, CheckCircle, HelpCircle } from "lucide-react";
 
 
 const Header = () => {
@@ -62,6 +62,18 @@ const Header = () => {
 
         {/* Right side buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          {/* How It Works - always visible */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/how-it-works")}
+            className="font-mono"
+            title="How It Works"
+          >
+            <HelpCircle className="h-4 w-4 md:h-5 md:w-5 text-primary md:mr-2" />
+            <span className="hidden md:inline">HOW IT WORKS</span>
+          </Button>
+          
           <ThemeSwitcher />
           {isConnected && isAdmin && (
             <Button

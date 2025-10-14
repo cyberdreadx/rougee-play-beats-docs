@@ -22,7 +22,7 @@ import {
   KTA_TOKEN_ADDRESS,
   USDC_TOKEN_ADDRESS
 } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info } from "lucide-react";
+import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info, GripVertical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
@@ -61,6 +61,8 @@ const Swap = () => {
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
   const [selectedToken, setSelectedToken] = useState<"ETH" | "KTA" | "USDC">("ETH");
+  const [chartHeight, setChartHeight] = useState(280); // Default mobile height
+  const [isDragging, setIsDragging] = useState(false);
   
   const { prices, calculateUsdValue } = useTokenPrices();
 
@@ -456,6 +458,77 @@ const Swap = () => {
     }
   };
   
+  // Chart resize handlers
+  const [lastY, setLastY] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setLastY(e.clientY);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setLastY(e.touches[0].clientY);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const delta = e.clientY - lastY;
+    const newHeight = Math.max(200, Math.min(800, chartHeight + delta));
+    setChartHeight(newHeight);
+    setLastY(e.clientY);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isDragging) return;
+    
+    const delta = e.touches[0].clientY - lastY;
+    const newHeight = Math.max(200, Math.min(800, chartHeight + delta));
+    setChartHeight(newHeight);
+    setLastY(e.touches[0].clientY);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.body.style.touchAction = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.body.style.touchAction = '';
+    };
+  }, [isDragging, chartHeight, lastY]);
+
   const handleApproveXRGE = async () => {
     if (!sellAmount || Number(sellAmount) <= 0) {
       toast({
@@ -510,7 +583,7 @@ const Swap = () => {
       <Header />
       <Navigation />
       
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 md:py-8 max-w-2xl mb-24 md:mb-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold font-mono text-neon-green mb-2">
             [SWAP XRGE]
@@ -520,10 +593,10 @@ const Swap = () => {
           </p>
         </div>
 
-        {/* DexScreener Chart */}
-        <Card className="p-4 md:p-6 bg-card border-tech-border mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-mono text-base md:text-lg font-bold text-neon-green">
+        {/* DexScreener Chart - Resizable */}
+        <Card className="p-3 md:p-6 bg-card border-tech-border mb-4 md:mb-6">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h2 className="font-mono text-sm md:text-lg font-bold text-neon-green">
               XRGE Price Chart
             </h2>
             <a 
@@ -535,14 +608,31 @@ const Swap = () => {
               View on DexScreener →
             </a>
           </div>
-          {/* Mobile: Taller chart (80% height), Desktop: Even taller (75% height) */}
-          <div className="relative w-full" style={{ paddingBottom: '80%' }}>
+          {/* Resizable chart container */}
+          <div className="relative w-full" style={{ height: `${chartHeight}px` }}>
             <iframe
               src={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}?embed=1&theme=dark&trades=0&info=0`}
-              className="absolute top-0 left-0 w-full h-full rounded-lg border border-tech-border md:rounded-xl"
-              style={{ border: 0, minHeight: '500px' }}
+              className="w-full h-full rounded-t-lg border border-tech-border md:rounded-t-xl pointer-events-auto"
+              style={{ border: 0 }}
               allowFullScreen
             />
+          </div>
+          {/* Drag handle */}
+          <div
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className={`
+              w-full h-10 flex items-center justify-center cursor-ns-resize touch-none
+              bg-gradient-to-b from-muted/50 to-transparent
+              border-x border-b border-tech-border rounded-b-lg md:rounded-b-xl
+              hover:from-primary/20 active:from-primary/30 transition-colors
+              ${isDragging ? 'from-primary/30' : ''}
+            `}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono">DRAG TO RESIZE</span>
+            </div>
           </div>
         </Card>
 
