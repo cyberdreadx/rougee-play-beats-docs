@@ -24,7 +24,7 @@ import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance } from "@/hooks/useSongBondingCurve";
-import { useBalance } from "wagmi";
+import { useBalance, useConnect } from "wagmi";
 import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
@@ -107,6 +107,26 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { supply: bondingSupply, refetch: refetchSupply } = useBondingCurveSupply(songTokenAddress);
   const { balance: userBalance, refetch: refetchBalance } = useSongTokenBalance(songTokenAddress, fullAddress as `0x${string}` | undefined);
   const { approve, isPending: isApproving } = useApproveToken();
+  const { connectors, connectAsync } = useConnect();
+  
+  const ensureWagmiConnected = async () => {
+    if (wagmiConnected) return;
+    const privyConn = connectors.find(c => c.id === 'privy' || c.name.toLowerCase().includes('privy'));
+    const injected = connectors.find(c => c.id === 'injected');
+    const target = privyConn || injected || connectors[0];
+    if (target) {
+      try {
+        console.log('🔌 Ensuring wagmi connection with', target.name, target.id);
+        await connectAsync({ connector: target });
+        console.log('✅ wagmi connected');
+      } catch (e) {
+        console.error('Wagmi connect failed:', e);
+        throw e;
+      }
+    } else {
+      console.warn('No wagmi connector available');
+    }
+  };
   
   // Swap hooks for other payment tokens
   const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, isPending: isSwapping } = useXRGESwap();
@@ -404,6 +424,18 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       wagmiAddress,
       paymentToken 
     });
+
+    // Ensure wagmi is connected to Privy wallet before writing transactions
+    try {
+      await ensureWagmiConnected();
+    } catch (e) {
+      toast({
+        title: "Wallet connection error",
+        description: "Could not connect signing wallet. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!songTokenAddress) {
       toast({
