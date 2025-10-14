@@ -18,8 +18,8 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata } from "@/hooks/useSongBondingCurve";
-import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong } from "@/hooks/useSongBondingCurve";
+import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
 
 interface Song {
   id: string;
@@ -31,6 +31,7 @@ interface Song {
   play_count: number;
   created_at: string;
   token_address?: string | null;
+  ticker?: string | null;
 }
 
 interface Comment {
@@ -66,14 +67,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
 
   // Bonding curve hooks
+  const { createSong, isPending: isDeploying } = useCreateSong();
   const { buyWithETH, buyWithXRGE, isPending: isBuying } = useBuySongTokens();
   const { sell, isPending: isSelling } = useSellSongTokens();
-  const { price: priceData } = useSongPrice(songTokenAddress);
-  const { metadata: metadataData } = useSongMetadata(songTokenAddress);
+  const { price: priceData, isLoading: priceLoading } = useSongPrice(songTokenAddress);
+  const { metadata: metadataData, isLoading: metadataLoading } = useSongMetadata(songTokenAddress);
 
-  const currentPrice = priceData ? parseFloat(priceData) : 0.00015;
-  const marketCap = 2450; // Calculate from supply * price
-  const holders = 23; // Fetch from blockchain events
+  // Real blockchain data or undefined if not deployed
+  const currentPrice = priceData ? parseFloat(priceData) : undefined;
+  const totalSupply = metadataData?.totalSupply ? parseFloat(metadataData.totalSupply) : undefined;
+  const marketCap = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
 
   useEffect(() => {
     if (songId) {
@@ -238,6 +241,51 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
   };
 
+  const handleDeploy = async () => {
+    if (!isConnected) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet to deploy",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!song) return;
+
+    if (songTokenAddress) {
+      toast({
+        title: "Already deployed",
+        description: "This song is already deployed to the bonding curve",
+      });
+      return;
+    }
+
+    const ticker = song.ticker || song.title.substring(0, 4).toUpperCase();
+    
+    try {
+      // Fetch metadata CID from song data
+      const metadataCid = `${song.audio_cid}_metadata`; // Construct expected metadata CID
+      
+      await createSong(song.title, ticker, metadataCid);
+      
+      toast({
+        title: "Deployment successful!",
+        description: "Your song is now tradeable on the bonding curve",
+      });
+      
+      // Refresh song data to get token address
+      await fetchSong();
+    } catch (error) {
+      console.error("Deploy error:", error);
+      toast({
+        title: "Deployment failed",
+        description: error instanceof Error ? error.message : "Failed to deploy to bonding curve",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handlePostComment = async () => {
     if (!isConnected) {
       toast({
@@ -362,14 +410,12 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <Play className="h-3 w-3 mr-1" />
                     {song.play_count} plays
                   </Badge>
-                  <Badge variant="outline" className="font-mono text-xs">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    ${marketCap} MCap
-                  </Badge>
-                  <Badge variant="outline" className="font-mono text-xs">
-                    <Users className="h-3 w-3 mr-1" />
-                    {holders} holders
-                  </Badge>
+                  {marketCap !== undefined && (
+                    <Badge variant="outline" className="font-mono text-xs">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      ${marketCap.toFixed(2)} MCap
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex gap-2 md:gap-3">
@@ -382,6 +428,29 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY"}
                   </Button>
+                  
+                  {!songTokenAddress && song.wallet_address === fullAddress && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleDeploy}
+                      disabled={isDeploying}
+                      className="text-xs sm:text-sm"
+                    >
+                      {isDeploying ? (
+                        <>
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                          DEPLOYING...
+                        </>
+                      ) : (
+                        <>
+                          <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                          DEPLOY
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  
                   <LikeButton songId={song.id} size="sm" />
                   <ReportButton songId={song.id} />
                 </div>
@@ -391,26 +460,40 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
           {/* Quick Stats */}
           <Card className="console-bg tech-border p-4 md:p-6">
-            <h3 className="text-base md:text-lg font-mono font-bold neon-text mb-3 md:mb-4">CURRENT PRICE</h3>
-            <div className="text-2xl md:text-3xl font-mono font-bold text-neon-green mb-1 md:mb-2">
-              ${currentPrice.toFixed(6)}
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground font-mono mb-3 md:mb-4">per token</p>
-            
-            <div className="space-y-2 text-xs md:text-sm font-mono">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Market Cap:</span>
-                <span className="text-foreground">${marketCap}</span>
+            {songTokenAddress && currentPrice !== undefined ? (
+              <>
+                <h3 className="text-base md:text-lg font-mono font-bold neon-text mb-3 md:mb-4">CURRENT PRICE</h3>
+                <div className="text-2xl md:text-3xl font-mono font-bold text-neon-green mb-1 md:mb-2">
+                  ${currentPrice.toFixed(6)}
+                </div>
+                <p className="text-xs md:text-sm text-muted-foreground font-mono mb-3 md:mb-4">per token</p>
+                
+                <div className="space-y-2 text-xs md:text-sm font-mono">
+                  {marketCap !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Market Cap:</span>
+                      <span className="text-foreground">${marketCap.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {totalSupply !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Supply:</span>
+                      <span className="text-foreground">{totalSupply.toFixed(0)} tokens</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <Rocket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-base md:text-lg font-mono font-bold mb-2">Not Deployed Yet</h3>
+                <p className="text-xs md:text-sm text-muted-foreground font-mono">
+                  {song.wallet_address === fullAddress 
+                    ? "Deploy this song to enable trading"
+                    : "This song hasn't been deployed to the bonding curve yet"}
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Holders:</span>
-                <span className="text-foreground">{holders}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">24h Volume:</span>
-                <span className="text-foreground">$124</span>
-              </div>
-            </div>
+            )}
           </Card>
         </div>
 
