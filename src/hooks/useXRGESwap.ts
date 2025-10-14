@@ -437,7 +437,7 @@ export const useXRGESwap = () => {
         description: "Please ensure your wallet is properly connected",
         variant: "destructive",
       });
-      return;
+      throw new Error("Wallet not connected");
     }
 
     try {
@@ -454,6 +454,7 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       console.log("Transaction submitted (buy with USDC) hash:", submittedHash);
+      return submittedHash;
     } catch (err) {
       console.error("Buy XRGE with USDC error:", err);
       toast({
@@ -461,6 +462,7 @@ export const useXRGESwap = () => {
         description: err instanceof Error ? err.message : "Failed to swap USDC for XRGE",
         variant: "destructive",
       });
+      throw err;
     }
   };
 

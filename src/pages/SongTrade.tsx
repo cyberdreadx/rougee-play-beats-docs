@@ -162,7 +162,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const xrgeUsdPrice = prices.xrge || 0;
   
   // Calculate different market cap metrics in USD
-  const circulatingMarketCap = currentPrice && activeTradingSupply ? currentPrice * activeTradingSupply : undefined;
+  // Market cap = current price × tokens sold (not remaining supply)
+  const tokensSold = activeTradingSupply !== undefined ? (990_000_000 - activeTradingSupply) : undefined;
+  const circulatingMarketCap = currentPrice && tokensSold ? currentPrice * tokensSold : undefined;
   const fullyDilutedValue = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
   const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders
   const realizedValueUSD = xrgeRaised * xrgeUsdPrice; // Convert to USD
@@ -521,27 +523,57 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             description: `⏳ Swapping ${buyAmount} KTA for ~${parseFloat(xrgeAmountToUse).toFixed(2)} XRGE...`,
           });
           
+          // Get XRGE balance BEFORE swap
+          const xrgeBalanceBefore = await getXRGEBalance();
+          console.log("XRGE balance before KTA swap:", xrgeBalanceBefore);
+          
           console.log("Requesting KTA to XRGE swap...");
           const swapHash = await buyXRGEWithKTA(buyAmount, 500);
           console.log("✅ KTA to XRGE swap hash:", swapHash);
           console.log("🔗 Check transaction on BaseScan:", `https://basescan.org/tx/${swapHash}`);
           
-          // Wait for swap transaction to be mined (3 seconds should be enough on Base)
+          // Wait for swap transaction to be mined and get actual XRGE received
           toast({
             title: "Waiting for swap confirmation...",
             description: "This usually takes a few seconds on Base",
           });
+          
+          let actualXRGEReceived = "0";
+          let swapAttempts = 0;
+          const maxSwapAttempts = 60;
+          
+          // Initial wait
           await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          while (swapAttempts < maxSwapAttempts) {
+            swapAttempts++;
+            const currentBalance = await getXRGEBalance();
+            const balanceDiff = parseFloat(currentBalance) - parseFloat(xrgeBalanceBefore);
+            console.log(`KTA Swap - Balance check attempt ${swapAttempts}: ${currentBalance} XRGE (diff: +${balanceDiff})`);
+            
+            if (balanceDiff > 0) {
+              actualXRGEReceived = balanceDiff.toString();
+              console.log(`✅ XRGE received from KTA swap: ${actualXRGEReceived} (before: ${xrgeBalanceBefore}, after: ${currentBalance})`);
+              break;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          if (parseFloat(actualXRGEReceived) === 0) {
+            throw new Error("KTA to XRGE swap failed - no XRGE received");
+          }
           
           // Step 3: Approve XRGE and buy song tokens
           toast({
             title: "Step 3/3: Buying song tokens",
-            description: `⏳ Approving and purchasing with ~${parseFloat(xrgeAmountToUse).toFixed(2)} XRGE...`,
+            description: `⏳ Approving and purchasing with ${parseFloat(actualXRGEReceived).toFixed(2)} XRGE...`,
           });
           
           console.log("🔐 Approving XRGE for bonding curve...");
           console.log("Bonding curve address:", BONDING_CURVE_ADDRESS);
-          const approveXRGEHash = await approveXRGE(xrgeAmountToUse, BONDING_CURVE_ADDRESS as `0x${string}`);
+          console.log("Actual XRGE received to approve:", actualXRGEReceived);
+          const approveXRGEHash = await approveXRGE(actualXRGEReceived, BONDING_CURVE_ADDRESS as `0x${string}`);
           console.log("✅ XRGE approval hash:", approveXRGEHash);
           console.log("🔗 Check approval on BaseScan:", `https://basescan.org/tx/${approveXRGEHash}`);
           
@@ -565,31 +597,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             await new Promise(resolve => setTimeout(resolve, 6000));
           }
           
-          // Final check: verify we actually have the XRGE balance
-          console.log("🔍 Verifying XRGE balance before purchase...");
-          const actualBalance = await getXRGEBalance();
-          console.log("Actual XRGE balance:", actualBalance);
-          console.log("Expected from quote:", xrgeAmountToUse);
-          
-          // Use the smaller of: actual balance or 98% of expected (conservative)
-          const expectedAmount = parseFloat(xrgeAmountToUse);
-          const actualAmount = parseFloat(actualBalance);
-          
-          let amountToSpend: number;
-          if (actualAmount < expectedAmount * 0.5) {
-            // Balance is way less than expected - something went wrong
-            throw new Error(`XRGE balance too low after swap. Have: ${actualBalance}, Expected: ${xrgeAmountToUse}. Please check the swap transaction on BaseScan.`);
-          } else if (actualAmount < expectedAmount) {
-            // Use 98% of actual balance (conservative)
-            amountToSpend = actualAmount * 0.98;
-            console.log("⚠️ Using 98% of actual balance (less than expected):", amountToSpend);
-          } else {
-            // Use 98% of expected amount
-            amountToSpend = expectedAmount * 0.98;
-            console.log("✅ Using 98% of expected amount:", amountToSpend);
-          }
-          
+          // Use 98% of the actual XRGE received from swap
+          const amountToSpend = parseFloat(actualXRGEReceived) * 0.98;
           const safeAmount = amountToSpend.toFixed(18); // Keep 18 decimals
+          console.log(`Using 98% of actual XRGE received: ${safeAmount} (98% of ${actualXRGEReceived})`);
           console.log("Final safe amount to spend:", safeAmount);
           
           if (parseFloat(safeAmount) <= 0) {
@@ -650,24 +661,78 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           description: "Please approve USDC for swapping",
         });
         
-        await approveUSDC(buyAmount);
+        const usdcTxHash = await approveUSDC(buyAmount);
+        console.log("USDC Approval tx hash:", usdcTxHash);
         
         toast({
           title: "Step 2/3: Swapping USDC to XRGE",
           description: "Converting your USDC to XRGE...",
         });
         
-        await buyXRGEWithUSDC(buyAmount, 500);
+        // Get XRGE balance BEFORE swap
+        const balanceBefore = await getXRGEBalance();
+        console.log("XRGE balance before USDC swap:", balanceBefore);
         
-        // Wait a bit for swap to complete
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        const swapTxHash = await buyXRGEWithUSDC(buyAmount, 500);
+        console.log("USDC → XRGE swap tx hash:", swapTxHash);
+        
+        // Get XRGE balance difference after swap
+        let xrgeReceived = "0";
+        let attempts = 0;
+        const maxAttempts = 60;
+        
+        console.log("Waiting for XRGE balance increase after USDC swap...");
+        
+        // Initial wait for transaction to be mined
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        while (attempts < maxAttempts) {
+          attempts++;
+          const currentBalance = await getXRGEBalance();
+          const balanceDiff = parseFloat(currentBalance) - parseFloat(balanceBefore);
+          console.log(`USDC Swap - Balance check attempt ${attempts}: ${currentBalance} XRGE (diff: +${balanceDiff})`);
+          
+          if (balanceDiff > 0) {
+            xrgeReceived = balanceDiff.toString();
+            console.log(`✅ XRGE received from USDC swap: ${xrgeReceived} (before: ${balanceBefore}, after: ${currentBalance})`);
+            break;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        if (parseFloat(xrgeReceived) === 0) {
+          throw new Error("USDC to XRGE swap failed - no XRGE received");
+        }
         
         toast({
-          title: "Step 3/3: Buying song tokens",
+          title: "Step 3/4: Approving XRGE",
+          description: "Approving XRGE for song token purchase...",
+        });
+        
+        const xrgeApproveTxHash = await approveXRGE(xrgeReceived, BONDING_CURVE_ADDRESS);
+        console.log("XRGE Approval for bonding curve tx hash:", xrgeApproveTxHash);
+        
+        // Wait for XRGE approval to be confirmed on-chain
+        if (publicClient && xrgeApproveTxHash) {
+          console.log("Waiting for XRGE approval to be mined...");
+          await publicClient.waitForTransactionReceipt({
+            hash: xrgeApproveTxHash as `0x${string}`,
+            confirmations: 1,
+          });
+          console.log("✅ XRGE approval confirmed on-chain");
+        }
+        
+        toast({
+          title: "Step 4/4: Buying song tokens",
           description: "Purchasing with swapped XRGE...",
         });
         
-        await buyWithXRGE(songTokenAddress, buyAmount, "0");
+        // Use 98% of XRGE to account for precision/slippage
+        const safeAmount = (parseFloat(xrgeReceived) * 0.98).toString();
+        console.log(`Final purchase with XRGE amount: ${safeAmount} (98% of ${xrgeReceived})`);
+        
+        await buyWithXRGE(songTokenAddress, safeAmount, "0");
         
         toast({
           title: "Purchase successful!",
@@ -695,6 +760,33 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         } catch (dbError) {
           console.error('Database error recording purchase:', dbError);
         }
+      }
+      
+      // Refetch all balances and bonding curve data after successful purchase
+      console.log("🔄 Refreshing balances and bonding curve data...");
+      
+      toast({
+        title: "Updating balances...",
+        description: "Fetching latest data from blockchain",
+      });
+      
+      // Wait a bit for blockchain to update
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      try {
+        // Refetch bonding curve data
+        await refetchPrice();
+        await refetchSupply();
+        await refetchMetadata();
+        
+        console.log("✅ Data refreshed");
+        
+        toast({
+          title: "Balances updated! ✅",
+          description: "All data has been refreshed",
+        });
+      } catch (refreshError) {
+        console.error("Error refreshing data:", refreshError);
       }
       
       setBuyAmount("");
@@ -1153,29 +1245,29 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                       <>
                       {circulatingMarketCap !== undefined && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Market Cap:</span>
+                          <span className="text-muted-foreground" title="Current price × tokens sold">Market Cap:</span>
                           <span className="text-foreground font-semibold">
                             ${circulatingMarketCap < 1 ? circulatingMarketCap.toFixed(6) : circulatingMarketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
                           </span>
                         </div>
                       )}
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Real Value Locked:</span>
+                        <span className="text-muted-foreground" title="Total XRGE deposited into bonding curve">Total Value Locked:</span>
                         <span className="text-neon-green font-semibold">
                           ${realizedValueUSD < 1 ? realizedValueUSD.toFixed(6) : realizedValueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs opacity-70">
-                        <span className="text-muted-foreground">Volume (XRGE):</span>
+                        <span className="text-muted-foreground" title="All-time XRGE spent on this token">Total Traded (XRGE):</span>
                         <span className="text-foreground">
                           {realizedValueXRGE.toLocaleString(undefined, {maximumFractionDigits: 4})} XRGE
                         </span>
                       </div>
                       {activeTradingSupply !== undefined && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Circulating:</span>
+                          <span className="text-muted-foreground" title="Number of tokens purchased from bonding curve">Tokens Sold:</span>
                           <span className="text-foreground">
-                            {activeTradingSupply.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                            {(990_000_000 - activeTradingSupply).toLocaleString(undefined, {maximumFractionDigits: 2})}
                           </span>
                         </div>
                       )}

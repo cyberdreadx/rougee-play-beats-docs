@@ -90,7 +90,7 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
         </div>
         
         <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-2">
-          Complete price progression from inception to present using bonding curve math
+          Live bonding curve progression - price increases with each token sold
         </p>
       </div>
 
