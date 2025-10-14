@@ -68,11 +68,35 @@ serve(async (req) => {
     acrFormData.append('signature', signatureBase64);
     acrFormData.append('timestamp', timestamp.toString());
 
-    // Call ACRCloud API
-    const acrResponse = await fetch(`https://${acrHost}/v1/identify`, {
-      method: 'POST',
-      body: acrFormData,
-    });
+    // Call ACRCloud API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
+    let acrResponse;
+    try {
+      acrResponse = await fetch(`https://${acrHost}/v1/identify`, {
+        method: 'POST',
+        body: acrFormData,
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      // If ACRCloud times out, return clean result without copyright check
+      console.warn('ACRCloud API timeout or error:', fetchError);
+      return new Response(
+        JSON.stringify({
+          isCopyrighted: false,
+          detectedInfo: null,
+          violationCount: 0,
+          warning: 'Copyright check service temporarily unavailable',
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    clearTimeout(timeoutId);
 
     const acrResult = await acrResponse.json();
     console.log('ACRCloud response:', JSON.stringify(acrResult));
