@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('🔐 Validating Privy token...');
+    const authHeader = req.headers.get('Authorization');
+    const walletAddress = await requireWalletAddress(authHeader);
+    console.log('✅ Token validated, wallet:', walletAddress);
+    
     const LIGHTHOUSE_API_KEY = Deno.env.get('LIGHTHOUSE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -21,22 +27,6 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
-    // Get wallet address from header
-    let walletAddress = 'unknown';
-    try {
-      const walletHeader = req.headers.get('x-wallet-address');
-      if (walletHeader) {
-        walletAddress = walletHeader.toLowerCase();
-      } else {
-        throw new Error('Wallet address required');
-      }
-    } catch (error) {
-      return new Response(
-        JSON.stringify({ error: 'Wallet address required in x-wallet-address header' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
     
     const formData = await req.formData();
     
