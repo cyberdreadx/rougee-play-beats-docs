@@ -4,7 +4,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-wallet-address, x-privy-token',
 };
 
 Deno.serve(async (req) => {
@@ -14,10 +14,29 @@ Deno.serve(async (req) => {
 
   try {
     console.log('🔐 Validating Privy token...');
-    const authHeader = req.headers.get('Authorization');
-    const walletAddress = await requireWalletAddress(authHeader);
+    const authHeader = req.headers.get('x-privy-token') || req.headers.get('authorization');
+    if (!authHeader) {
+      throw new Error('Missing authentication token');
+    }
+
+    // Parse form data early to allow wallet fallback
+    const formData = await req.formData();
+    const providedWalletAddress = (formData.get('walletAddress') as string | null) || req.headers.get('x-wallet-address');
+
+    const { validatePrivyToken } = await import('../_shared/privy.ts');
+    const user = await validatePrivyToken(authHeader);
+
+    let walletAddress: string;
+    if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
+      walletAddress = providedWalletAddress.toLowerCase();
+      console.log('✅ Using wallet from request:', walletAddress);
+    } else if (user.walletAddress) {
+      walletAddress = user.walletAddress;
+      console.log('✅ Using wallet from JWT:', walletAddress);
+    } else {
+      throw new Error('No wallet address provided');
+    }
     console.log('✅ Token validated, wallet:', walletAddress);
-    
     const LIGHTHOUSE_API_KEY = Deno.env.get('LIGHTHOUSE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -28,7 +47,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
-    const formData = await req.formData();
+    // formData already parsed above
     
     // Define validation schema
     const ProfileSchema = z.object({
