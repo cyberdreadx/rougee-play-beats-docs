@@ -5,8 +5,6 @@ import { useFundWallet } from "@privy-io/react-auth";
 import { useIPLogger } from "@/hooks/useIPLogger";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { useSongPrice } from "@/hooks/useSongBondingCurve";
-import Header from "@/components/Header";
-import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -384,9 +382,6 @@ const Wallet = () => {
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pb-0">
-      <Header />
-      <Navigation />
-      
       <main className="container mx-auto px-4 py-6 max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <div>

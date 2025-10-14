@@ -11,6 +11,7 @@ import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { AdDisplay } from "@/components/AdDisplay";
 import { useState } from "react";
 import AudioPlayer from "@/components/AudioPlayer";
+import Layout from "@/components/Layout";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
 import Trending from "./pages/Trending";
@@ -54,40 +55,42 @@ const AppContent = () => {
         />
       )}
 
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            <Index 
-              playSong={handlePlaySong} 
-              currentSong={activeSong} 
-              isPlaying={activeIsPlaying}
-              isRadioMode={radioPlayer.isRadioMode}
-              onToggleRadio={() => {
-                if (radioPlayer.isRadioMode) {
-                  radioPlayer.stopRadio();
-                } else {
-                  radioPlayer.startRadio();
-                }
-              }}
-            />
-          } 
-        />
-        <Route path="/trending" element={<Trending />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="/become-artist" element={<BecomeArtist />} />
-        <Route path="/wallet" element={<Wallet />} />
-        <Route path="/swap" element={<Swap />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/terms-of-service" element={<TermsOfService />} />
-        <Route path="/feed" element={<Feed />} />
-        <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
-        <Route path="/profile/edit" element={<ProfileEdit />} />
-        <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
-        <Route path="/admin" element={<Admin />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <Index 
+                playSong={handlePlaySong} 
+                currentSong={activeSong} 
+                isPlaying={activeIsPlaying}
+                isRadioMode={radioPlayer.isRadioMode}
+                onToggleRadio={() => {
+                  if (radioPlayer.isRadioMode) {
+                    radioPlayer.stopRadio();
+                  } else {
+                    radioPlayer.startRadio();
+                  }
+                }}
+              />
+            } 
+          />
+          <Route path="/trending" element={<Trending />} />
+          <Route path="/upload" element={<Upload />} />
+          <Route path="/become-artist" element={<BecomeArtist />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/swap" element={<Swap />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
+          <Route path="/profile/edit" element={<ProfileEdit />} />
+          <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
+          <Route path="/admin" element={<Admin />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Layout>
       <Footer />
       <AudioPlayer 
         currentSong={activeSong}

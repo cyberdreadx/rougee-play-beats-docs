@@ -1,8 +1,6 @@
 import React, { useRef } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
-import Navigation from "@/components/Navigation";
 import SearchBar from "@/components/SearchBar";
 import TrendingArtists from "@/components/TrendingArtists";
 import TopSongs, { TopSongsRef } from "@/components/TopSongs";
@@ -44,7 +42,6 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
   if (!isConnected) {
     return (
       <div className="min-h-screen bg-background flex flex-col pb-24 md:pb-20">
-        <Header />
         <LandingHero />
         
         {/* Discovery Sections */}
@@ -75,10 +72,8 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-20 flex flex-col overflow-x-hidden">
-      <Header />
       <NetworkInfo />
       <div className="flex items-center justify-between px-4 md:px-6 py-4 gap-3">
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         {onToggleRadio && (
           <RadioToggle 
             isRadioMode={isRadioMode || false} 
