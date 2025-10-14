@@ -104,14 +104,11 @@ const Admin = () => {
         return;
       }
 
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("wallet_address", fullAddress)
-        .eq("role", "admin")
-        .maybeSingle();
+      const walletLower = fullAddress.toLowerCase();
+      const { data: isAdminResp, error } = await supabase
+        .rpc('is_admin', { check_wallet: walletLower });
 
-      if (!data) {
+      if (error || !isAdminResp) {
         toast({
           title: "Access Denied",
           description: "You don't have admin privileges",
