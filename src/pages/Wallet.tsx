@@ -409,8 +409,8 @@ const Wallet = () => {
         <Card className="p-4 mb-4 bg-card/50 backdrop-blur border-neon-green/20">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-neon-green/10 flex items-center justify-center">
-                <img src={xrgeLogo} alt="XRGE" className="h-6 w-6 object-contain" />
+              <div className="flex items-center justify-center">
+                <img src={xrgeLogo} alt="XRGE" className="h-8 w-8 object-contain" />
               </div>
               <div className="flex-1">
                 <p className="text-xs text-muted-foreground font-mono">XRGE Token Balance</p>
@@ -474,8 +474,8 @@ const Wallet = () => {
           {/* KEETA Balance */}
           <div className="border-t border-border pt-3 mt-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <img src="/src/assets/tokens/kta.png" alt="KTA" className="h-5 w-5 object-contain" />
+              <div className="flex items-center justify-center">
+                <img src={ktaLogo} alt="KTA" className="h-6 w-6 object-contain" />
               </div>
               <p className="text-xs text-muted-foreground font-mono">KEETA Token Balance</p>
             </div>
@@ -542,8 +542,8 @@ const Wallet = () => {
           {/* USDC Balance */}
           <div className="border-t border-border pt-3 mt-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-blue-500/10">
-                <Coins className="h-5 w-5 text-blue-400" />
+              <div className="flex items-center justify-center">
+                <Coins className="h-6 w-6 text-blue-400" />
               </div>
               <p className="text-xs text-muted-foreground font-mono">USDC Token Balance</p>
             </div>
@@ -567,7 +567,13 @@ const Wallet = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => copyToClipboard(USDC_TOKEN_ADDRESS)}
+                onClick={async () => {
+                  await navigator.clipboard.writeText(USDC_TOKEN_ADDRESS);
+                  toast({
+                    title: "Address copied!",
+                    description: "USDC token address copied to clipboard",
+                  });
+                }}
                 className="h-5 w-5"
               >
                 <Copy className="h-3 w-3" />
