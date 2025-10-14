@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/hooks/useWallet";
+import { usePrivy } from '@privy-io/react-auth';
 
 interface ReportButtonProps {
   songId: string;
@@ -26,7 +27,8 @@ export const ReportButton = ({ songId }: ReportButtonProps) => {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { address } = useAccount();
+  const { fullAddress: address } = useWallet();
+  const { getAccessToken } = usePrivy();
 
   const handleSubmit = async () => {
     if (!address) {
@@ -40,32 +42,38 @@ export const ReportButton = ({ songId }: ReportButtonProps) => {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from("song_reports").insert({
-      song_id: songId,
-      wallet_address: address,
-      report_type: reportType,
-      description: description.trim() || null,
-    });
+    try {
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('report-song', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: {
+          songId,
+          reportType,
+          description: description.trim() || undefined,
+        },
+      });
 
-    setIsSubmitting(false);
+      if (error) throw error;
 
-    if (error) {
+      toast({
+        title: "Report Submitted",
+        description: "Thank you for helping keep our platform safe.",
+      });
+
+      setOpen(false);
+      setDescription("");
+      setReportType("copyright");
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to submit report. Please try again.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsSubmitting(false);
     }
-
-    toast({
-      title: "Report Submitted",
-      description: "Thank you for helping keep our platform safe.",
-    });
-
-    setOpen(false);
-    setDescription("");
-    setReportType("copyright");
   };
 
   return (

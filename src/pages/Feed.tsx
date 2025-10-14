@@ -12,7 +12,7 @@ import Header from '@/components/Header';
 import Navigation from '@/components/Navigation';
 import StoriesBar from '@/components/StoriesBar';
 import LikeButton from '@/components/LikeButton';
-import { usePrivyToken } from '@/hooks/usePrivyToken';
+import { usePrivy } from '@privy-io/react-auth';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -44,7 +44,7 @@ export default function Feed() {
     fullAddress,
     isConnected
   } = useWallet();
-  const { getAuthHeaders } = usePrivyToken();
+  const { getAccessToken } = usePrivy();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -145,9 +145,10 @@ export default function Feed() {
     }
     setPosting(true);
     try {
-      const baseHeaders = await getAuthHeaders();
-      const headers: Record<string, string> = { ...baseHeaders };
-      if (fullAddress) headers['x-wallet-address'] = fullAddress;
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+      };
       
       const formData = new FormData();
       if (contentText) formData.append('content_text', contentText);
@@ -230,12 +231,15 @@ export default function Feed() {
     const text = commentText[postId]?.trim();
     if (!text) return;
     try {
-      const {
-        error
-      } = await supabase.from('feed_comments').insert({
-        post_id: postId,
-        wallet_address: fullAddress,
-        comment_text: text
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('add-comment', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: {
+          postId,
+          commentText: text,
+        },
       });
       if (error) throw error;
       setCommentText(prev => ({
@@ -243,7 +247,7 @@ export default function Feed() {
         [postId]: ''
       }));
       await loadComments(postId);
-      loadPosts(); // Refresh to update comment count
+      loadPosts();
     } catch (error) {
       console.error('Error adding comment:', error);
       toast({
@@ -263,18 +267,26 @@ export default function Feed() {
     }
     const isLiked = likedPosts.has(postId);
     try {
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('like-post', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { 
+          postId, 
+          action: isLiked ? 'unlike' : 'like' 
+        },
+      });
+      
+      if (error) throw error;
+
       if (isLiked) {
-        await supabase.from('feed_likes').delete().eq('post_id', postId).eq('wallet_address', fullAddress);
         setLikedPosts(prev => {
           const next = new Set(prev);
           next.delete(postId);
           return next;
         });
       } else {
-        await supabase.from('feed_likes').insert({
-          post_id: postId,
-          wallet_address: fullAddress
-        });
         setLikedPosts(prev => new Set(prev).add(postId));
       }
       loadPosts();

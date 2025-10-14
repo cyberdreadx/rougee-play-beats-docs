@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { usePrivy } from '@privy-io/react-auth';
 
 interface SongReport {
   id: string;
@@ -51,6 +52,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { fullAddress, isConnected, isPrivyReady } = useWallet();
+  const { getAccessToken } = usePrivy();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [reports, setReports] = useState<SongReport[]>([]);
@@ -294,10 +296,13 @@ const Admin = () => {
     setDeletingReports(new Set(deletingReports).add(reportId));
 
     try {
-      const { error } = await supabase
-        .from("songs")
-        .delete()
-        .eq("id", songId);
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('admin-delete-song', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { songId },
+      });
 
       if (error) throw error;
 
@@ -306,7 +311,6 @@ const Admin = () => {
         description: "The reported song has been removed",
       });
 
-      // Refresh reports
       fetchReports();
     } catch (error) {
       console.error("Error deleting song:", error);
@@ -324,10 +328,13 @@ const Admin = () => {
 
   const handleDismissReport = async (reportId: string) => {
     try {
-      const { error } = await supabase
-        .from("song_reports")
-        .delete()
-        .eq("id", reportId);
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('admin-delete-report', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { reportId },
+      });
 
       if (error) throw error;
 
@@ -351,47 +358,17 @@ const Admin = () => {
     try {
       if (!fullAddress) return;
       
-      // Create a custom Supabase call with headers
-      const response = await fetch(
-        `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/verification_requests?order=requested_at.desc`,
-        {
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-            'x-wallet-address': fullAddress,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      const token = await getAccessToken();
+      const { data, error } = await supabase.functions.invoke('admin-get-verification-requests', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      if (!response.ok) {
-        console.error('Failed to fetch verification requests:', response.status);
-        throw new Error(`Failed: ${response.status}`);
-      }
+      if (error) throw error;
 
-      const requests = await response.json();
-      console.log('Verification requests loaded:', requests);
-
-      // Fetch profiles separately
-      if (requests && requests.length > 0) {
-        const walletAddresses = requests.map((r: any) => r.wallet_address);
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('wallet_address, artist_name, display_name, avatar_cid')
-          .in('wallet_address', walletAddresses);
-
-        if (profilesError) throw profilesError;
-
-        // Map profiles to requests
-        const requestsWithProfiles = requests.map((request: any) => ({
-          ...request,
-          profiles: profiles?.find(p => p.wallet_address === request.wallet_address) || null
-        }));
-
-        setVerificationRequests(requestsWithProfiles);
-      } else {
-        setVerificationRequests([]);
-      }
+      console.log('Verification requests loaded:', data);
+      setVerificationRequests(data || []);
     } catch (error) {
       console.error('Error fetching verification requests:', error);
       toast({
@@ -408,60 +385,19 @@ const Admin = () => {
     try {
       console.log('Processing verification decision:', { requestId, walletAddress, approved });
       
-      // Update verification request using fetch with custom header
-      const updateResponse = await fetch(
-        `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/verification_requests?id=eq.${requestId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-            'x-wallet-address': fullAddress || '',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({
-            status: approved ? 'approved' : 'rejected',
-            reviewed_at: new Date().toISOString(),
-            reviewed_by: fullAddress,
-            admin_notes: adminNotes[requestId] || null
-          })
-        }
-      );
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('admin-process-verification', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { 
+          requestId, 
+          action: approved ? 'approve' : 'reject',
+          adminNotes: adminNotes[requestId] || null
+        },
+      });
 
-      if (!updateResponse.ok) {
-        console.error('Failed to update verification request:', updateResponse.status);
-        throw new Error('Failed to update verification request');
-      }
-
-      console.log('Verification request updated successfully');
-
-      // If approved, update profile
-      if (approved) {
-        // Update profile verified flag using REST with target wallet header to satisfy RLS
-        const profileUpdate = await fetch(
-          `https://phybdsfwycygroebrsdx.supabase.co/rest/v1/profiles?wallet_address=eq.${walletAddress}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoeWJkc2Z3eWN5Z3JvZWJyc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NzM5NjksImV4cCI6MjA3MjI0OTk2OX0.wQY7tt0gN1fvRjgHiPJK7I1M9ZhmgTbLNffGvcbWJko',
-              'x-wallet-address': walletAddress,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ verified: true })
-          }
-        );
-
-        if (!profileUpdate.ok) {
-          const errText = await profileUpdate.text();
-          console.error('Failed to update profile:', profileUpdate.status, errText);
-          throw new Error('Failed to update profile');
-        }
-        
-        console.log('Profile verified successfully');
-      }
+      if (error) throw error;
 
       toast({
         title: approved ? "Request Approved" : "Request Rejected",
@@ -470,7 +406,6 @@ const Admin = () => {
           : "Verification request has been rejected",
       });
 
-      // Refresh data
       await fetchAllData();
     } catch (error) {
       console.error('Error processing verification:', error);

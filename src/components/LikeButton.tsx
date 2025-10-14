@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useWallet } from "@/hooks/useWallet";
+import { usePrivy } from '@privy-io/react-auth';
 
 interface LikeButtonProps {
   songId: string;
@@ -19,6 +20,7 @@ export default function LikeButton({
   showCount = true 
 }: LikeButtonProps) {
   const { isConnected, fullAddress: address, connect } = useWallet();
+  const { getAccessToken } = usePrivy();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
@@ -78,32 +80,21 @@ export default function LikeButton({
 
     setIsLoading(true);
     try {
-      if (isLiked) {
-        // Unlike
-        const { error } = await supabase
-          .from('feed_likes')
-          .delete()
-          .eq('wallet_address', address)
-          .eq('post_id', songId);
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('like-song', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { 
+          songId, 
+          action: isLiked ? 'unlike' : 'like' 
+        },
+      });
 
-        if (error) throw error;
-        
-        setIsLiked(false);
-        setLikeCount(prev => Math.max(0, prev - 1));
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('feed_likes')
-          .insert({
-            wallet_address: address,
-            post_id: songId,
-          });
+      if (error) throw error;
 
-        if (error) throw error;
-        
-        setIsLiked(true);
-        setLikeCount(prev => prev + 1);
-      }
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
     } catch (error: any) {
       console.error('Error toggling like:', error);
       toast.error("Failed to update like");
