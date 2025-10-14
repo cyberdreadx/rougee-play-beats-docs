@@ -43,3 +43,6 @@ verify_jwt = false
 
 [functions.report-song]
 verify_jwt = false
+
+[functions.update-song-token]
+verify_jwt = false

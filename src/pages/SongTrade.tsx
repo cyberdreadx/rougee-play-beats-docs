@@ -143,10 +143,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             const headers = await getAuthHeaders();
             const { data: fnData, error: fnError } = await supabase.functions.invoke('update-song-token', {
               body: { songId: song.id, tokenAddress },
-              headers: {
-                ...headers,
-                'x-wallet-address': (fullAddress || '').toLowerCase(),
-              },
+              headers,
             });
 
             console.log('Edge function update result:', { fnData, fnError });
