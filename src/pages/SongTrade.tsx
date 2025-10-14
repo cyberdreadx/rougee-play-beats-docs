@@ -18,7 +18,7 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS } from "@/hooks/useSongBondingCurve";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, XRGE_TOKEN_ADDRESS, useApproveToken } from "@/hooks/useSongBondingCurve";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
 
@@ -74,6 +74,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { sell, isPending: isSelling } = useSellSongTokens();
   const { price: priceData, isLoading: priceLoading } = useSongPrice(songTokenAddress);
   const { metadata: metadataData, isLoading: metadataLoading } = useSongMetadata(songTokenAddress);
+  const { approve, isPending: isApproving } = useApproveToken();
 
   // Real blockchain data or undefined if not deployed
   const currentPrice = priceData ? parseFloat(priceData) : undefined;
@@ -273,7 +274,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
 
     try {
-      await buyWithXRGE(songTokenAddress, buyAmount, "100"); // 1% slippage (100 bps)
+      // 1) Approve XRGE spend for the bonding curve
+      await approve(XRGE_TOKEN_ADDRESS, buyAmount);
+      // 2) Execute buy
+      await buyWithXRGE(songTokenAddress, buyAmount, "0"); // no min tokens
       toast({
         title: "Purchase successful!",
         description: `Bought tokens for ${buyAmount} XRGE`,
@@ -318,7 +322,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
 
     try {
-      await sell(songTokenAddress, sellAmount, "100"); // 1% slippage (100 bps)
+      await sell(songTokenAddress, sellAmount, "0"); // accept any XRGE out (no min)
       toast({
         title: "Sale successful!",
         description: `Sold ${sellAmount} tokens`,
