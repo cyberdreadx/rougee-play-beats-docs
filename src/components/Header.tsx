@@ -20,16 +20,17 @@ const Header = () => {
       if (!isPrivyReady) return;
       
       if (isConnected && fullAddress) {
-        console.log('Checking admin status for:', fullAddress);
+        const walletLower = fullAddress.toLowerCase();
+        console.log('Checking admin status for:', walletLower);
         
         const { data, error } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("wallet_address", fullAddress)
+          .eq("wallet_address", walletLower)
           .eq("role", "admin")
           .maybeSingle();
         
-        console.log('Admin check result:', { data, error, fullAddress });
+        console.log('Admin check result:', { data, error, walletLower });
         setIsAdmin(!!data);
       } else {
         setIsAdmin(false);
