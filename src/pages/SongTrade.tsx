@@ -120,12 +120,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   useEffect(() => {
     const updateTokenAddress = async () => {
       if (deploySuccess && receipt && song) {
+        console.log('Deployment successful, processing receipt...', { receipt, songId: song.id });
+        
         try {
           // Find the SongCreated event in the logs
           const songCreatedLog = receipt.logs.find((log: any) => {
-            // Check if this log is from the SongFactory contract
+            console.log('Checking log:', { address: log.address, factory: SONG_FACTORY_ADDRESS });
             return log.address?.toLowerCase() === SONG_FACTORY_ADDRESS.toLowerCase();
           });
+
+          console.log('Found SongCreated log:', songCreatedLog);
 
           if (songCreatedLog && songCreatedLog.topics && songCreatedLog.topics.length > 0) {
             // The first indexed parameter (songToken address) is in topics[1]
@@ -134,10 +138,13 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             console.log('Extracted token address:', tokenAddress);
 
             // Update database with token address
-            const { error } = await supabase
+            const { data, error } = await supabase
               .from('songs')
               .update({ token_address: tokenAddress })
-              .eq('id', song.id);
+              .eq('id', song.id)
+              .select();
+
+            console.log('Database update result:', { data, error });
 
             if (error) {
               console.error('Failed to update token address:', error);
@@ -148,13 +155,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               });
             } else {
               console.log('Successfully updated token address in database');
+              toast({
+                title: "Success",
+                description: "Your song is now live on the bonding curve!",
+              });
             }
+          } else {
+            console.error('Could not find SongCreated event in transaction receipt');
+            toast({
+              title: "Warning",
+              description: "Deployed but couldn't extract token address. Please refresh.",
+              variant: "destructive",
+            });
           }
-
-          toast({
-            title: "Success",
-            description: "Your song is now live on the bonding curve!",
-          });
           
           setTimeout(() => {
             window.location.reload();
