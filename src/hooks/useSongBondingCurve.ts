@@ -173,7 +173,7 @@ const SONG_TOKEN_ABI = [
 export const useCreateSong = () => {
   const { address } = useAccount();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
 
   const createSong = (name: string, symbol: string, ipfsHash: string) => {
     if (!address) {
@@ -201,6 +201,7 @@ export const useCreateSong = () => {
     isSuccess,
     error,
     hash,
+    receipt,
   };
 };
 

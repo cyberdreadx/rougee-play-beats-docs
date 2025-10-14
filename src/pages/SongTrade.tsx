@@ -18,7 +18,7 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong } from "@/hooks/useSongBondingCurve";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS } from "@/hooks/useSongBondingCurve";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
 
 interface Song {
@@ -67,7 +67,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
 
   // Bonding curve hooks
-  const { createSong, isPending: isDeploying, isConfirming, isSuccess: deploySuccess, hash } = useCreateSong();
+  const { createSong, isPending: isDeploying, isConfirming, isSuccess: deploySuccess, hash, receipt } = useCreateSong();
   const { buyWithETH, buyWithXRGE, isPending: isBuying } = useBuySongTokens();
   const { sell, isPending: isSelling } = useSellSongTokens();
   const { price: priceData, isLoading: priceLoading } = useSongPrice(songTokenAddress);
@@ -118,18 +118,60 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   }, [isConfirming]);
 
   useEffect(() => {
-    if (deploySuccess && hash) {
-      toast({
-        title: "Deployment confirmed!",
-        description: "Your song is now live on the bonding curve. Refreshing...",
-      });
-      
-      // Refresh the page to show the deployed state
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    }
-  }, [deploySuccess, hash]);
+    const updateTokenAddress = async () => {
+      if (deploySuccess && receipt && song) {
+        try {
+          // Find the SongCreated event in the logs
+          const songCreatedLog = receipt.logs.find((log: any) => {
+            // Check if this log is from the SongFactory contract
+            return log.address?.toLowerCase() === SONG_FACTORY_ADDRESS.toLowerCase();
+          });
+
+          if (songCreatedLog && songCreatedLog.topics && songCreatedLog.topics.length > 0) {
+            // The first indexed parameter (songToken address) is in topics[1]
+            const tokenAddress = `0x${songCreatedLog.topics[1].slice(-40)}` as `0x${string}`;
+            
+            console.log('Extracted token address:', tokenAddress);
+
+            // Update database with token address
+            const { error } = await supabase
+              .from('songs')
+              .update({ token_address: tokenAddress })
+              .eq('id', song.id);
+
+            if (error) {
+              console.error('Failed to update token address:', error);
+              toast({
+                title: "Error",
+                description: "Failed to save token address to database",
+                variant: "destructive",
+              });
+            } else {
+              console.log('Successfully updated token address in database');
+            }
+          }
+
+          toast({
+            title: "Success",
+            description: "Your song is now live on the bonding curve!",
+          });
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } catch (error) {
+          console.error('Error processing deployment:', error);
+          toast({
+            title: "Error",
+            description: "Deployment confirmed but failed to update database",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    updateTokenAddress();
+  }, [deploySuccess, receipt, song]);
 
   const fetchSong = async () => {
     try {
