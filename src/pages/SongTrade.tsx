@@ -107,11 +107,12 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   // Swap hooks for other payment tokens
   const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, isPending: isSwapping } = useXRGESwap();
   
-  // Get all token balances
-  const { data: ethBalance } = useBalance({ address: wagmiAddress });
-  const { data: xrgeBalance } = useBalance({ address: wagmiAddress, token: XRGE_TOKEN });
-  const { data: ktaBalance } = useBalance({ address: wagmiAddress, token: KTA_TOKEN_ADDRESS });
-  const { data: usdcBalance } = useBalance({ address: wagmiAddress, token: USDC_TOKEN_ADDRESS });
+  // Get all token balances - use fullAddress as wagmi should sync with Privy
+  const walletForBalance = (wagmiAddress || fullAddress) as `0x${string}` | undefined;
+  const { data: ethBalance } = useBalance({ address: walletForBalance });
+  const { data: xrgeBalance } = useBalance({ address: walletForBalance, token: XRGE_TOKEN });
+  const { data: ktaBalance } = useBalance({ address: walletForBalance, token: KTA_TOKEN_ADDRESS });
+  const { data: usdcBalance } = useBalance({ address: walletForBalance, token: USDC_TOKEN_ADDRESS });
   
   // Get XRGE quotes based on payment token
   const { expectedXRGE: xrgeFromETH } = useXRGEQuote(paymentToken === 'ETH' ? buyAmount : '0');
@@ -399,15 +400,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       wagmiAddress,
       paymentToken 
     });
-    
-    if (!wagmiAddress) {
-      toast({
-        title: "Wallet sync issue",
-        description: "Privy wallet not synced with wagmi. Try refreshing the page.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!songTokenAddress) {
       toast({
@@ -1360,7 +1352,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                       <label className="text-xs md:text-sm font-mono text-muted-foreground">
                         Amount (${song?.ticker ? song.ticker.toUpperCase() : 'Tokens'})
                       </label>
-                      {wagmiAddress && userBalance && parseFloat(userBalance) > 0 && (
+                      {userBalance && parseFloat(userBalance) > 0 && (
                         <button
                           onClick={() => setSellAmount(userBalance)}
                           className="text-xs text-blue-400 hover:text-blue-300 font-mono"
