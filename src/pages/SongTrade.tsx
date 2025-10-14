@@ -27,6 +27,7 @@ import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, use
 import { useBalance } from "wagmi";
 import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
+import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check } from "lucide-react";
 
@@ -68,6 +69,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount(); // Wagmi account check
   const { getAuthHeaders } = usePrivyToken();
   const { prices } = useTokenPrices();
+  
+  // Ensure Privy wallet is connected to wagmi
+  usePrivyWagmi();
   
   // Debug wallet state
   useEffect(() => {
