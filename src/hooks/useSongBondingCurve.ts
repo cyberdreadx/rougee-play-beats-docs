@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
 import { Address, parseEther, formatEther } from 'viem';
 import { toast } from 'sonner';
 
@@ -166,6 +166,20 @@ const SONG_TOKEN_ABI = [
     stateMutability: 'view',
     type: 'function'
   },
+  {
+    inputs: [],
+    name: 'bondingCurveSupply',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [],
+    name: 'totalXRGERaised',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
   ...ERC20_ABI
 ] as const;
 
@@ -208,45 +222,49 @@ export const useCreateSong = () => {
 // Hook for buying song tokens
 export const useBuySongTokens = () => {
   const { address } = useAccount();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const buyWithETH = (songTokenAddress: Address, ethAmount: string, slippageBps: number = 500) => {
+  const buyWithETH = async (songTokenAddress: Address, ethAmount: string, slippageBps: number = 500) => {
     if (!address) {
       toast.error('Please connect your wallet');
-      return;
+      throw new Error('Wallet not connected');
     }
 
     try {
-      writeContract({
+      const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
         abi: BONDING_CURVE_ABI,
         functionName: 'buyWithETH',
         args: [songTokenAddress, 0n, BigInt(slippageBps)],
         value: parseEther(ethAmount),
       } as any);
+      return txHash;
     } catch (err) {
       console.error('Error buying tokens:', err);
       toast.error('Failed to buy tokens');
+      throw err;
     }
   };
 
-  const buyWithXRGE = (songTokenAddress: Address, xrgeAmount: string, minTokens: string = '0') => {
+  const buyWithXRGE = async (songTokenAddress: Address, xrgeAmount: string, minTokens: string = '0') => {
     if (!address) {
       toast.error('Please connect your wallet');
-      return;
+      throw new Error('Wallet not connected');
     }
 
     try {
-      writeContract({
+      const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
         abi: BONDING_CURVE_ABI,
         functionName: 'buyWithXRGE',
         args: [songTokenAddress, parseEther(xrgeAmount), parseEther(minTokens)],
       } as any);
+      return txHash;
     } catch (err) {
       console.error('Error buying with XRGE:', err);
       toast.error('Failed to buy with XRGE');
+      throw err;
     }
   };
 
@@ -264,25 +282,27 @@ export const useBuySongTokens = () => {
 // Hook for selling song tokens
 export const useSellSongTokens = () => {
   const { address } = useAccount();
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const sell = (songTokenAddress: Address, tokenAmount: string, minXRGE: string = '0') => {
+  const sell = async (songTokenAddress: Address, tokenAmount: string, minXRGE: string = '0') => {
     if (!address) {
       toast.error('Please connect your wallet');
-      return;
+      throw new Error('Wallet not connected');
     }
 
     try {
-      writeContract({
+      const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
         abi: BONDING_CURVE_ABI,
         functionName: 'sell',
         args: [songTokenAddress, parseEther(tokenAmount), parseEther(minXRGE)],
       } as any);
+      return txHash;
     } catch (err) {
       console.error('Error selling tokens:', err);
       toast.error('Failed to sell tokens');
+      throw err;
     }
   };
 
@@ -298,20 +318,22 @@ export const useSellSongTokens = () => {
 
 // Hook for approving tokens
 export const useApproveToken = () => {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const approve = (tokenAddress: Address, amount: string) => {
+  const approve = async (tokenAddress: Address, amount: string) => {
     try {
-      writeContract({
+      const txHash = await writeContractAsync({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: 'approve',
         args: [BONDING_CURVE_ADDRESS, parseEther(amount)],
       } as any);
+      return txHash;
     } catch (err) {
       console.error('Error approving token:', err);
       toast.error('Failed to approve token');
+      throw err;
     }
   };
 
@@ -339,6 +361,7 @@ export const useSongPrice = (songTokenAddress: Address | undefined) => {
 
   return {
     price: data ? formatEther(data) : '0',
+    rawPrice: data,
     isLoading,
     error,
     refetch,
@@ -420,5 +443,220 @@ export const useSongTokenApproval = (
     isLoading,
     error,
     refetch,
+  };
+};
+
+// Hook for getting bonding curve supply (the actual supply used in calculations)
+export const useBondingCurveSupply = (songTokenAddress: Address | undefined) => {
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: songTokenAddress,
+    abi: SONG_TOKEN_ABI,
+    functionName: 'bondingCurveSupply',
+    query: {
+      enabled: !!songTokenAddress,
+    },
+  });
+
+  return {
+    supply: data ? formatEther(data) : '0',
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
+// Hook for calculating tokens you'll receive for XRGE amount (buy quote)
+export const useBuyQuote = (
+  songTokenAddress: Address | undefined,
+  xrgeAmount: string
+) => {
+  const { supply: bondingSupply, isLoading: supplyLoading } = useBondingCurveSupply(songTokenAddress);
+  const currentSupply = bondingSupply && parseFloat(bondingSupply) > 0 ? parseEther(bondingSupply) : 0n;
+  const amount = xrgeAmount && parseFloat(xrgeAmount) > 0 ? parseEther(xrgeAmount) : 0n;
+
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: BONDING_CURVE_ADDRESS,
+    abi: BONDING_CURVE_ABI,
+    functionName: 'calculateTokensForXRGE',
+    args: [currentSupply, amount],
+    query: {
+      enabled: !!(songTokenAddress && xrgeAmount && parseFloat(xrgeAmount) > 0 && !supplyLoading),
+    },
+  });
+
+  return {
+    tokensOut: data ? formatEther(data) : '0',
+    isLoading: isLoading || supplyLoading,
+    error,
+    refetch,
+  };
+};
+
+// Hook for calculating XRGE you'll receive for token amount (sell quote)
+export const useSellQuote = (
+  songTokenAddress: Address | undefined,
+  tokenAmount: string
+) => {
+  const { supply: bondingSupply, isLoading: supplyLoading } = useBondingCurveSupply(songTokenAddress);
+  const currentSupply = bondingSupply && parseFloat(bondingSupply) > 0 ? parseEther(bondingSupply) : 0n;
+  const amount = tokenAmount && parseFloat(tokenAmount) > 0 ? parseEther(tokenAmount) : 0n;
+
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: BONDING_CURVE_ADDRESS,
+    abi: BONDING_CURVE_ABI,
+    functionName: 'calculateXRGEForTokens',
+    args: [currentSupply, amount],
+    query: {
+      enabled: !!(songTokenAddress && tokenAmount && parseFloat(tokenAmount) > 0 && !supplyLoading),
+    },
+  });
+
+  return {
+    xrgeOut: data ? formatEther(data) : '0',
+    isLoading: isLoading || supplyLoading,
+    error,
+    refetch,
+  };
+};
+
+// Hook to fetch trade events for chart data
+export const useSongTradeEvents = (songTokenAddress: Address | undefined) => {
+  const [events, setEvents] = useState<Array<{
+    timestamp: number;
+    price: number;
+    type: 'buy' | 'sell';
+    xrgeAmount: number;
+    tokenAmount: number;
+    trader: string;
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const publicClient = usePublicClient();
+
+  useEffect(() => {
+    if (!songTokenAddress || !publicClient) return;
+
+    const fetchEvents = async () => {
+      setIsLoading(true);
+      try {
+        // Get current block number
+        const currentBlock = await publicClient.getBlockNumber();
+        
+        // With QuickNode, we can fetch more history (Base has ~2 second block time)
+        // 500,000 blocks = ~11.5 days of history
+        const blocksToFetch = 500000n;
+        const fromBlock = currentBlock > blocksToFetch ? currentBlock - blocksToFetch : 0n;
+        
+        console.log(`📊 Fetching trade events from block ${fromBlock} to ${currentBlock} (~${(Number(blocksToFetch) * 2 / 86400).toFixed(1)} days)`);
+
+        // Fetch buy events
+        const buyLogs = await publicClient.getLogs({
+          address: BONDING_CURVE_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'SongTokenBought',
+            inputs: [
+              { indexed: true, name: 'buyer', type: 'address' },
+              { indexed: true, name: 'songToken', type: 'address' },
+              { indexed: false, name: 'xrgeSpent', type: 'uint256' },
+              { indexed: false, name: 'tokensBought', type: 'uint256' }
+            ]
+          },
+          args: {
+            songToken: songTokenAddress
+          },
+          fromBlock,
+          toBlock: 'latest',
+        });
+
+        // Fetch sell events
+        const sellLogs = await publicClient.getLogs({
+          address: BONDING_CURVE_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'SongTokenSold',
+            inputs: [
+              { indexed: true, name: 'seller', type: 'address' },
+              { indexed: true, name: 'songToken', type: 'address' },
+              { indexed: false, name: 'tokensSold', type: 'uint256' },
+              { indexed: false, name: 'xrgeReceived', type: 'uint256' }
+            ]
+          },
+          args: {
+            songToken: songTokenAddress
+          },
+          fromBlock,
+          toBlock: 'latest',
+        });
+
+        // Get block details for timestamps
+        const allLogs = [...buyLogs, ...sellLogs];
+        const blockNumbers = [...new Set(allLogs.map(log => log.blockNumber))];
+        const blocks = await Promise.all(
+          blockNumbers.map(blockNumber => publicClient.getBlock({ blockNumber }))
+        );
+        const blockTimestamps = new Map(
+          blocks.map(block => [block.number, Number(block.timestamp)])
+        );
+
+        // Process buy events
+        const buyEvents = buyLogs.map(log => {
+          const xrgeSpent = formatEther(log.args.xrgeSpent as bigint);
+          const tokensBought = formatEther(log.args.tokensBought as bigint);
+          const price = parseFloat(xrgeSpent) / parseFloat(tokensBought);
+          
+          return {
+            timestamp: blockTimestamps.get(log.blockNumber) || 0,
+            price,
+            type: 'buy' as const,
+            xrgeAmount: parseFloat(xrgeSpent),
+            tokenAmount: parseFloat(tokensBought),
+            trader: log.args.buyer as string,
+          };
+        });
+
+        // Process sell events
+        const sellEvents = sellLogs.map(log => {
+          const tokensSold = formatEther(log.args.tokensSold as bigint);
+          const xrgeReceived = formatEther(log.args.xrgeReceived as bigint);
+          const price = parseFloat(xrgeReceived) / parseFloat(tokensSold);
+          
+          return {
+            timestamp: blockTimestamps.get(log.blockNumber) || 0,
+            price,
+            type: 'sell' as const,
+            xrgeAmount: parseFloat(xrgeReceived),
+            tokenAmount: parseFloat(tokensSold),
+            trader: log.args.seller as string,
+          };
+        });
+
+        // Combine and sort by timestamp
+        const allEvents = [...buyEvents, ...sellEvents].sort((a, b) => a.timestamp - b.timestamp);
+        setEvents(allEvents);
+        console.log(`✅ Fetched ${allEvents.length} trade events`);
+      } catch (error: any) {
+        console.error('Error fetching trade events:', error);
+        
+        // If RPC fails, set empty array so UI shows "no trades yet" instead of loading forever
+        if (error?.message?.includes('503') || error?.message?.includes('backend') || error?.message?.includes('HTTP request failed')) {
+          console.warn('⚠️ RPC endpoint unavailable. Chart will show when endpoint is healthy or after next trade.');
+          setEvents([]);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [songTokenAddress, publicClient]);
+
+  return {
+    events,
+    isLoading,
+    refetch: () => {
+      if (songTokenAddress && publicClient) {
+        setIsLoading(true);
+      }
+    },
   };
 };

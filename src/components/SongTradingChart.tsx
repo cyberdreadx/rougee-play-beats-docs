@@ -1,85 +1,18 @@
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  TooltipProps,
-} from "recharts";
-import { TrendingUp, BarChart3 } from "lucide-react";
+import { TrendingUp, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { useSongTradeEvents } from "@/hooks/useSongBondingCurve";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface SongTradingChartProps {
   songTokenAddress?: `0x${string}`;
+  onDataUpdate?: () => void;
 }
 
-// Placeholder data - will be replaced with real blockchain event data
-const generateMockPriceData = () => {
-  const data = [];
-  let price = 0.001;
-  const now = Date.now();
+export const SongTradingChart = ({ songTokenAddress, onDataUpdate }: SongTradingChartProps) => {
+  const { events, isLoading } = useSongTradeEvents(songTokenAddress);
+  const { prices } = useTokenPrices();
   
-  for (let i = 0; i < 24; i++) {
-    const timestamp = now - (24 - i) * 3600000; // hourly data for 24h
-    price = price * (1 + (Math.random() - 0.4) * 0.1); // some volatility
-    data.push({
-      time: new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      price: parseFloat(price.toFixed(6)),
-      volume: Math.floor(Math.random() * 1000) + 100,
-    });
-  }
-  return data;
-};
-
-const priceData = generateMockPriceData();
-
-const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="console-bg border border-neon-green p-3 rounded-lg">
-        <p className="text-xs font-mono text-muted-foreground mb-1">{payload[0].payload.time}</p>
-        <p className="text-sm font-mono font-bold text-neon-green">
-          ${payload[0].value?.toFixed(6)} XRGE
-        </p>
-        {payload[0].payload.volume && (
-          <p className="text-xs font-mono text-muted-foreground mt-1">
-            Vol: ${payload[0].payload.volume}
-          </p>
-        )}
-      </div>
-    );
-  }
-  return null;
-};
-
-const VolumeTooltip = ({ active, payload }: TooltipProps<number, string>) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="console-bg border border-neon-green p-3 rounded-lg">
-        <p className="text-xs font-mono text-muted-foreground mb-1">{payload[0].payload.time}</p>
-        <p className="text-sm font-mono font-bold text-neon-green">
-          ${payload[0].value} Volume
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-export const SongTradingChart = ({ songTokenAddress }: SongTradingChartProps) => {
-  // Only show mock data if not deployed
-  const showMockData = !songTokenAddress;
-  const currentPrice = priceData[priceData.length - 1]?.price || 0;
-  const previousPrice = priceData[priceData.length - 2]?.price || 0;
-  const priceChange = currentPrice - previousPrice;
-  const priceChangePercent = ((priceChange / previousPrice) * 100).toFixed(2);
-  const isPositive = priceChange >= 0;
-
   if (!songTokenAddress) {
     return (
       <Card className="console-bg tech-border p-4 md:p-6">
@@ -94,126 +27,166 @@ export const SongTradingChart = ({ songTokenAddress }: SongTradingChartProps) =>
     );
   }
 
-  return (
-    <Card className="console-bg tech-border p-4 md:p-6">
-      <div className="mb-4 md:mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg md:text-xl font-mono font-bold neon-text flex items-center">
-            <TrendingUp className="h-5 w-5 mr-2" />
-            PRICE CHART
+  if (isLoading) {
+    return (
+      <Card className="console-bg tech-border p-4 md:p-6">
+        <div className="text-center py-12">
+          <Loader2 className="h-16 w-16 mx-auto mb-4 text-neon-green animate-spin" />
+          <h3 className="text-lg font-mono font-bold mb-2">Loading Chart Data...</h3>
+          <p className="text-sm text-muted-foreground font-mono">
+            Fetching trade history from blockchain
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (events.length === 0 && !isLoading) {
+    return (
+      <Card className="console-bg tech-border p-4 md:p-6">
+        <div className="text-center py-12">
+          <TrendingUp className="h-16 w-16 mx-auto mb-4 text-neon-green opacity-50" />
+          <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4">
+            NO TRADES YET
           </h3>
-          <div className="text-right">
-            <div className="text-xl md:text-2xl font-mono font-bold text-neon-green">
-              ${currentPrice.toFixed(6)}
-            </div>
-            <div className={`text-xs md:text-sm font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-              {isPositive ? '+' : ''}{priceChangePercent}% (24h)
+          <div className="max-w-lg mx-auto space-y-3">
+            <p className="text-sm text-muted-foreground font-mono">
+              ✅ Token is deployed and ready for trading
+            </p>
+            <p className="text-sm text-muted-foreground font-mono">
+              📊 Be the first to trade and see your transaction here!
+            </p>
+            <div className="mt-6 p-4 console-bg border border-neon-green/30 rounded-lg">
+              <p className="text-xs text-yellow-500 font-mono mb-2">
+                💡 TIP: Use the BUY and SELL tabs above to start trading
+              </p>
+              <p className="text-xs text-muted-foreground font-mono">
+                Once trading activity begins, you'll see live price movements, volume, and trading history here
+              </p>
+              <p className="text-xs text-blue-400 font-mono mt-3">
+                📡 Chart shows last ~11 days of trading history
+              </p>
             </div>
           </div>
         </div>
-        
-        <p className="text-xs text-yellow-500 font-mono">
-          ⚠️ Trading history will populate as buy/sell transactions occur
-        </p>
+      </Card>
+    );
+  }
+
+  // Convert prices to USD for chart
+  const chartData = events.map((event) => ({
+    time: new Date(event.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: event.timestamp,
+    price: event.price * (prices.xrge || 0),
+    priceInXRGE: event.price,
+    type: event.type,
+  }));
+
+  const latestPrice = chartData[chartData.length - 1]?.price || 0;
+  const firstPrice = chartData[0]?.price || 0;
+  const priceChange = latestPrice - firstPrice;
+  const priceChangePercent = firstPrice > 0 ? ((priceChange / firstPrice) * 100) : 0;
+
+  return (
+    <Card className="console-bg tech-border p-4 md:p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg md:text-xl font-mono font-bold neon-text flex items-center">
+          <TrendingUp className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+          PRICE CHART
+        </h3>
+        <div className="text-right">
+          <div className="text-xs text-muted-foreground font-mono">24h Change</div>
+          <div className={`text-sm font-mono font-bold flex items-center justify-end ${priceChange >= 0 ? 'text-neon-green' : 'text-red-500'}`}>
+            {priceChange >= 0 ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
+            {priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="price" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="price" className="text-xs sm:text-sm">
-            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            PRICE
-          </TabsTrigger>
-          <TabsTrigger value="volume" className="text-xs sm:text-sm">
-            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            VOLUME
-          </TabsTrigger>
-        </TabsList>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
+          <XAxis 
+            dataKey="time" 
+            stroke="#888"
+            style={{ fontSize: '10px', fontFamily: 'monospace' }}
+          />
+          <YAxis 
+            stroke="#888"
+            style={{ fontSize: '10px', fontFamily: 'monospace' }}
+            tickFormatter={(value) => `$${value < 0.01 ? value.toFixed(6) : value.toFixed(4)}`}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #00ff00',
+              borderRadius: '8px',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+            }}
+            labelStyle={{ color: '#00ff00' }}
+            formatter={(value: number, name: string) => {
+              if (name === 'price') {
+                return [`$${value < 0.01 ? value.toFixed(10).replace(/\.?0+$/, '') : value.toFixed(6)}`, 'Price'];
+              }
+              return [value, name];
+            }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="price" 
+            stroke="#00ff00" 
+            strokeWidth={2}
+            dot={{ fill: '#00ff00', r: 3 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
 
-        <TabsContent value="price" className="mt-0">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={priceData}>
-              <defs>
-                <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--neon-green))" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="hsl(var(--neon-green))" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="time" 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                tickFormatter={(value) => `$${value.toFixed(4)}`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke="hsl(var(--neon-green))"
-                fill="url(#priceGradient)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </TabsContent>
-
-        <TabsContent value="volume" className="mt-0">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={priceData}>
-              <defs>
-                <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="time" 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                tickFormatter={(value) => `$${value}`}
-              />
-              <Tooltip content={<VolumeTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="volume"
-                stroke="hsl(var(--primary))"
-                fill="url(#volumeGradient)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </TabsContent>
-      </Tabs>
-
-      <div className="grid grid-cols-3 gap-3 md:gap-4 mt-4 md:mt-6">
-        <div className="console-bg p-2 md:p-3 rounded-lg border border-border">
-          <p className="text-xs text-muted-foreground font-mono mb-1">24h High</p>
-          <p className="text-sm md:text-base font-mono font-bold text-foreground">
-            ${Math.max(...priceData.map(d => d.price)).toFixed(6)}
-          </p>
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs font-mono">
+        <div className="p-3 console-bg border border-border rounded">
+          <div className="text-muted-foreground mb-1">Total Trades</div>
+          <div className="text-lg font-bold text-neon-green">{events.length}</div>
         </div>
-        <div className="console-bg p-2 md:p-3 rounded-lg border border-border">
-          <p className="text-xs text-muted-foreground font-mono mb-1">24h Low</p>
-          <p className="text-sm md:text-base font-mono font-bold text-foreground">
-            ${Math.min(...priceData.map(d => d.price)).toFixed(6)}
-          </p>
+        <div className="p-3 console-bg border border-border rounded">
+          <div className="text-muted-foreground mb-1">Latest Price</div>
+          <div className="text-lg font-bold text-neon-green">
+            ${latestPrice < 0.01 ? latestPrice.toFixed(10).replace(/\.?0+$/, '') : latestPrice.toFixed(6)}
+          </div>
         </div>
-        <div className="console-bg p-2 md:p-3 rounded-lg border border-border">
-          <p className="text-xs text-muted-foreground font-mono mb-1">24h Vol</p>
-          <p className="text-sm md:text-base font-mono font-bold text-foreground">
-            ${priceData.reduce((sum, d) => sum + d.volume, 0).toLocaleString()}
-          </p>
+      </div>
+
+      {/* Recent Trades */}
+      <div className="mt-4">
+        <h4 className="text-sm font-mono font-bold mb-3 text-muted-foreground">RECENT TRADES</h4>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {events.slice(-10).reverse().map((event, idx) => (
+            <div key={idx} className="flex items-center justify-between p-2 console-bg border border-border rounded text-xs font-mono">
+              <div className="flex items-center gap-2">
+                {event.type === 'buy' ? (
+                  <ArrowUpRight className="h-3 w-3 text-neon-green" />
+                ) : (
+                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+                )}
+                <span className={event.type === 'buy' ? 'text-neon-green' : 'text-red-500'}>
+                  {event.type.toUpperCase()}
+                </span>
+                <span className="text-muted-foreground">
+                  {event.tokenAmount.toFixed(2)} tokens
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-white">
+                  ${((event.price * (prices.xrge || 0)) < 0.01 
+                    ? (event.price * (prices.xrge || 0)).toFixed(10).replace(/\.?0+$/, '') 
+                    : (event.price * (prices.xrge || 0)).toFixed(6))}
+                </div>
+                <div className="text-muted-foreground text-[10px]">
+                  {new Date(event.timestamp * 1000).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </Card>

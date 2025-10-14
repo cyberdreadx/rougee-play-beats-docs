@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from '@privy-io/wagmi';
 import { PrivyProvider } from '@privy-io/react-auth';
+import { base } from 'wagmi/chains';
 
 import { config, privyAppId } from '@/config/wallet';
 
@@ -19,10 +20,10 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
       appId={privyAppId}
       config={{
         loginMethods: ['email', 'wallet'],
+        defaultChain: base,
+        supportedChains: [base],
         embeddedWallets: {
-          ethereum: {
-            createOnLogin: 'users-without-wallets',
-          },
+          createOnLogin: 'users-without-wallets',
         },
         appearance: {
           theme: 'dark',

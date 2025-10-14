@@ -18,8 +18,9 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
-import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, XRGE_TOKEN_ADDRESS, useApproveToken } from "@/hooks/useSongBondingCurve";
+import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, XRGE_TOKEN_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance } from "@/hooks/useSongBondingCurve";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
 
 interface Song {
@@ -58,6 +59,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
   const { getAuthHeaders } = usePrivyToken();
+  const { prices } = useTokenPrices();
 
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,19 +69,44 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
+  const [isProcessingBuy, setIsProcessingBuy] = useState(false);
+  const [chartKey, setChartKey] = useState(0);
 
   // Bonding curve hooks
   const { createSong, isPending: isDeploying, isConfirming, isSuccess: deploySuccess, hash, receipt } = useCreateSong();
-  const { buyWithETH, buyWithXRGE, isPending: isBuying } = useBuySongTokens();
-  const { sell, isPending: isSelling } = useSellSongTokens();
-  const { price: priceData, isLoading: priceLoading } = useSongPrice(songTokenAddress);
-  const { metadata: metadataData, isLoading: metadataLoading } = useSongMetadata(songTokenAddress);
+  const { buyWithETH, buyWithXRGE, isPending: isBuying, isSuccess: buySuccess } = useBuySongTokens();
+  const { sell, isPending: isSelling, isSuccess: sellSuccess } = useSellSongTokens();
+  const { price: priceData, rawPrice, isLoading: priceLoading, refetch: refetchPrice } = useSongPrice(songTokenAddress);
+  const { metadata: metadataData, isLoading: metadataLoading, refetch: refetchMetadata } = useSongMetadata(songTokenAddress);
+  const { supply: bondingSupply, refetch: refetchSupply } = useBondingCurveSupply(songTokenAddress);
+  const { balance: userBalance, refetch: refetchBalance } = useSongTokenBalance(songTokenAddress, fullAddress as `0x${string}` | undefined);
   const { approve, isPending: isApproving } = useApproveToken();
+  
+  // Quote hooks for accurate bonding curve calculations
+  const { tokensOut: buyQuote, isLoading: buyQuoteLoading } = useBuyQuote(songTokenAddress, buyAmount);
+  const { xrgeOut: sellQuote, isLoading: sellQuoteLoading } = useSellQuote(songTokenAddress, sellAmount);
 
   // Real blockchain data or undefined if not deployed
-  const currentPrice = priceData ? parseFloat(priceData) : undefined;
+  const priceInXRGE = priceData ? parseFloat(priceData) : undefined;
+  const activeTradingSupply = bondingSupply ? parseFloat(bondingSupply) : undefined;
   const totalSupply = metadataData?.totalSupply ? parseFloat(metadataData.totalSupply) : undefined;
-  const marketCap = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
+  const xrgeRaised = metadataData?.xrgeRaised ? parseFloat(metadataData.xrgeRaised) : 0;
+  
+  // Convert XRGE price to USD price
+  const currentPrice = priceInXRGE && prices.xrge ? priceInXRGE * prices.xrge : undefined;
+  const xrgeUsdPrice = prices.xrge || 0;
+  
+  // Calculate different market cap metrics in USD
+  const circulatingMarketCap = currentPrice && activeTradingSupply ? currentPrice * activeTradingSupply : undefined;
+  const fullyDilutedValue = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
+  const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders
+  const realizedValueUSD = xrgeRaised * xrgeUsdPrice; // Convert to USD
+  
+  // Use circulating market cap as the primary display
+  const marketCap = circulatingMarketCap;
+  
+  // Check if data looks like initial/unrealistic values
+  const hasRealisticData = xrgeRaised > 0;
 
   useEffect(() => {
     if (songId) {
@@ -119,6 +146,24 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       });
     }
   }, [isConfirming]);
+
+  // Refresh data after successful buy/sell
+  useEffect(() => {
+    if (buySuccess || sellSuccess) {
+      // Wait a bit for blockchain to update
+      setTimeout(() => {
+        refetchPrice();
+        refetchMetadata();
+        refetchSupply();
+        refetchBalance();
+        setChartKey(prev => prev + 1); // Force chart refresh
+        toast({
+          title: "Data refreshed!",
+          description: "Your balance and prices have been updated",
+        });
+      }, 2000);
+    }
+  }, [buySuccess, sellSuccess]);
 
   useEffect(() => {
     // Use a ref to prevent multiple executions
@@ -273,11 +318,24 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       return;
     }
 
+    setIsProcessingBuy(true);
     try {
       // 1) Approve XRGE spend for the bonding curve
+      toast({
+        title: "Approval required",
+        description: "Please approve XRGE spending in your wallet",
+      });
+      
       await approve(XRGE_TOKEN_ADDRESS, buyAmount);
+      
+      toast({
+        title: "Approval confirmed",
+        description: "Now processing your purchase...",
+      });
+      
       // 2) Execute buy
       await buyWithXRGE(songTokenAddress, buyAmount, "0"); // no min tokens
+      
       toast({
         title: "Purchase successful!",
         description: `Bought tokens for ${buyAmount} XRGE`,
@@ -290,6 +348,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         description: error instanceof Error ? error.message : "Failed to buy tokens",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessingBuy(false);
     }
   };
 
@@ -500,10 +560,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <Play className="h-3 w-3 mr-1" />
                     {song.play_count} plays
                   </Badge>
-                  {marketCap !== undefined && (
+                  {marketCap !== undefined && marketCap > 0 && (
                     <Badge variant="outline" className="font-mono text-xs">
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      ${marketCap.toFixed(2)} MCap
+                      ${marketCap < 0.01 ? marketCap.toFixed(6) : marketCap.toFixed(2)} MCap
+                    </Badge>
+                  )}
+                  {songTokenAddress && !hasRealisticData && (
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      🎯 Ready to Trade
                     </Badge>
                   )}
                 </div>
@@ -554,22 +619,105 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <>
                 <h3 className="text-base md:text-lg font-mono font-bold neon-text mb-3 md:mb-4">CURRENT PRICE</h3>
                 <div className="text-2xl md:text-3xl font-mono font-bold text-neon-green mb-1 md:mb-2">
-                  ${currentPrice.toFixed(6)}
+                  {currentPrice ? (
+                    currentPrice < 0.01 ? 
+                      `$${currentPrice.toFixed(10).replace(/\.?0+$/, '')}` : 
+                      `$${currentPrice.toFixed(6)}`
+                  ) : '$0'}
                 </div>
-                <p className="text-xs md:text-sm text-muted-foreground font-mono mb-3 md:mb-4">per token</p>
+                <p className="text-xs md:text-sm text-muted-foreground font-mono mb-3 md:mb-4">
+                  per token {priceInXRGE && <span className="opacity-50">({priceInXRGE.toFixed(6)} XRGE)</span>}
+                </p>
+                
+                {userBalance && parseFloat(userBalance) > 0 && (
+                  <div className="mb-3 p-3 bg-neon-green/10 border border-neon-green/30 rounded">
+                    <div className="text-xs text-muted-foreground font-mono mb-1">Your Holdings</div>
+                    <div className="text-lg font-mono font-bold text-neon-green">
+                      {parseFloat(userBalance).toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                    </div>
+                    {currentPrice && (
+                      <div className="text-xs text-muted-foreground font-mono mt-1">
+                        Value: ${(parseFloat(userBalance) * currentPrice).toFixed(4)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {xrgeUsdPrice > 0 && (
+                  <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono">
+                    💱 XRGE = ${xrgeUsdPrice.toFixed(6)} USD
+                  </div>
+                )}
+                
+                {!hasRealisticData && (
+                  <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-500 font-mono">
+                    ⚠️ No trading activity yet - Make the first trade!
+                  </div>
+                )}
                 
                 <div className="space-y-2 text-xs md:text-sm font-mono">
-                  {marketCap !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Market Cap:</span>
-                      <span className="text-foreground">${marketCap.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {totalSupply !== undefined && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Supply:</span>
-                      <span className="text-foreground">{totalSupply.toFixed(0)} tokens</span>
-                    </div>
+                  {hasRealisticData ? (
+                    <>
+                      {circulatingMarketCap !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Market Cap:</span>
+                          <span className="text-foreground font-semibold">
+                            ${circulatingMarketCap < 1 ? circulatingMarketCap.toFixed(6) : circulatingMarketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Real Value Locked:</span>
+                        <span className="text-neon-green font-semibold">
+                          ${realizedValueUSD < 1 ? realizedValueUSD.toFixed(6) : realizedValueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs opacity-70">
+                        <span className="text-muted-foreground">Volume (XRGE):</span>
+                        <span className="text-foreground">
+                          {realizedValueXRGE.toLocaleString(undefined, {maximumFractionDigits: 4})} XRGE
+                        </span>
+                      </div>
+                      {activeTradingSupply !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Circulating:</span>
+                          <span className="text-foreground">
+                            {activeTradingSupply.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
+                      {fullyDilutedValue !== undefined && fullyDilutedValue !== circulatingMarketCap && (
+                        <div className="flex justify-between text-xs opacity-70">
+                          <span className="text-muted-foreground">Fully Diluted:</span>
+                          <span className="text-foreground">
+                            ${fullyDilutedValue < 1 ? fullyDilutedValue.toFixed(6) : fullyDilutedValue.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {circulatingMarketCap !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Initial Market Cap:</span>
+                          <span className="text-foreground opacity-60">
+                            ${circulatingMarketCap < 1 ? circulatingMarketCap.toFixed(6) : circulatingMarketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
+                      {activeTradingSupply !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Starting Supply:</span>
+                          <span className="text-foreground opacity-60">
+                            {activeTradingSupply.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Volume:</span>
+                        <span className="text-foreground opacity-60">0 XRGE</span>
+                      </div>
+                    </>
                   )}
                 </div>
               </>
@@ -589,7 +737,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
         {/* Trading Chart */}
         <div className="mb-6 md:mb-8">
-          <SongTradingChart songTokenAddress={songTokenAddress} />
+          <SongTradingChart key={chartKey} songTokenAddress={songTokenAddress} />
         </div>
 
         {/* Main Content */}
@@ -610,7 +758,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <Card className="console-bg tech-border p-4 md:p-6">
                 <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center">
                   <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 mr-2 text-green-500" />
-                  BUY
+                  BUY {song?.ticker ? song.ticker.toUpperCase() : ''}
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
@@ -631,18 +779,34 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <div className="flex justify-between text-xs md:text-sm font-mono mb-2">
                       <span className="text-muted-foreground">You will receive:</span>
                       <span className="text-foreground">
-                        ~{buyAmount ? (parseFloat(buyAmount) / currentPrice).toFixed(2) : "0"} tokens
+                        {buyQuoteLoading ? (
+                          <Loader2 className="h-3 w-3 inline animate-spin" />
+                        ) : (
+                          `~${buyQuote ? parseFloat(buyQuote).toFixed(2) : "0"} tokens`
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs md:text-sm font-mono">
                       <span className="text-muted-foreground">Price impact:</span>
-                      <span className="text-green-500">~0.5%</span>
+                      <span className="text-green-500">
+                        {buyAmount && currentPrice && buyQuote && parseFloat(buyQuote) > 0 ? (
+                          `~${(((parseFloat(buyAmount) / parseFloat(buyQuote)) - currentPrice) / currentPrice * 100).toFixed(2)}%`
+                        ) : (
+                          "~0%"
+                        )}
+                      </span>
                     </div>
                   </div>
 
-                  <Button onClick={handleBuy} className="w-full" variant="neon" size="sm" disabled={isBuying}>
-                    {isBuying ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    {isBuying ? "BUYING..." : "BUY NOW"}
+                  <Button 
+                    onClick={handleBuy} 
+                    className="w-full" 
+                    variant="neon" 
+                    size="sm"
+                    disabled={isProcessingBuy || isBuying || isApproving || !songTokenAddress}
+                  >
+                    {(isProcessingBuy || isBuying || isApproving) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {isApproving ? "APPROVING..." : isProcessingBuy || isBuying ? "BUYING..." : `BUY ${song?.ticker ? song.ticker.toUpperCase() : ''}`}
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
@@ -655,13 +819,13 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <Card className="console-bg tech-border p-4 md:p-6">
                 <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center">
                   <ArrowDownRight className="h-4 w-4 md:h-5 md:w-5 mr-2 text-red-500" />
-                  SELL
+                  SELL {song?.ticker ? song.ticker.toUpperCase() : ''}
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
                   <div>
                     <label className="text-xs md:text-sm font-mono text-muted-foreground mb-2 block">
-                      Amount (Tokens)
+                      Amount ({song?.ticker ? song.ticker.toUpperCase() : 'Tokens'})
                     </label>
                     <Input
                       type="number"
@@ -676,18 +840,34 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     <div className="flex justify-between text-xs md:text-sm font-mono mb-2">
                       <span className="text-muted-foreground">You will receive:</span>
                       <span className="text-foreground">
-                        ~{sellAmount ? (parseFloat(sellAmount) * currentPrice).toFixed(6) : "0"} XRGE
+                        {sellQuoteLoading ? (
+                          <Loader2 className="h-3 w-3 inline animate-spin" />
+                        ) : (
+                          `~${sellQuote ? parseFloat(sellQuote).toFixed(6) : "0"} XRGE`
+                        )}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs md:text-sm font-mono">
                       <span className="text-muted-foreground">Price impact:</span>
-                      <span className="text-red-500">~0.5%</span>
+                      <span className="text-red-500">
+                        {sellAmount && currentPrice && sellQuote && parseFloat(sellAmount) > 0 ? (
+                          `~${((currentPrice - (parseFloat(sellQuote) / parseFloat(sellAmount))) / currentPrice * 100).toFixed(2)}%`
+                        ) : (
+                          "~0%"
+                        )}
+                      </span>
                     </div>
                   </div>
 
-                  <Button onClick={handleSell} className="w-full" variant="outline" size="sm" disabled={isSelling}>
+                  <Button 
+                    onClick={handleSell} 
+                    className="w-full" 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={isSelling || !songTokenAddress}
+                  >
                     {isSelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    {isSelling ? "SELLING..." : "SELL NOW"}
+                    {isSelling ? "SELLING..." : `SELL ${song?.ticker ? song.ticker.toUpperCase() : ''}`}
                   </Button>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
