@@ -46,3 +46,9 @@ verify_jwt = false
 
 [functions.update-song-token]
 verify_jwt = false
+
+[functions.upload-story]
+verify_jwt = false
+
+[functions.update-artist-profile]
+verify_jwt = false
