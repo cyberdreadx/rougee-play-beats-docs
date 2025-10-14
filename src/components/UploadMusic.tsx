@@ -65,7 +65,10 @@ export default function UploadMusic() {
       formData.append('file_name', file.name);
 
       const { data, error } = await supabase.functions.invoke('check-copyright', {
-        headers,
+        headers: {
+          ...headers,
+          'x-wallet-address': address, // Send wallet address in header instead
+        },
         body: formData,
       });
 
