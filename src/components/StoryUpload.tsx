@@ -87,8 +87,7 @@ const StoryUpload = () => {
       setMediaType(null);
       setOpen(false);
 
-      // Reload page to show new story
-      window.location.reload();
+      // Story will appear via realtime subscription in StoriesBar
     } catch (error) {
       console.error("Upload error:", error);
       toast({

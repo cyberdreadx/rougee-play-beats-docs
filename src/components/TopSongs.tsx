@@ -1,5 +1,5 @@
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,15 +179,15 @@ const fetchSongs = async () => {
                     )}
                   </div>
                   {song.artist && (
-                    <div 
-                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green cursor-pointer transition-colors truncate flex items-center gap-1"
-                      onClick={() => window.location.href = `/artist/${song.wallet_address}`}
+                    <Link
+                      to={`/artist/${song.wallet_address}`}
+                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green transition-colors truncate flex items-center gap-1"
                     >
                       <span className="truncate">{song.artist}</span>
                       {verifiedMap[song.wallet_address] && (
                         <CheckCircle className="h-3 w-3 text-neon-green" aria-label="Verified artist" />
                       )}
-                    </div>
+                    </Link>
                   )}
                   <div className="font-mono text-[10px] md:text-xs text-muted-foreground md:hidden">
                     {song.play_count} plays
