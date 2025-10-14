@@ -88,6 +88,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [isProcessingBuy, setIsProcessingBuy] = useState(false);
   const [paymentToken, setPaymentToken] = useState<'XRGE' | 'ETH' | 'KTA' | 'USDC'>('XRGE');
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [holders, setHolders] = useState<Array<{ address: string; balance: string; percentage: number }>>([]);
+  const [loadingHolders, setLoadingHolders] = useState(false);
 
   // Fetch artist profile from IPFS
   const { profile: artistProfile } = useArtistProfile(song?.wallet_address || null);
@@ -204,6 +206,57 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       }, 2000);
     }
   }, [buySuccess, sellSuccess]);
+
+  // Fetch holders when token address is available
+  useEffect(() => {
+    if (songTokenAddress) {
+      fetchHolders();
+    }
+  }, [songTokenAddress, buySuccess, sellSuccess]);
+
+  const fetchHolders = async () => {
+    if (!songTokenAddress) return;
+    
+    setLoadingHolders(true);
+    try {
+      // Fetch holders from song_purchases table
+      const { data: purchases, error } = await supabase
+        .from('song_purchases')
+        .select('buyer_wallet_address')
+        .eq('song_id', songId);
+
+      if (error) throw error;
+
+      // Count unique holders
+      const holderCounts = purchases?.reduce((acc: Record<string, number>, purchase) => {
+        const addr = purchase.buyer_wallet_address.toLowerCase();
+        acc[addr] = (acc[addr] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Convert to array and sort by purchase count
+      const holdersList = Object.entries(holderCounts || {})
+        .map(([address, count]) => ({
+          address,
+          balance: count.toString(),
+          percentage: 0 // Will calculate after we have total
+        }))
+        .sort((a, b) => parseInt(b.balance) - parseInt(a.balance));
+
+      // Calculate percentages
+      const total = holdersList.reduce((sum, h) => sum + parseInt(h.balance), 0);
+      const holdersWithPercentage = holdersList.map(h => ({
+        ...h,
+        percentage: total > 0 ? (parseInt(h.balance) / total) * 100 : 0
+      }));
+
+      setHolders(holdersWithPercentage.slice(0, 10)); // Top 10
+    } catch (error) {
+      console.error('Error fetching holders:', error);
+    } finally {
+      setLoadingHolders(false);
+    }
+  };
 
   useEffect(() => {
     // Use a ref to prevent multiple executions
@@ -1363,32 +1416,42 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 md:mb-6">TOP HOLDERS</h3>
               
               <div className="space-y-2 md:space-y-3">
-                {/* Placeholder holders - will be replaced with blockchain data */}
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-2 md:p-3 console-bg border border-border rounded-lg">
-                    <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                      <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
-                        <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
-                          #{i}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-mono text-xs md:text-sm truncate">0x{Math.random().toString(16).substr(2, 8)}...</p>
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {(Math.random() * 100000).toFixed(0)} tokens
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="font-mono text-xs shrink-0">
-                      {(Math.random() * 15).toFixed(2)}%
-                    </Badge>
+                {loadingHolders ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    <p className="font-mono text-sm">Loading holders...</p>
                   </div>
-                ))}
+                ) : holders.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="font-mono text-sm">No holders yet</p>
+                    <p className="font-mono text-xs mt-1">Be the first to buy!</p>
+                  </div>
+                ) : (
+                  holders.map((holder, i) => (
+                    <div key={holder.address} className="flex items-center justify-between p-2 md:p-3 console-bg border border-border rounded-lg">
+                      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                        <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
+                          <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
+                            #{i + 1}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-xs md:text-sm truncate">
+                            {holder.address.slice(0, 6)}...{holder.address.slice(-4)}
+                          </p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {holder.balance} purchases
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-xs shrink-0">
+                        {holder.percentage.toFixed(2)}%
+                      </Badge>
+                    </div>
+                  ))
+                )}
               </div>
-
-              <p className="text-xs text-muted-foreground font-mono text-center mt-4">
-                ⚠️ Placeholder data - will connect to blockchain
-              </p>
             </Card>
           </TabsContent>
 
