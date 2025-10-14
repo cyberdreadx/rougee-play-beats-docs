@@ -14,3 +14,32 @@ verify_jwt = false
 
 [functions.create-feed-post]
 verify_jwt = false
+
+# Newly added admin functions (validate Privy JWT inside the function)
+[functions.admin-get-verification-requests]
+verify_jwt = false
+
+[functions.admin-process-verification]
+verify_jwt = false
+
+[functions.admin-delete-song]
+verify_jwt = false
+
+[functions.admin-get-analytics]
+verify_jwt = false
+
+[functions.admin-delete-report]
+verify_jwt = false
+
+# User action functions (likes, comments, reports) using Privy JWT validation
+[functions.like-post]
+verify_jwt = false
+
+[functions.like-song]
+verify_jwt = false
+
+[functions.add-comment]
+verify_jwt = false
+
+[functions.report-song]
+verify_jwt = false
