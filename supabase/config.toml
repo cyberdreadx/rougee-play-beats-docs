@@ -52,3 +52,6 @@ verify_jwt = false
 
 [functions.update-artist-profile]
 verify_jwt = false
+
+[functions.add-song-comment]
+verify_jwt = false

@@ -664,15 +664,14 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
 
     try {
-      const { error } = await supabase
-        .from("comments")
-        .insert({
-          song_id: songId,
-          wallet_address: fullAddress,
-          comment_text: commentText.trim(),
-        })
-        .select()
-        .single();
+      const headers = await getAuthHeaders();
+      const { error } = await supabase.functions.invoke('add-song-comment', {
+        headers,
+        body: {
+          songId,
+          commentText: commentText.trim(),
+        },
+      });
 
       if (error) throw error;
 
