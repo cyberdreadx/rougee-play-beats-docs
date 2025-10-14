@@ -509,12 +509,33 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
 
     try {
+      // Step 1: Approve bonding curve to spend song tokens
+      toast({
+        title: "Approval required",
+        description: "Please approve your song tokens for selling",
+      });
+      
+      await approve(songTokenAddress, sellAmount);
+      
+      toast({
+        title: "Approval confirmed",
+        description: "Now processing your sale...",
+      });
+      
+      // Step 2: Execute the sell
       await sell(songTokenAddress, sellAmount, "0"); // accept any XRGE out (no min)
+      
       toast({
         title: "Sale successful!",
         description: `Sold ${sellAmount} tokens`,
       });
       setSellAmount("");
+      
+      // Refresh all data after successful sell
+      refetchBalance();
+      refetchPrice();
+      refetchSupply();
+      refetchMetadata();
     } catch (error) {
       console.error("Sell error:", error);
       toast({
@@ -1004,9 +1025,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
               {/* Buy Card */}
               <Card className="console-bg tech-border p-4 md:p-6">
-                <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center">
-                  <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 mr-2 text-green-500" />
-                  BUY {song?.ticker ? song.ticker.toUpperCase() : ''}
+                <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
+                  <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 text-green-500" />
+                  {song?.cover_cid ? (
+                    <Avatar className="h-5 w-5 md:h-6 md:w-6 border border-neon-green">
+                      <AvatarImage
+                        src={getIPFSGatewayUrl(song.cover_cid)}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
+                        {song.ticker?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : null}
+                  BUY ${song?.ticker ? song.ticker.toUpperCase() : ''}
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
@@ -1202,16 +1234,37 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
               {/* Sell Card */}
               <Card className="console-bg tech-border p-4 md:p-6">
-                <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center">
-                  <ArrowDownRight className="h-4 w-4 md:h-5 md:w-5 mr-2 text-red-500" />
-                  SELL {song?.ticker ? song.ticker.toUpperCase() : ''}
+                <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
+                  <ArrowDownRight className="h-4 w-4 md:h-5 md:w-5 text-red-500" />
+                  {song?.cover_cid ? (
+                    <Avatar className="h-5 w-5 md:h-6 md:w-6 border border-neon-green">
+                      <AvatarImage
+                        src={getIPFSGatewayUrl(song.cover_cid)}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
+                        {song.ticker?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : null}
+                  SELL ${song?.ticker ? song.ticker.toUpperCase() : ''}
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
                   <div>
-                    <label className="text-xs md:text-sm font-mono text-muted-foreground mb-2 block">
-                      Amount ({song?.ticker ? song.ticker.toUpperCase() : 'Tokens'})
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs md:text-sm font-mono text-muted-foreground">
+                        Amount (${song?.ticker ? song.ticker.toUpperCase() : 'Tokens'})
+                      </label>
+                      {wagmiAddress && userBalance && parseFloat(userBalance) > 0 && (
+                        <button
+                          onClick={() => setSellAmount(userBalance)}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-mono"
+                        >
+                          Balance: {parseFloat(userBalance).toFixed(2)} (MAX)
+                        </button>
+                      )}
+                    </div>
                     <Input
                       type="number"
                       placeholder="0.0"
@@ -1257,11 +1310,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     className="w-full" 
                     variant="outline" 
                     size="sm" 
-                    disabled={isSelling || !songTokenAddress}
+                    disabled={isSelling || isApproving || !songTokenAddress}
                   >
-                    {isSelling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    {isSelling ? "SELLING..." : `SELL ${song?.ticker ? song.ticker.toUpperCase() : ''}`}
+                    {(isSelling || isApproving) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {isApproving ? "APPROVING..." : isSelling ? "SELLING..." : `SELL $${song?.ticker ? song.ticker.toUpperCase() : ''}`}
                   </Button>
+
+                  <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono text-center">
+                    💡 Selling requires 2 steps: Approve → Sell
+                  </div>
 
                   <p className="text-xs text-muted-foreground font-mono text-center">
                     {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}

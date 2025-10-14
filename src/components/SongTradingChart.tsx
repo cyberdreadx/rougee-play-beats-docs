@@ -1,10 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { TrendingUp, Activity } from "lucide-react";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
-import { useSongTradeEvents } from "@/hooks/useSongBondingCurve";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line } from 'recharts';
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useMemo } from "react";
 
 interface SongTradingChartProps {
   songTokenAddress?: `0x${string}`;
@@ -15,83 +13,58 @@ interface SongTradingChartProps {
 
 export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply: bondingSupplyProp }: SongTradingChartProps) => {
   const { prices } = useTokenPrices();
-  const { events, isLoading: eventsLoading } = useSongTradeEvents(songTokenAddress);
-  const [chartType, setChartType] = useState<'curve' | 'price'>('curve');
-  const [timeframe, setTimeframe] = useState<'1h' | '4h' | '1d' | 'all'>('all');
   
-  // Filter events by timeframe
-  const filteredEvents = useMemo(() => {
-    if (events.length === 0) return [];
-    
-    const now = Math.floor(Date.now() / 1000);
-    let cutoffTime = 0;
-    
-    switch (timeframe) {
-      case '1h':
-        cutoffTime = now - 3600;
-        break;
-      case '4h':
-        cutoffTime = now - 14400;
-        break;
-      case '1d':
-        cutoffTime = now - 86400;
-        break;
-      case 'all':
-      default:
-        cutoffTime = 0;
-    }
-    
-    return events.filter(e => e.timestamp >= cutoffTime);
-  }, [events, timeframe]);
-  
-  // Generate price chart data from events
-  const priceChartData = useMemo(() => {
-    if (filteredEvents.length === 0) return [];
-    
-    return filteredEvents.map(event => ({
-      time: new Date(event.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: event.timestamp,
-      price: event.price * (prices.xrge || 0), // Convert to USD
-      priceXRGE: event.price,
-      type: event.type
-    }));
-  }, [filteredEvents, prices.xrge]);
-  
-  // Generate bonding curve visualization data
-  const bondingCurveData = useMemo(() => {
+  // Generate complete price history using ONLY the bonding curve formula
+  // No API calls needed - just math!
+  const priceHistory = useMemo(() => {
     const BONDING_CURVE_TOTAL = 990_000_000;
     const INITIAL_PRICE = 0.001; // XRGE
-    const PRICE_INCREMENT = 0.000001; // XRGE
+    const PRICE_INCREMENT = 0.000001; // XRGE per token
     
-    // Use current supply from bondingSupply if available, otherwise show full curve
-    let currentSupply = 0;
-    if (bondingSupplyProp && parseFloat(bondingSupplyProp) > 0) {
-      currentSupply = BONDING_CURVE_TOTAL - parseFloat(bondingSupplyProp);
-    }
+    // Calculate current tokens bought
+    const currentTokensBought = bondingSupplyProp && parseFloat(bondingSupplyProp) > 0
+      ? BONDING_CURVE_TOTAL - parseFloat(bondingSupplyProp)
+      : 0;
     
-    // Generate points along the curve
+    // Generate price points from 0 to current supply
     const points = [];
-    const numPoints = 50;
-    const maxSupply = currentSupply > 0 
-      ? Math.min(currentSupply * 2, BONDING_CURVE_TOTAL) 
-      : BONDING_CURVE_TOTAL / 10; // Show first 10% if no supply data
+    const numPoints = 100; // 100 data points for smooth chart
     
     for (let i = 0; i <= numPoints; i++) {
-      const supply = (maxSupply / numPoints) * i;
-      const price = (INITIAL_PRICE + (PRICE_INCREMENT * supply)) * (prices.xrge || 0.000001);
+      // Calculate supply at this point (0% to 100% of current supply)
+      const tokensBought = (currentTokensBought / numPoints) * i;
+      
+      // Calculate price using bonding curve formula
+      // Price = INITIAL_PRICE + (tokensBought * PRICE_INCREMENT)
+      const priceXRGE = INITIAL_PRICE + (tokensBought * PRICE_INCREMENT);
+      const priceUSD = priceXRGE * (prices.xrge || 0);
+      
       points.push({
-        supply: supply / 1_000_000, // Convert to millions
-        price: price,
-        isCurrent: currentSupply > 0 && Math.abs(supply - currentSupply) < (maxSupply / numPoints)
+        supply: tokensBought / 1_000_000, // Convert to millions for readability
+        priceXRGE,
+        priceUSD,
+        progress: (tokensBought / BONDING_CURVE_TOTAL) * 100
       });
     }
     
-    console.log('📊 Bonding curve data:', { bondingSupply: bondingSupplyProp, currentSupply, points: points.length, xrgePrice: prices.xrge });
+    console.log('📊 Formula-based price history:', {
+      totalPoints: points.length,
+      currentSupply: currentTokensBought,
+      currentPriceXRGE: priceInXRGE,
+      calculatedCurrentPrice: points[points.length - 1]?.priceXRGE,
+      xrgeUsdRate: prices.xrge
+    });
+    
     return points;
-  }, [bondingSupplyProp, prices.xrge]);
+  }, [bondingSupplyProp, prices.xrge, priceInXRGE]);
   
-  console.log('📊 Price events:', { total: events.length, filtered: filteredEvents.length, timeframe });
+  const BONDING_CURVE_TOTAL = 990_000_000;
+  const currentSupplyFromData = bondingSupplyProp && parseFloat(bondingSupplyProp) > 0 
+    ? BONDING_CURVE_TOTAL - parseFloat(bondingSupplyProp) 
+    : 0;
   
+  const currentPriceUSD = priceInXRGE ? priceInXRGE * (prices.xrge || 0) : 0;
+
   if (!songTokenAddress) {
     return (
       <Card className="console-bg tech-border p-4 md:p-6">
@@ -106,75 +79,30 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
     );
   }
 
-  // Always show chart if we have data points (fallback to default curve if no supply data)
-  const currentPriceUSD = priceInXRGE ? priceInXRGE * (prices.xrge || 0) : 0;
-  const BONDING_CURVE_TOTAL = 990_000_000;
-  const currentSupplyFromData = bondingSupplyProp && parseFloat(bondingSupplyProp) > 0 
-    ? BONDING_CURVE_TOTAL - parseFloat(bondingSupplyProp) 
-    : 0;
-
   return (
     <Card className="console-bg tech-border p-4 md:p-6">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-mono font-bold neon-text flex items-center gap-2">
             <Activity className="h-5 w-5" />
-            {chartType === 'curve' ? 'BONDING CURVE' : 'PRICE CHART'}
+            PRICE HISTORY
           </h3>
-          <div className="flex gap-2">
-            <Button
-              variant={chartType === 'curve' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChartType('curve')}
-              className="text-xs font-mono h-7"
-            >
-              CURVE
-            </Button>
-            <Button
-              variant={chartType === 'price' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setChartType('price')}
-              className="text-xs font-mono h-7"
-              disabled={events.length === 0 && !eventsLoading}
-            >
-              PRICE
-            </Button>
-          </div>
         </div>
         
-        {chartType === 'price' && (
-          <div className="flex gap-1 mb-3">
-            {(['1h', '4h', '1d', 'all'] as const).map((tf) => (
-              <Button
-                key={tf}
-                variant={timeframe === tf ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setTimeframe(tf)}
-                className="text-[10px] font-mono h-6 px-2"
-              >
-                {tf.toUpperCase()}
-              </Button>
-            ))}
-          </div>
-        )}
-        
         <p className="text-xs text-muted-foreground font-mono mb-2">
-          {chartType === 'curve' 
-            ? 'Price increases as more tokens are bought from the curve'
-            : `Showing ${filteredEvents.length} trades${timeframe !== 'all' ? ` (last ${timeframe})` : ''}`
-          }
+          Complete price progression from inception to present using bonding curve math
         </p>
       </div>
 
       {/* Chart */}
       <div className="h-[250px] md:h-[300px] mb-4">
-        {chartType === 'curve' ? (
+        {priceHistory.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={bondingCurveData}>
+            <AreaChart data={priceHistory}>
               <defs>
-                <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00ff9f" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#00ff9f" stopOpacity={0}/>
+                <linearGradient id="priceGradientUSD" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#00ff9f" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="#00ff9f" stopOpacity={0.05}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
@@ -182,43 +110,8 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
                 dataKey="supply" 
                 stroke="#888"
                 style={{ fontSize: '10px' }}
-                label={{ value: 'Supply (M tokens)', position: 'insideBottom', offset: -5, fill: '#888', fontSize: 11 }}
-              />
-              <YAxis 
-                stroke="#888"
-                style={{ fontSize: '10px' }}
-                tickFormatter={(value) => `$${value.toFixed(6)}`}
-                label={{ value: 'Price (USD)', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 11 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1a1a1a',
-                  border: '1px solid #00ff9f',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}
-                labelStyle={{ color: '#00ff9f' }}
-                formatter={(value: number) => [`$${value.toFixed(8)}`, 'Price']}
-                labelFormatter={(label) => `${label}M tokens sold`}
-              />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke="#00ff9f"
-                strokeWidth={2}
-                fill="url(#priceGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : priceChartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={priceChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
-              <XAxis 
-                dataKey="time" 
-                stroke="#888"
-                style={{ fontSize: '10px' }}
-                label={{ value: 'Time', position: 'insideBottom', offset: -5, fill: '#888', fontSize: 11 }}
+                label={{ value: 'Tokens Bought (Millions)', position: 'insideBottom', offset: -5, fill: '#888', fontSize: 11 }}
+                tickFormatter={(value) => `${value.toFixed(1)}M`}
               />
               <YAxis 
                 stroke="#888"
@@ -231,42 +124,39 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
                   backgroundColor: '#1a1a1a',
                   border: '1px solid #00ff9f',
                   borderRadius: '4px',
-                  fontSize: '12px'
+                  fontSize: '12px',
+                  fontFamily: 'monospace'
                 }}
                 labelStyle={{ color: '#00ff9f' }}
-                formatter={(value: number, name: string) => [
-                  `$${value < 0.01 ? value.toFixed(8) : value.toFixed(6)}`,
-                  'Price'
-                ]}
+                formatter={(value: number, name: string) => {
+                  if (name === 'priceUSD') {
+                    return [`$${value < 0.01 ? value.toFixed(10) : value.toFixed(6)}`, 'Price'];
+                  }
+                  return [value, name];
+                }}
+                labelFormatter={(label) => `${label}M tokens bought`}
               />
-              <Line
+              <Area
                 type="monotone"
-                dataKey="price"
+                dataKey="priceUSD"
                 stroke="#00ff9f"
                 strokeWidth={2}
-                dot={{ fill: '#00ff9f', r: 3 }}
+                fill="url(#priceGradientUSD)"
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
-        ) : eventsLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-green mx-auto mb-2"></div>
-              <p className="text-xs text-muted-foreground font-mono">Loading trades...</p>
-            </div>
-          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-muted-foreground font-mono">No trades yet</p>
+            <p className="text-sm text-muted-foreground font-mono">Loading price data...</p>
           </div>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
         <div>
           <p className="text-xs text-muted-foreground font-mono mb-1">Current Price</p>
-          <p className="text-lg font-mono font-bold text-neon-green">
+          <p className="text-base font-mono font-bold text-neon-green">
             {currentPriceUSD > 0 ? (
               currentPriceUSD < 0.01 
                 ? `$${currentPriceUSD.toFixed(10).replace(/\.?0+$/, '')}` 
@@ -282,8 +172,8 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
           )}
         </div>
         <div>
-          <p className="text-xs text-muted-foreground font-mono mb-1">Tokens Sold</p>
-          <p className="text-lg font-mono font-bold text-blue-400">
+          <p className="text-xs text-muted-foreground font-mono mb-1">Tokens Bought</p>
+          <p className="text-base font-mono font-bold text-blue-400">
             {currentSupplyFromData > 0 
               ? `${(currentSupplyFromData / 1_000_000).toFixed(2)}M`
               : "0.00M"
@@ -291,9 +181,18 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
           </p>
           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
             {currentSupplyFromData > 0
-              ? `${(currentSupplyFromData / BONDING_CURVE_TOTAL * 100).toFixed(2)}% of curve`
+              ? `${(currentSupplyFromData / BONDING_CURVE_TOTAL * 100).toFixed(2)}%`
               : "Just deployed"
             }
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground font-mono mb-1">Initial Price</p>
+          <p className="text-base font-mono font-bold text-purple-400">
+            ${(0.001 * (prices.xrge || 0)).toFixed(8)}
+          </p>
+          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+            0.001 XRGE
           </p>
         </div>
       </div>
