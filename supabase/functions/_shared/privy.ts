@@ -46,6 +46,32 @@ export interface PrivyUser {
   email?: string;
 }
 
+// Attempt to extract a wallet address from various possible Privy token shapes
+function extractWalletAddress(payload: any): string | undefined {
+  try {
+    const linkedAccounts = payload?.linked_accounts ?? [];
+    const walletAccount = Array.isArray(linkedAccounts)
+      ? linkedAccounts.find((acc: any) => ['wallet', 'smart_wallet', 'embedded_wallet'].includes(acc?.type))
+      : undefined;
+
+    const candidates = [
+      walletAccount?.address,
+      payload?.wallet_address,
+      payload?.wallet?.address,
+      payload?.wallets?.[0]?.address,
+      payload?.primary_wallet_address,
+      payload?.user?.wallet?.address,
+      payload?.address,
+      payload?.evm_address,
+    ].filter(Boolean) as string[];
+
+    const found = candidates.find((a) => typeof a === 'string' && a.toLowerCase().startsWith('0x'));
+    return found?.toLowerCase();
+  } catch (_e) {
+    return undefined;
+  }
+}
+
 /**
  * Validates a Privy JWT token and extracts user information
  * @throws Error if token is invalid or wallet address cannot be found
@@ -74,14 +100,12 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
       throw new Error('Invalid token: missing subject');
     }
 
-    // Extract wallet address from linked accounts
+    // Extract wallet address (robust across Privy token shapes)
+    const walletAddress = extractWalletAddress(payload);
     const linkedAccounts = (payload as any).linked_accounts || [];
-    const walletAccount = linkedAccounts.find((account: any) =>
-      ['wallet', 'smart_wallet', 'embedded_wallet'].includes(account.type)
-    );
-
-    const walletAddress = walletAccount?.address?.toLowerCase();
-    const email = linkedAccounts.find((acc: any) => acc.type === 'email')?.address;
+    const email =
+      (Array.isArray(linkedAccounts) && linkedAccounts.find((acc: any) => acc.type === 'email')?.address) ||
+      (payload as any).email;
 
     return { userId, walletAddress, email };
   } catch (strictError) {
@@ -96,13 +120,11 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
         throw new Error('Invalid token: missing subject');
       }
 
+      const walletAddress = extractWalletAddress(payload);
       const linkedAccounts = (payload as any).linked_accounts || [];
-      const walletAccount = linkedAccounts.find((account: any) =>
-        ['wallet', 'smart_wallet', 'embedded_wallet'].includes(account.type)
-      );
-
-      const walletAddress = walletAccount?.address?.toLowerCase();
-      const email = linkedAccounts.find((acc: any) => acc.type === 'email')?.address;
+      const email =
+        (Array.isArray(linkedAccounts) && linkedAccounts.find((acc: any) => acc.type === 'email')?.address) ||
+        (payload as any).email;
 
       return { userId, walletAddress, email };
     } catch (relaxedError) {
