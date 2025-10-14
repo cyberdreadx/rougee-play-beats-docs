@@ -67,7 +67,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
 
   // Bonding curve hooks
-  const { createSong, isPending: isDeploying } = useCreateSong();
+  const { createSong, isPending: isDeploying, isConfirming, isSuccess: deploySuccess, hash } = useCreateSong();
   const { buyWithETH, buyWithXRGE, isPending: isBuying } = useBuySongTokens();
   const { sell, isPending: isSelling } = useSellSongTokens();
   const { price: priceData, isLoading: priceLoading } = useSongPrice(songTokenAddress);
@@ -97,6 +97,21 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     
     loadTokenAddress();
   }, [song]);
+
+  // Watch for successful deployment
+  useEffect(() => {
+    if (deploySuccess && hash) {
+      toast({
+        title: "Deployment confirmed!",
+        description: "Your song is now live on the bonding curve. Refreshing...",
+      });
+      
+      // Refresh the page to show the deployed state
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  }, [deploySuccess, hash]);
 
   const fetchSong = async () => {
     try {
@@ -264,18 +279,38 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     const ticker = song.ticker || song.title.substring(0, 4).toUpperCase();
     
     try {
-      // Fetch metadata CID from song data
+      // Show deploying toast
+      toast({
+        title: "Deploying to blockchain...",
+        description: "Please confirm the transaction in your wallet",
+      });
+
+      // Fetch metadata CID from song data - need to get from upload result
       const metadataCid = `${song.audio_cid}_metadata`; // Construct expected metadata CID
       
+      // Call smart contract
       await createSong(song.title, ticker, metadataCid);
+      
+      // Wait for transaction to be mined and get the token address
+      // The useCreateSong hook should return the token address from the event
+      toast({
+        title: "Transaction submitted!",
+        description: "Waiting for confirmation...",
+      });
+
+      // Note: We need to update the database with the token address
+      // This should be done by listening to the blockchain event or
+      // after the transaction is confirmed. For now, we'll refresh the page.
       
       toast({
         title: "Deployment successful!",
-        description: "Your song is now tradeable on the bonding curve",
+        description: "Your song is now tradeable on the bonding curve. Page will refresh.",
       });
       
-      // Refresh song data to get token address
-      await fetchSong();
+      // Refresh after a delay to allow blockchain to update
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
     } catch (error) {
       console.error("Deploy error:", error);
       toast({

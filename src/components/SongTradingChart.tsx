@@ -72,11 +72,27 @@ const VolumeTooltip = ({ active, payload }: TooltipProps<number, string>) => {
 };
 
 export const SongTradingChart = ({ songTokenAddress }: SongTradingChartProps) => {
+  // Only show mock data if not deployed
+  const showMockData = !songTokenAddress;
   const currentPrice = priceData[priceData.length - 1]?.price || 0;
   const previousPrice = priceData[priceData.length - 2]?.price || 0;
   const priceChange = currentPrice - previousPrice;
   const priceChangePercent = ((priceChange / previousPrice) * 100).toFixed(2);
   const isPositive = priceChange >= 0;
+
+  if (!songTokenAddress) {
+    return (
+      <Card className="console-bg tech-border p-4 md:p-6">
+        <div className="text-center py-12">
+          <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+          <h3 className="text-lg font-mono font-bold mb-2">No Trading Data Yet</h3>
+          <p className="text-sm text-muted-foreground font-mono max-w-md mx-auto">
+            This song hasn't been deployed to the bonding curve yet. Deploy it to start trading and see live price charts.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="console-bg tech-border p-4 md:p-6">
@@ -96,11 +112,9 @@ export const SongTradingChart = ({ songTokenAddress }: SongTradingChartProps) =>
           </div>
         </div>
         
-        {!songTokenAddress && (
-          <p className="text-xs text-muted-foreground font-mono">
-            ⚠️ Demo data - song not deployed to bonding curve yet
-          </p>
-        )}
+        <p className="text-xs text-yellow-500 font-mono">
+          ⚠️ Demo chart - Real blockchain data coming soon
+        </p>
       </div>
 
       <Tabs defaultValue="price" className="w-full">
