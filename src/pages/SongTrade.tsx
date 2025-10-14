@@ -98,7 +98,25 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     loadTokenAddress();
   }, [song]);
 
-  // Watch for successful deployment
+  // Watch for deployment states
+  useEffect(() => {
+    if (isDeploying) {
+      toast({
+        title: "Transaction pending...",
+        description: "Please confirm the transaction in your wallet",
+      });
+    }
+  }, [isDeploying]);
+
+  useEffect(() => {
+    if (isConfirming) {
+      toast({
+        title: "Transaction submitted!",
+        description: "Waiting for blockchain confirmation...",
+      });
+    }
+  }, [isConfirming]);
+
   useEffect(() => {
     if (deploySuccess && hash) {
       toast({
@@ -279,38 +297,11 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     const ticker = song.ticker || song.title.substring(0, 4).toUpperCase();
     
     try {
-      // Show deploying toast
-      toast({
-        title: "Deploying to blockchain...",
-        description: "Please confirm the transaction in your wallet",
-      });
-
-      // Fetch metadata CID from song data - need to get from upload result
-      const metadataCid = `${song.audio_cid}_metadata`; // Construct expected metadata CID
+      // Fetch metadata CID from song data
+      const metadataCid = `${song.audio_cid}_metadata`;
       
-      // Call smart contract
+      // Call smart contract - the useEffect will handle the success case
       await createSong(song.title, ticker, metadataCid);
-      
-      // Wait for transaction to be mined and get the token address
-      // The useCreateSong hook should return the token address from the event
-      toast({
-        title: "Transaction submitted!",
-        description: "Waiting for confirmation...",
-      });
-
-      // Note: We need to update the database with the token address
-      // This should be done by listening to the blockchain event or
-      // after the transaction is confirmed. For now, we'll refresh the page.
-      
-      toast({
-        title: "Deployment successful!",
-        description: "Your song is now tradeable on the bonding curve. Page will refresh.",
-      });
-      
-      // Refresh after a delay to allow blockchain to update
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
     } catch (error) {
       console.error("Deploy error:", error);
       toast({
