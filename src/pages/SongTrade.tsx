@@ -19,6 +19,7 @@ import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS } from "@/hooks/useSongBondingCurve";
+import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket } from "lucide-react";
 
 interface Song {
@@ -56,6 +57,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
+  const { getAuthHeaders } = usePrivyToken();
 
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -137,24 +139,29 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             
             console.log('Extracted token address:', tokenAddress);
 
-            // Update database with token address
-            const { data, error } = await supabase
-              .from('songs')
-              .update({ token_address: tokenAddress })
-              .eq('id', song.id)
-              .select();
+            // Update database with token address via edge function (works with Privy auth)
+            const headers = await getAuthHeaders();
+            const { data: fnData, error: fnError } = await supabase.functions.invoke('update-song-token', {
+              body: { songId: song.id, tokenAddress },
+              headers: {
+                ...headers,
+                'x-wallet-address': (fullAddress || '').toLowerCase(),
+              },
+            });
 
-            console.log('Database update result:', { data, error });
+            console.log('Edge function update result:', { fnData, fnError });
 
-            if (error) {
-              console.error('Failed to update token address:', error);
+            if (fnError) {
+              console.error('Failed to update token address via function:', fnError);
               toast({
                 title: "Error",
                 description: "Failed to save token address to database",
                 variant: "destructive",
               });
             } else {
-              console.log('Successfully updated token address in database');
+              // Update local state without reloading
+              setSongTokenAddress(tokenAddress);
+              setSong((prev) => (prev ? { ...prev, token_address: tokenAddress } as Song : prev));
               toast({
                 title: "Success",
                 description: "Your song is now live on the bonding curve!",
@@ -168,10 +175,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               variant: "destructive",
             });
           }
-          
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
+          // No page reload; UI updated via state
         } catch (error) {
           console.error('Error processing deployment:', error);
           toast({
