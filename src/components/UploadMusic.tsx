@@ -24,7 +24,6 @@ export default function UploadMusic() {
   const navigate = useNavigate();
   const { fullAddress: address } = useWallet();
   const { getAuthHeaders } = usePrivyToken();
-  const { createSong, isPending: isDeploying } = useCreateSong();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [title, setTitle] = useState("");
@@ -163,23 +162,7 @@ export default function UploadMusic() {
 
       if (uploadError) throw uploadError;
 
-      toast.success(`Music uploaded to IPFS!`);
-
-      // Deploy to bonding curve
-      if (uploadData.metadataCid && ticker) {
-        toast.success('Deploying to bonding curve...');
-        try {
-          await createSong(
-            title || audioFile.name,
-            ticker,
-            uploadData.metadataCid
-          );
-          toast.success('Song deployed to bonding curve!');
-        } catch (deployError) {
-          console.error('Deployment error:', deployError);
-          toast.error('Failed to deploy to bonding curve. Song uploaded to IPFS only.');
-        }
-      }
+      toast.success('Music uploaded to IPFS successfully!');
 
       // Reset form
       setTitle("");
@@ -316,13 +299,11 @@ export default function UploadMusic() {
 
           <Button
             onClick={handleUpload}
-            disabled={uploading || scanning || isDeploying || !audioFile || !address}
+            disabled={uploading || scanning || !audioFile || !address}
             className="w-full"
           >
             <Upload className="w-4 h-4 mr-2" />
-            {scanning ? "Scanning for copyright..." : 
-             isDeploying ? "Deploying to bonding curve..." :
-             uploading ? "Uploading to IPFS..." : "Upload & Deploy"}
+            {scanning ? "Scanning for copyright..." : uploading ? "Uploading to IPFS..." : "Upload to IPFS"}
           </Button>
 
           {!address && (
