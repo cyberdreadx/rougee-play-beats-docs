@@ -32,16 +32,23 @@ export const usePrivyWagmi = () => {
 
       // Find the Privy connector in wagmi
       const privyConnector = connectors.find(
-        (connector) => connector.id === 'injected' || connector.name.toLowerCase().includes('privy')
+        (connector) => /privy/i.test(connector.id) || /privy/i.test(connector.name)
       );
+      const injected = connectors.find((c) => c.id === 'injected');
+      const target = privyConnector || injected || connectors[0];
 
-      if (privyConnector && !isConnected) {
+      if (!target) {
+        console.warn('No wagmi connector available to connect');
+        return;
+      }
+
+      if (!isConnected) {
         try {
-          console.log('🔌 Connecting Privy wallet to wagmi...');
-          await connect({ connector: privyConnector });
-          console.log('✅ Privy wallet connected to wagmi');
+          console.log('🔌 Connecting wallet to wagmi using', target.name, target.id);
+          await connect({ connector: target });
+          console.log('✅ Wallet connected to wagmi');
         } catch (error) {
-          console.error('Failed to connect Privy wallet to wagmi:', error);
+          console.error('Failed to connect wallet to wagmi:', error);
         }
       }
     };

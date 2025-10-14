@@ -111,24 +111,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   
   const ensureWagmiConnected = async () => {
     if (wagmiConnected) return;
-    const privyConn = connectors.find(c => c.id === 'privy' || c.name.toLowerCase().includes('privy'));
+    const privyConn = connectors.find(c => /privy/i.test(c.id) || /privy/i.test(c.name));
     const injected = connectors.find(c => c.id === 'injected');
     const target = privyConn || injected || connectors[0];
-    if (target) {
-      try {
-        console.log('🔌 Ensuring wagmi connection with', target.name, target.id);
-        await connectAsync({ connector: target });
-        console.log('✅ wagmi connected');
-      } catch (e) {
-        console.error('Wagmi connect failed:', e);
-        throw e;
-      }
-    } else {
-      console.warn('No wagmi connector available');
+    if (!target) {
+      throw new Error('No wallet connector available');
+    }
+    try {
+      console.log('🔌 Ensuring wagmi connection with', target.name, target.id);
+      await connectAsync({ connector: target });
+    } catch (e) {
+      console.error('Wagmi connect failed:', e);
+      throw e;
     }
   };
-  
-  // Swap hooks for other payment tokens
   const { buyXRGEWithKTA, buyXRGEWithUSDC, approveKTA, approveUSDC, isPending: isSwapping } = useXRGESwap();
   
   // Get all token balances - use fullAddress as wagmi should sync with Privy
