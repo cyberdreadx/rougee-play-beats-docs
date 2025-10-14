@@ -38,11 +38,11 @@ export const useArtistProfile = (walletAddress: string | null) => {
       setLoading(true);
       setError(null);
 
-      // Fetch from Supabase cache
+      // Fetch from Supabase cache (case-insensitive wallet address)
       const { data: cachedProfile, error: cacheError } = await supabase
         .from('profiles')
         .select('wallet_address, display_name, artist_name, artist_ticker, bio, email, email_notifications, avatar_cid, cover_cid, profile_metadata_cid, social_links, verified, total_plays, total_songs, created_at, updated_at')
-        .eq('wallet_address', walletAddress)
+        .ilike('wallet_address', walletAddress)
         .maybeSingle();
 
       if (cacheError) throw cacheError;

@@ -429,7 +429,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY"}
                   </Button>
                   
-                  {!songTokenAddress && song.wallet_address === fullAddress && (
+                  {!songTokenAddress && song.wallet_address?.toLowerCase() === fullAddress?.toLowerCase() && (
                     <Button
                       variant="default"
                       size="sm"
@@ -488,7 +488,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 <Rocket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-base md:text-lg font-mono font-bold mb-2">Not Deployed Yet</h3>
                 <p className="text-xs md:text-sm text-muted-foreground font-mono">
-                  {song.wallet_address === fullAddress 
+                  {song.wallet_address?.toLowerCase() === fullAddress?.toLowerCase() 
                     ? "Deploy this song to enable trading"
                     : "This song hasn't been deployed to the bonding curve yet"}
                 </p>

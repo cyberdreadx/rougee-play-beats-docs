@@ -88,7 +88,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         const { data, error } = await supabase
           .from("songs")
           .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at")
-          .eq("wallet_address", walletAddress)
+          .ilike("wallet_address", walletAddress)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
