@@ -234,6 +234,14 @@ const AudioPlayer = ({
       if (audio) {
         audio.src = fallbackUrls[nextIndex];
         audio.load();
+        if (isPlaying) {
+          const p = audio.play();
+          if (p && typeof (p as any).catch === 'function') {
+            (p as Promise<void>).catch(() => {
+              console.warn('Play() failed after switching fallback');
+            });
+          }
+        }
       }
     } else {
       console.error('All audio URLs failed to load');
@@ -614,10 +622,19 @@ const AudioPlayer = ({
           toast({ title: 'Loading audio…', description: new URL(url).host });
         }}
         onCanPlay={() => {
+          const audio = audioRef.current;
           const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
           console.log('Audio can play:', url);
           if (currentAudioUrlIndex > 0) {
             toast({ title: 'Loaded via fallback', description: new URL(url).host });
+          }
+          if (isPlaying && audio && audio.paused) {
+            const p = audio.play();
+            if (p && typeof (p as any).catch === 'function') {
+              (p as Promise<void>).catch((err) => {
+                console.warn('Autoplay retry failed:', err);
+              });
+            }
           }
         }}
       />
