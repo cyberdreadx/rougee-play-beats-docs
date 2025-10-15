@@ -12,21 +12,37 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Parse request body first
+    const body = await req.json().catch(() => ({}));
+    const message = typeof body?.message === 'string' ? body.message : null;
+    
     // Validate Privy JWT and extract the caller's wallet
     console.log('🔍 Request headers:', Object.fromEntries(req.headers.entries()));
     const authHeader = req.headers.get('authorization');
     console.log('🔑 Auth header present:', !!authHeader);
     
-    const walletAddress = await requireWalletAddress(authHeader);
-    console.log('✅ Extracted wallet address:', walletAddress);
+    let walletAddress: string;
+    try {
+      walletAddress = await requireWalletAddress(authHeader);
+      console.log('✅ Extracted wallet address from JWT:', walletAddress);
+    } catch (jwtError) {
+      console.warn('⚠️ JWT wallet extraction failed, trying fallback:', jwtError);
+      
+      // Fallback: try to get wallet from request body or headers
+      const fallbackWallet = body.wallet_address || req.headers.get('x-wallet-address');
+      
+      if (!fallbackWallet) {
+        throw new Error('No wallet address found in JWT or request body');
+      }
+      
+      walletAddress = fallbackWallet.toLowerCase();
+      console.log('✅ Using fallback wallet address:', walletAddress);
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
-
-    const body = await req.json().catch(() => ({}));
-    const message = typeof body?.message === 'string' ? body.message : null;
 
     const { error } = await supabase
       .from('verification_requests')

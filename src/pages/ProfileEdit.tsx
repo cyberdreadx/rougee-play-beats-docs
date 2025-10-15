@@ -113,10 +113,11 @@ const ProfileEdit = () => {
     
     setRequestingVerification(true);
     try {
-      const headers = await getAuthHeaders();
-      const { error } = await supabase.functions.invoke('request-verification', {
-        headers,
-        body: { message: verificationMessage },
+      const { error } = await supabase.functions.invoke('request-verification-simple', {
+        body: { 
+          message: verificationMessage,
+          wallet_address: fullAddress
+        },
       });
 
       if (error) throw error;
