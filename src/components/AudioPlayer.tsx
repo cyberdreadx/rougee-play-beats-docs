@@ -64,7 +64,6 @@ const AudioPlayer = ({
   const [artistTicker, setArtistTicker] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [currentAudioUrlIndex, setCurrentAudioUrlIndex] = useState(0);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const { toast } = useToast();
 
   // Fetch artist ticker and verified status
@@ -233,28 +232,11 @@ const AudioPlayer = ({
     : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : '');
   const fallbackUrls = proxyUrl ? [...baseFallbacks, proxyUrl] : baseFallbacks;
 
-  // Debug logging
-  useEffect(() => {
-    if (audioSource) {
-      console.log('Audio source URL:', audioSource);
-      console.log('Fallback URLs:', fallbackUrls);
-    }
-  }, [audioSource, fallbackUrls]);
-
   // Handle audio loading errors with fallback
   const handleAudioError = () => {
-    console.error('Audio loading failed, trying fallback URLs...');
-    toast({
-      title: 'Audio failed to load',
-      description: currentAudioUrlIndex < fallbackUrls.length - 1
-        ? `Trying fallback ${currentAudioUrlIndex + 2} of ${fallbackUrls.length}`
-        : 'All gateways failed',
-      variant: currentAudioUrlIndex < fallbackUrls.length - 1 ? undefined : 'destructive',
-    });
     if (currentAudioUrlIndex < fallbackUrls.length - 1) {
       const nextIndex = currentAudioUrlIndex + 1;
       setCurrentAudioUrlIndex(nextIndex);
-      console.log('Trying fallback URL:', fallbackUrls[nextIndex]);
       
       // Update the audio source
       const audio = audioRef.current;
@@ -271,8 +253,6 @@ const AudioPlayer = ({
           }
         }
       }
-    } else {
-      console.error('All audio URLs failed to load');
     }
   };
 
@@ -413,15 +393,6 @@ const AudioPlayer = ({
               ) : (
                 <Volume2 className="w-3 h-3 text-neon-green" />
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowDebugInfo(!showDebugInfo)}
-              className="h-7 w-7"
-              title="Debug Info"
-            >
-              🔧
             </Button>
           </div>
         </div>
@@ -591,15 +562,6 @@ const AudioPlayer = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowDebugInfo(!showDebugInfo)}
-            className="text-neon-green hover:text-neon-green/80"
-            title="Debug Info"
-          >
-            🔧
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             onClick={toggleMute}
           >
             {isMuted ? (
@@ -618,24 +580,6 @@ const AudioPlayer = ({
         </div>
       </div>
 
-      {/* Debug Info */}
-      {showDebugInfo && (
-        <div className="absolute top-0 left-0 right-0 bg-black/90 text-white p-4 text-xs font-mono z-50">
-          <div className="space-y-1">
-            <div><strong>Current URL:</strong> {fallbackUrls[currentAudioUrlIndex] || audioSource}</div>
-            <div><strong>URL Index:</strong> {currentAudioUrlIndex} / {fallbackUrls.length}</div>
-            <div><strong>Fallback URLs:</strong></div>
-            {fallbackUrls.map((url, index) => (
-              <div key={index} className={`ml-2 ${index === currentAudioUrlIndex ? 'text-green-400' : 'text-gray-400'}`}>
-                {index}: {url}
-              </div>
-            ))}
-            <div><strong>Duration:</strong> {duration}s</div>
-            <div><strong>Current Time:</strong> {currentTime}s</div>
-          </div>
-        </div>
-      )}
-
       {/* Hidden Audio Element */}
       <audio
         key={(currentSong?.id || currentAd?.id) ?? 'no-media'}
@@ -645,25 +589,10 @@ const AudioPlayer = ({
         playsInline
         
         onError={handleAudioError}
-        onLoadStart={() => {
-          const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
-          console.log('Audio loading started for:', url);
-          toast({ title: 'Loading audio…', description: new URL(url).host });
-        }}
         onCanPlay={() => {
           const audio = audioRef.current;
-          const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
-          console.log('Audio can play:', url);
-          if (currentAudioUrlIndex > 0) {
-            toast({ title: 'Loaded via fallback', description: new URL(url).host });
-          }
           if (isPlaying && audio && audio.paused) {
-            const p = audio.play();
-            if (p && typeof (p as any).catch === 'function') {
-              (p as Promise<void>).catch((err) => {
-                console.warn('Autoplay retry failed:', err);
-              });
-            }
+            audio.play().catch(() => {});
           }
         }}
       />
