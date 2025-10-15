@@ -139,16 +139,26 @@ const AudioPlayer = ({
     if (!audio) return;
 
     if (isPlaying) {
+      const title = currentAd?.title || currentSong?.title || 'Audio';
+      toast({
+        title: '▶️ Playing',
+        description: title,
+      });
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error("Playback error:", error);
+          toast({
+            title: '❌ Playback failed',
+            description: error.message || 'Could not play audio',
+            variant: 'destructive',
+          });
         });
       }
     } else {
       audio.pause();
     }
-  }, [isPlaying, currentSong?.id]);
+  }, [isPlaying, currentSong?.id, currentSong?.title, currentAd, toast]);
 
   useEffect(() => {
     const audio = audioRef.current;
