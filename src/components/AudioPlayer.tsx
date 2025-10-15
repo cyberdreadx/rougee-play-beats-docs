@@ -198,13 +198,13 @@ const AudioPlayer = ({
     ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
     : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
   const audioSource = isAd 
-    ? getIPFSGatewayUrl(currentAd.audio_cid) // Use Lighthouse first (was working)
-    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid) : "");
+    ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true) // Use proxy first for reliability
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : "");
 
-  // Get fallback URLs for robust loading (Lighthouse first, then proxy, then others)
+  // Get fallback URLs for robust loading (Proxy first, then gateways)
   const fallbackUrls = isAd 
-    ? getIPFSGatewayUrls(currentAd.audio_cid, 4) // More fallbacks
-    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4) : []);
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, true) // More fallbacks via proxy+gateways
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, true) : []);
 
   // Debug logging
   useEffect(() => {
@@ -605,6 +605,8 @@ const AudioPlayer = ({
         ref={audioRef}
         src={fallbackUrls[currentAudioUrlIndex] || audioSource}
         preload="metadata"
+        playsInline
+        crossOrigin="anonymous"
         onError={handleAudioError}
         onLoadStart={() => {
           const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
