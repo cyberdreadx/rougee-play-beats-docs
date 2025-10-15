@@ -25,8 +25,8 @@ const BecomeArtist = () => {
   const { profile, loading } = useCurrentUserProfile();
 
   useEffect(() => {
-    // If user already has a profile, redirect to profile edit
-    if (profile && profile.artist_name) {
+    // If user already has a profile (even incomplete), redirect to profile edit
+    if (profile) {
       navigate("/profile/edit");
     }
   }, [profile, navigate]);

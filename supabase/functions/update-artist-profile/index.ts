@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       walletAddress = providedWalletAddress.toLowerCase();
       console.log('✅ Using wallet from request:', walletAddress);
     } else if (user.walletAddress) {
-      walletAddress = user.walletAddress;
+      walletAddress = user.walletAddress.toLowerCase();
       console.log('✅ Using wallet from JWT:', walletAddress);
     } else {
       throw new Error('No wallet address provided');
