@@ -76,13 +76,16 @@ const ArtistCard = ({
         <div className="flex items-start justify-between">
           <Avatar className="h-12 w-12 border-2 border-neon-green">
             <AvatarImage 
+              key={avatarUrl || 'avatar-fallback'}
               src={avatarUrl || undefined} 
               alt={artistName || 'Artist'}
+              referrerPolicy="no-referrer"
+              decoding="async"
+              loading="lazy"
               onError={() => {
                 console.warn(`Failed to load avatar for ${artistName}:`, avatarCid, 'source:', avatarUrl);
-                if (avatarIndex < avatarSources.length - 1) {
-                  setAvatarIndex(avatarIndex + 1);
-                } else {
+                setAvatarIndex((i) => (i < avatarSources.length - 1 ? i + 1 : i));
+                if (avatarIndex >= avatarSources.length - 1) {
                   setAvatarError(true);
                 }
               }}
