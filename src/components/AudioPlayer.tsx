@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
-
+import { useToast } from "@/hooks/use-toast";
 interface Song {
   id: string;
   title: string;
@@ -65,6 +65,7 @@ const AudioPlayer = ({
   const [isVerified, setIsVerified] = useState(false);
   const [currentAudioUrlIndex, setCurrentAudioUrlIndex] = useState(0);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const { toast } = useToast();
 
   // Fetch artist ticker and verified status
   useEffect(() => {
@@ -206,6 +207,13 @@ const AudioPlayer = ({
   // Handle audio loading errors with fallback
   const handleAudioError = () => {
     console.error('Audio loading failed, trying fallback URLs...');
+    toast({
+      title: 'Audio failed to load',
+      description: currentAudioUrlIndex < fallbackUrls.length - 1
+        ? `Trying fallback ${currentAudioUrlIndex + 2} of ${fallbackUrls.length}`
+        : 'All gateways failed',
+      variant: currentAudioUrlIndex < fallbackUrls.length - 1 ? undefined : 'destructive',
+    });
     if (currentAudioUrlIndex < fallbackUrls.length - 1) {
       const nextIndex = currentAudioUrlIndex + 1;
       setCurrentAudioUrlIndex(nextIndex);
@@ -359,6 +367,15 @@ const AudioPlayer = ({
               ) : (
                 <Volume2 className="w-3 h-3 text-neon-green" />
               )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+              className="h-7 w-7"
+              title="Debug Info"
+            >
+              🔧
             </Button>
           </div>
         </div>
@@ -580,10 +597,16 @@ const AudioPlayer = ({
         preload="metadata"
         onError={handleAudioError}
         onLoadStart={() => {
-          console.log('Audio loading started for:', fallbackUrls[currentAudioUrlIndex] || audioSource);
+          const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
+          console.log('Audio loading started for:', url);
+          toast({ title: 'Loading audio…', description: new URL(url).host });
         }}
         onCanPlay={() => {
-          console.log('Audio can play:', fallbackUrls[currentAudioUrlIndex] || audioSource);
+          const url = fallbackUrls[currentAudioUrlIndex] || audioSource;
+          console.log('Audio can play:', url);
+          if (currentAudioUrlIndex > 0) {
+            toast({ title: 'Loaded via fallback', description: new URL(url).host });
+          }
         }}
       />
     </Card>
