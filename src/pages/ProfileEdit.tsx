@@ -141,10 +141,10 @@ const ProfileEdit = () => {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
+      if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
-          description: "Avatar must be less than 2MB",
+          description: "Avatar must be less than 10MB",
           variant: "destructive",
         });
         return;
@@ -351,7 +351,7 @@ const ProfileEdit = () => {
             </div>
             {/* Cover Photo */}
             <div className="space-y-2">
-              <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 5MB)</Label>
+              <Label htmlFor="cover" className="font-mono">Cover Photo (1920x480, max 20MB)</Label>
               <div className="relative">
                 <div 
                   className={`relative h-48 w-full rounded tech-border overflow-hidden bg-gradient-to-br from-primary/20 to-background ${coverPreview ? 'cursor-move select-none' : 'cursor-pointer'} group`}
@@ -415,7 +415,7 @@ const ProfileEdit = () => {
 
             {/* Avatar */}
             <div className="space-y-2">
-              <Label htmlFor="avatar" className="font-mono">Avatar (512x512, max 2MB)</Label>
+              <Label htmlFor="avatar" className="font-mono">Avatar (512x512, max 10MB)</Label>
               <div className="flex items-center gap-4">
                 <Avatar className="h-24 w-24 border-2 border-neon-green cursor-pointer">
                   <AvatarImage src={avatarPreview || undefined} className="object-cover" />

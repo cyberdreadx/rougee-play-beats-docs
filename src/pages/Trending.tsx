@@ -407,49 +407,6 @@ const Trending = () => {
     <div className="min-h-screen bg-background pb-24 md:pb-20">
       <NetworkInfo />
       
-      {/* Secondary Navigation */}
-      <div className="border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-1 py-2 overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => navigate('/')}
-              className="px-4 py-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              [DISCOVER]
-            </button>
-            <button
-              onClick={() => navigate('/feed')}
-              className="px-4 py-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              [GLITCH FEED]
-            </button>
-            <button
-              className="px-4 py-2 text-sm font-mono text-neon-green border-b-2 border-neon-green whitespace-nowrap"
-            >
-              [TRENDING]
-            </button>
-            <button
-              onClick={() => navigate('/profile')}
-              className="px-4 py-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              [MY PROFILE]
-            </button>
-            <button
-              onClick={() => navigate('/wallet')}
-              className="px-4 py-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              [WALLET]
-            </button>
-            <button
-              onClick={() => navigate('/swap')}
-              className="px-4 py-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-            >
-              [SWAP]
-            </button>
-          </div>
-        </div>
-      </div>
-      
       <main className="container mx-auto px-4 py-6 md:py-8">
         {/* Live Stats Ticker */}
         <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">

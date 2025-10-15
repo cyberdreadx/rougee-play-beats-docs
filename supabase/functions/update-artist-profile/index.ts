@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
 
     // Validate files
     if (avatarFile && avatarFile.size > 0) {
-      if (avatarFile.size > 5 * 1024 * 1024) {
-        return new Response(JSON.stringify({ error: 'Avatar too large (max 5MB)' }), 
+      if (avatarFile.size > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Avatar too large (max 10MB)' }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
       }
       const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -97,8 +97,8 @@ Deno.serve(async (req) => {
     }
 
     if (coverFile && coverFile.size > 0) {
-      if (coverFile.size > 10 * 1024 * 1024) {
-        return new Response(JSON.stringify({ error: 'Cover too large (max 10MB)' }), 
+      if (coverFile.size > 20 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: 'Cover too large (max 20MB)' }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
       }
       const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
