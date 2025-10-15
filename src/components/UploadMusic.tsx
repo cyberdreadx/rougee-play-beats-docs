@@ -42,14 +42,27 @@ export default function UploadMusic() {
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setCoverFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Check file size (20MB = 20 * 1024 * 1024 bytes)
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    if (file.size > maxSize) {
+      toast({
+        title: "Cover image too large",
+        description: `Cover image must be less than 20MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+        variant: "destructive",
+      });
+      // Clear the input
+      e.target.value = '';
+      return;
     }
+
+    setCoverFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCoverPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const scanForCopyright = async (file: File) => {
@@ -98,6 +111,19 @@ export default function UploadMusic() {
   const handleAudioChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check file size (50MB = 50 * 1024 * 1024 bytes)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: `Audio file must be less than 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+        variant: "destructive",
+      });
+      // Clear the input
+      e.target.value = '';
+      return;
+    }
 
     setAudioFile(file);
 
@@ -217,7 +243,7 @@ export default function UploadMusic() {
                       Drop your CD cover here or click to browse
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG, WEBP up to 20MB
+                      JPG, PNG, WEBP up to <span className="font-semibold text-yellow-500">20MB</span>
                     </p>
                   </>
                 )}
@@ -235,7 +261,7 @@ export default function UploadMusic() {
               disabled={uploading || scanning}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              MP3, WAV, M4A, OGG up to 50MB
+              MP3, WAV, M4A, OGG up to <span className="font-semibold text-yellow-500">50MB</span>
             </p>
             {scanning && (
               <p className="text-sm text-yellow-500 mt-1 flex items-center gap-2">

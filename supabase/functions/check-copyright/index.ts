@@ -81,16 +81,18 @@ serve(async (req) => {
     
     let acrResponse;
     try {
+      console.log('🔍 Calling ACRCloud API...', { acrHost, accessKey: accessKey?.substring(0, 8) + '...' });
       acrResponse = await fetch(`https://${acrHost}/v1/identify`, {
         method: 'POST',
         body: acrFormData,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
+      console.log('📡 ACRCloud response status:', acrResponse.status);
     } catch (fetchError) {
       clearTimeout(timeoutId);
       // If ACRCloud fails, block the upload for safety
-      console.error('ACRCloud API timeout or error:', fetchError);
+      console.error('❌ ACRCloud API timeout or error:', fetchError);
       return new Response(
         JSON.stringify({
           error: 'Copyright verification service unavailable. Please try again later.',
@@ -103,8 +105,25 @@ serve(async (req) => {
       );
     }
 
+    if (!acrResponse.ok) {
+      console.error('❌ ACRCloud API error:', acrResponse.status, acrResponse.statusText);
+      const errorText = await acrResponse.text().catch(() => 'Unknown error');
+      console.error('❌ ACRCloud error details:', errorText);
+      
+      return new Response(
+        JSON.stringify({
+          error: `Copyright verification service error (${acrResponse.status}). Please try again later.`,
+          canProceed: false,
+        }),
+        {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const acrResult = await acrResponse.json();
-    console.log('ACRCloud response:', JSON.stringify(acrResult));
+    console.log('✅ ACRCloud response:', JSON.stringify(acrResult));
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
