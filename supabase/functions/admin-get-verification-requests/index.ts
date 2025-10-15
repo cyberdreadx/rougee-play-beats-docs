@@ -46,19 +46,11 @@ Deno.serve(async (req) => {
 
     // Fetch verification requests with profile data
     console.log('🔍 Fetching verification requests...');
+    
+    // First, let's try without the foreign key relationship to see if that's the issue
     const { data: requests, error } = await supabase
       .from('verification_requests')
-      .select(`
-        *,
-        profiles!verification_requests_wallet_address_fkey (
-          artist_name,
-          artist_ticker,
-          avatar_cid,
-          total_songs,
-          total_plays,
-          verified
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -67,11 +59,30 @@ Deno.serve(async (req) => {
     }
 
     console.log('✅ Successfully fetched verification requests:', requests?.length || 0);
+    console.log('📋 Requests data:', JSON.stringify(requests, null, 2));
 
-    console.log(`Admin ${walletAddress} fetched ${requests?.length || 0} verification requests`);
+    // Now try to get profile data separately for each request
+    const requestsWithProfiles = await Promise.all(
+      (requests || []).map(async (request) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('artist_name, artist_ticker, avatar_cid, total_songs, total_plays, verified')
+          .eq('wallet_address', request.wallet_address)
+          .single();
+        
+        return {
+          ...request,
+          profiles: profile
+        };
+      })
+    );
+
+    console.log('✅ Requests with profiles:', requestsWithProfiles?.length || 0);
+
+    console.log(`Admin ${walletAddress} fetched ${requestsWithProfiles?.length || 0} verification requests`);
 
     return new Response(
-      JSON.stringify({ data: requests }),
+      JSON.stringify({ data: requestsWithProfiles }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
