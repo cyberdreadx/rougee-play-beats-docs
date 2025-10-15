@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { useFundWallet } from "@privy-io/react-auth";
@@ -36,9 +36,10 @@ interface SongTokenItemProps {
   userAddress: string;
   xrgeUsdPrice: number;
   onClick: () => void;
+  onBalanceLoaded?: (songId: string, hasBalance: boolean) => void;
 }
 
-const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick }: SongTokenItemProps) => {
+const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick, onBalanceLoaded }: SongTokenItemProps) => {
   const navigate = useNavigate();
   
   // Get user's balance of this token
@@ -56,6 +57,13 @@ const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick }: SongTokenIt
   const priceXRGE = parseFloat(priceInXRGE) || 0;
   const priceUSD = priceXRGE * xrgeUsdPrice;
   const valueUSD = balance * priceUSD;
+  
+  // Notify parent about balance status
+  useEffect(() => {
+    if (balanceData !== undefined && onBalanceLoaded) {
+      onBalanceLoaded(song.id, balance > 0);
+    }
+  }, [song.id, balance, balanceData, onBalanceLoaded]);
   
   // Only render if user has a balance
   if (balance === 0) return null;
@@ -155,6 +163,7 @@ const Wallet = () => {
   });
   const [allSongs, setAllSongs] = useState<any[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(false);
+  const [ownedSongsMap, setOwnedSongsMap] = useState<Map<string, boolean>>(new Map());
 
   const { data: balance, isLoading: balanceLoading, refetch: refetchBalance } = useBalance({
     address: fullAddress as `0x${string}`,
@@ -232,6 +241,7 @@ const Wallet = () => {
     if (!fullAddress) return;
     
     setLoadingSongs(true);
+    setOwnedSongsMap(new Map()); // Reset map when fetching
     try {
       // Get all deployed songs with token addresses
       const { data: songs, error } = await supabase
@@ -249,6 +259,18 @@ const Wallet = () => {
       setLoadingSongs(false);
     }
   };
+
+  // Track owned songs count
+  const handleBalanceLoaded = useCallback((songId: string, hasBalance: boolean) => {
+    setOwnedSongsMap(prev => {
+      const newMap = new Map(prev);
+      newMap.set(songId, hasBalance);
+      return newMap;
+    });
+  }, []);
+
+  // Calculate owned songs count from map
+  const ownedSongsCount = Array.from(ownedSongsMap.values()).filter(Boolean).length;
 
 
   const copyAddress = async () => {
@@ -621,7 +643,7 @@ const Wallet = () => {
               </p>
             </div>
             <Badge variant="outline" className="border-neon-green/50 text-neon-green font-mono">
-              {allSongs.length} songs
+              {ownedSongsCount} {ownedSongsCount === 1 ? 'song' : 'songs'}
             </Badge>
           </div>
           
@@ -630,7 +652,7 @@ const Wallet = () => {
               <Loader2 className="h-6 w-6 animate-spin text-neon-green mx-auto mb-2" />
               <p className="text-sm text-muted-foreground font-mono">Loading your music collection...</p>
             </div>
-          ) : allSongs.length === 0 ? (
+          ) : ownedSongsCount === 0 && !loadingSongs ? (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground font-mono mb-2">No song tokens yet</p>
               <p className="text-xs text-muted-foreground font-mono mb-3">
@@ -654,6 +676,7 @@ const Wallet = () => {
                   userAddress={fullAddress!}
                   xrgeUsdPrice={prices.xrge}
                   onClick={() => navigate(`/song/${song.id}`)}
+                  onBalanceLoaded={handleBalanceLoaded}
                 />
               ))}
             </div>
