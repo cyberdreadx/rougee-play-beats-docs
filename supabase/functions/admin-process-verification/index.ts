@@ -10,7 +10,7 @@ const corsHeaders = {
 const verificationSchema = z.object({
   requestId: z.string().uuid(),
   action: z.enum(['approve', 'reject']),
-  adminNotes: z.string().max(500).optional(),
+  adminNotes: z.string().max(500).nullish(),
 });
 
 Deno.serve(async (req) => {
