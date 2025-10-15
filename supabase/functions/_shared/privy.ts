@@ -155,12 +155,43 @@ export async function validatePrivyToken(authHeader: string | null): Promise<Pri
  * Validates token and ensures wallet address exists
  * @throws Error if wallet address is not found
  */
-export async function requireWalletAddress(authHeader: string | null): Promise<string> {
-  const user = await validatePrivyToken(authHeader);
-  
-  if (!user.walletAddress) {
-    throw new Error('No wallet address found in authentication token');
+export async function requireWalletAddress(authHeader: string | null, req?: Request): Promise<string> {
+  try {
+    const user = await validatePrivyToken(authHeader);
+    
+    if (user.walletAddress) {
+      console.log('✅ Wallet address found in JWT:', user.walletAddress);
+      return user.walletAddress;
+    }
+    
+    console.log('⚠️ No wallet address in JWT, trying fallback methods...');
+    
+    // Fallback 1: Try to get from request headers
+    if (req) {
+      const headerWallet = req.headers.get('x-wallet-address');
+      if (headerWallet) {
+        console.log('✅ Wallet address found in x-wallet-address header:', headerWallet);
+        return headerWallet.toLowerCase();
+      }
+    }
+    
+    // Fallback 2: Try to get from request body
+    if (req && req.method === 'POST') {
+      try {
+        const body = await req.clone().json();
+        const bodyWallet = body.wallet_address || body.walletAddress;
+        if (bodyWallet) {
+          console.log('✅ Wallet address found in request body:', bodyWallet);
+          return bodyWallet.toLowerCase();
+        }
+      } catch (e) {
+        console.log('Could not parse request body for wallet address');
+      }
+    }
+    
+    throw new Error('No wallet address found in authentication token, headers, or body');
+  } catch (error) {
+    console.error('❌ Error extracting wallet address:', error);
+    throw error;
   }
-  
-  return user.walletAddress;
 }

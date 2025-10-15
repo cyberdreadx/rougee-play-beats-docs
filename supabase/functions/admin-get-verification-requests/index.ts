@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     console.log('🔍 Admin verification requests - Starting request');
     
     // Validate Privy JWT and get wallet address
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'), req);
     console.log('✅ Wallet address extracted:', walletAddress);
 
     // Create service role client
