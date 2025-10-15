@@ -4,7 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Music, Play, CheckCircle } from "lucide-react";
-import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
 
 interface ArtistCardProps {
   walletAddress: string;
@@ -32,14 +32,13 @@ const ArtistCard = ({
   const navigate = useNavigate();
   const [avatarError, setAvatarError] = useState(false);
   const [coverError, setCoverError] = useState(false);
+  const avatarSources = avatarCid ? getIPFSGatewayUrls(avatarCid, 4, true) : [];
+  const coverSources = coverCid ? getIPFSGatewayUrls(coverCid, 4, true) : [];
+  const [avatarIndex, setAvatarIndex] = useState(0);
+  const [coverIndex, setCoverIndex] = useState(0);
 
-  // Use IPFS proxy for more reliable loading
-  const coverUrl = coverCid && !coverError 
-    ? `https://phybdsfwycygroebrsdx.supabase.co/functions/v1/ipfs-proxy/${coverCid}`
-    : null;
-  const avatarUrl = avatarCid && !avatarError
-    ? `https://phybdsfwycygroebrsdx.supabase.co/functions/v1/ipfs-proxy/${avatarCid}`
-    : null;
+  const avatarUrl = !avatarError && avatarSources[avatarIndex] ? avatarSources[avatarIndex] : null;
+  const coverUrl = !coverError && coverSources[coverIndex] ? coverSources[coverIndex] : null;
 
   const sizeClasses = {
     small: 'h-32 w-48',
@@ -53,14 +52,22 @@ const ArtistCard = ({
       onClick={() => navigate(`/artist/${walletAddress}`)}
     >
       {/* Cover Photo Background */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background"
-        style={coverUrl ? {
-          backgroundImage: `url(${coverUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        } : undefined}
-      >
+      <div className="absolute inset-0">
+        {coverUrl && (
+          <img
+            src={coverUrl}
+            alt={`${artistName || 'Artist'} cover`}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={() => {
+              console.warn(`Failed to load cover for ${artistName}:`, coverCid, 'source:', coverUrl);
+              if (coverIndex < coverSources.length - 1) {
+                setCoverIndex(coverIndex + 1);
+              } else {
+                setCoverError(true);
+              }
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
       </div>
 
@@ -72,8 +79,12 @@ const ArtistCard = ({
               src={avatarUrl || undefined} 
               alt={artistName || 'Artist'}
               onError={() => {
-                console.warn(`Failed to load avatar for ${artistName}:`, avatarCid);
-                setAvatarError(true);
+                console.warn(`Failed to load avatar for ${artistName}:`, avatarCid, 'source:', avatarUrl);
+                if (avatarIndex < avatarSources.length - 1) {
+                  setAvatarIndex(avatarIndex + 1);
+                } else {
+                  setAvatarError(true);
+                }
               }}
             />
             <AvatarFallback className="bg-primary/20 text-neon-green font-mono">
