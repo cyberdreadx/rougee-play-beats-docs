@@ -94,7 +94,7 @@ const AppContent = () => {
       <Footer />
       <AudioPlayer 
         currentSong={activeSong}
-        currentAd={radioPlayer.currentAd}
+        currentAd={isRadioActive ? radioPlayer.currentAd : null}
         isPlaying={activeIsPlaying}
         onPlayPause={isRadioActive ? radioPlayer.togglePlayPause : audioPlayer.togglePlayPause}
         onSongEnd={isRadioActive ? radioPlayer.onMediaEnd : audioPlayer.onSongEnd}
