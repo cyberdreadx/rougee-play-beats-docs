@@ -35,18 +35,35 @@ serve(async (req) => {
     const metadataStr = formData.get('metadata') as string;
     const coverFile = formData.get('coverFile') as File;
 
+    console.log('Received form data:', {
+      hasFile: !!file,
+      fileName: file?.name,
+      fileType: file?.type,
+      fileSize: file?.size,
+      hasMetadata: !!metadataStr,
+      hasCover: !!coverFile,
+      coverType: coverFile?.type,
+      coverSize: coverFile?.size
+    });
+
     if (!file) {
-      throw new Error('File is required');
+      console.error('No file provided in form data');
+      return new Response(
+        JSON.stringify({ error: 'File is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
     // Validate audio file
     if (file.size > 50 * 1024 * 1024) {
+      console.error('Audio file too large:', file.size);
       return new Response(JSON.stringify({ error: 'Audio too large (max 50MB)' }), 
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
-    const validAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a'];
+    const validAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/mp4'];
     if (!validAudioTypes.includes(file.type)) {
-      return new Response(JSON.stringify({ error: 'Invalid audio type' }), 
+      console.error('Invalid audio type:', file.type, 'Valid types:', validAudioTypes);
+      return new Response(JSON.stringify({ error: `Invalid audio type: ${file.type}. Allowed: ${validAudioTypes.join(', ')}` }), 
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
     }
 
