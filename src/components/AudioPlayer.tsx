@@ -197,14 +197,19 @@ const AudioPlayer = ({
   const displayCover = isAd 
     ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
     : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
+  const preferredGateway = 'https://gateway.lighthouse.storage/ipfs';
   const audioSource = isAd 
-    ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true) // Use proxy first for reliability (Range/CORS)
-    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : "");
+    ? getIPFSGatewayUrl(currentAd.audio_cid, preferredGateway, false) // Prefer direct Lighthouse
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, preferredGateway, false) : "");
 
-  // Get fallback URLs for robust loading (Lighthouse primary, other gateways as backup)
-  const fallbackUrls = isAd 
-    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, true) // Proxy + gateways fallback
-    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, true) : []);
+  // Build fallback URLs: other public gateways, then proxy last
+  const baseFallbacks = isAd 
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // Direct IPFS gateways
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
+  const proxyUrl = isAd 
+    ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true)
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : '');
+  const fallbackUrls = proxyUrl ? [...baseFallbacks, proxyUrl] : baseFallbacks;
 
   // Debug logging
   useEffect(() => {
@@ -232,6 +237,7 @@ const AudioPlayer = ({
       // Update the audio source
       const audio = audioRef.current;
       if (audio) {
+        try { audio.pause(); } catch {}
         audio.src = fallbackUrls[nextIndex];
         audio.load();
         if (isPlaying) {
