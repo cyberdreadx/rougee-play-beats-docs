@@ -211,11 +211,11 @@ const fetchSongs = async () => {
               <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                 {/* Mobile: Show like button */}
                 <div className="md:hidden">
-                  <LikeButton songId={song.id} size="sm" showCount={false} />
+                  <LikeButton songId={song.id} size="sm" showCount={true} />
                 </div>
                 {/* Desktop: Show like and report buttons */}
                 <div className="hidden md:flex items-center gap-2">
-                  <LikeButton songId={song.id} size="sm" showCount={false} />
+                  <LikeButton songId={song.id} size="sm" showCount={true} />
                   <ReportButton songId={song.id} />
                 </div>
                 <Button 
