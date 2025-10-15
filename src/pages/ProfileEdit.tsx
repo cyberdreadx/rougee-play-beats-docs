@@ -15,11 +15,13 @@ import { Upload, ExternalLink, Loader2, CheckCircle2, Clock } from "lucide-react
 import { toast } from "@/hooks/use-toast";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
+import { usePrivyToken } from "@/hooks/usePrivyToken";
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
   const { fullAddress, isConnected, isPrivyReady } = useWallet();
   const { profile, loading, updating, updateProfile } = useCurrentUserProfile();
+  const { getAuthHeaders } = usePrivyToken();
 
   const [displayName, setDisplayName] = useState("");
   const [artistName, setArtistName] = useState("");
@@ -111,16 +113,14 @@ const ProfileEdit = () => {
     
     setRequestingVerification(true);
     try {
-      const { error } = await supabase
-        .from('verification_requests')
-        .insert({
-          wallet_address: fullAddress,
-          message: verificationMessage,
-          status: 'pending'
-        });
-      
+      const headers = await getAuthHeaders();
+      const { error } = await supabase.functions.invoke('request-verification', {
+        headers,
+        body: { message: verificationMessage },
+      });
+
       if (error) throw error;
-      
+
       setVerificationStatus('pending');
       toast({
         title: "Verification Requested",

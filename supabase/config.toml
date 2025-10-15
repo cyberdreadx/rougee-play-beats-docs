@@ -58,3 +58,6 @@ verify_jwt = false
 
 [functions.ipfs-proxy]
 verify_jwt = false
+
+[functions.request-verification]
+verify_jwt = false
