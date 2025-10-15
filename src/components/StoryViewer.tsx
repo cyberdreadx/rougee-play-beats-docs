@@ -140,6 +140,12 @@ const StoryViewer = ({
             src={supabase.storage.from('stories').getPublicUrl(currentStory.media_path).data.publicUrl}
             autoPlay
             muted
+            playsInline
+            // iOS Safari inline playback hint
+            // @ts-ignore
+            webkit-playsinline
+            controls={false}
+            preload="metadata"
             className="max-h-full max-w-full object-contain"
             onEnded={handleNext}
           />
