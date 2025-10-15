@@ -1,9 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/hooks/useWallet";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
-import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
-import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +104,6 @@ const BecomeArtist = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
         </div>
@@ -116,8 +113,6 @@ const BecomeArtist = () => {
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pb-0">
-      <Header />
-      <Navigation />
       <NetworkInfo />
 
       <div className="max-w-6xl mx-auto px-6 py-12">

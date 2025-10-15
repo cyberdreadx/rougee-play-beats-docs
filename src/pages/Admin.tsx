@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "@/components/Header";
-import Navigation from "@/components/Navigation";
 import NetworkInfo from "@/components/NetworkInfo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -452,8 +450,6 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header />
-      <Navigation />
       <NetworkInfo />
 
       <div className="max-w-7xl mx-auto px-6 py-8">

@@ -8,8 +8,6 @@ import { Card } from '@/components/ui/card';
 import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
-import Header from '@/components/Header';
-import Navigation from '@/components/Navigation';
 import StoriesBar from '@/components/StoriesBar';
 import LikeButton from '@/components/LikeButton';
 import { usePrivy } from '@privy-io/react-auth';
@@ -313,8 +311,6 @@ export default function Feed() {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
   return <>
-      <Header />
-      <Navigation />
       <StoriesBar />
       <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-4">
         <div className="max-w-7xl mx-auto">

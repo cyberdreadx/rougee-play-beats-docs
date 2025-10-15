@@ -9,14 +9,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import SongTradingHistory from "@/components/SongTradingHistory";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
-import Navigation from "@/components/Navigation";
 import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
@@ -29,7 +28,7 @@ import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXR
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
-import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check } from "lucide-react";
+import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink } from "lucide-react";
 
 interface Song {
   id: string;
@@ -94,6 +93,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [holders, setHolders] = useState<Array<{ address: string; balance: string; percentage: number }>>([]);
   const [loadingHolders, setLoadingHolders] = useState(false);
+  const [holderCount, setHolderCount] = useState<number>(0);
 
   // Fetch artist profile from IPFS
   const { profile: artistProfile } = useArtistProfile(song?.wallet_address || null);
@@ -162,15 +162,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const xrgeUsdPrice = prices.xrge || 0;
   
   // Calculate different market cap metrics in USD
-  // Market cap = current price × tokens sold (not remaining supply)
+  // For bonding curves, "Market Cap" = Total Value Locked (TVL) = actual XRGE spent
+  // NOT currentPrice × tokensSold (that's incorrect for bonding curves since price increases)
   const tokensSold = activeTradingSupply !== undefined ? (990_000_000 - activeTradingSupply) : undefined;
-  const circulatingMarketCap = currentPrice && tokensSold ? currentPrice * tokensSold : undefined;
+  const marketCapUSD = xrgeRaised * xrgeUsdPrice; // TVL = actual value locked in contract
   const fullyDilutedValue = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
   const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders
   const realizedValueUSD = xrgeRaised * xrgeUsdPrice; // Convert to USD
   
-  // Use circulating market cap as the primary display
-  const marketCap = circulatingMarketCap;
+  // Use TVL (Total Value Locked) as the market cap
+  const marketCap = marketCapUSD;
   
   // Check if data looks like initial/unrealistic values
   const hasRealisticData = xrgeRaised > 0;
@@ -243,40 +244,119 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     
     setLoadingHolders(true);
     try {
-      // Fetch holders from song_purchases table
-      const { data: purchases, error } = await supabase
-        .from('song_purchases')
-        .select('buyer_wallet_address')
-        .eq('song_id', songId);
+      // Use on-chain method to get holder count by querying Transfer events
+      // This is more reliable than BaseScan API for new tokens
+      
+      if (!publicClient) {
+        throw new Error('Public client not available');
+      }
 
-      if (error) throw error;
+      // Get all Transfer events to calculate unique holders
+      const ERC20_TRANSFER_ABI = [
+        {
+          type: 'event',
+          name: 'Transfer',
+          inputs: [
+            { name: 'from', type: 'address', indexed: true },
+            { name: 'to', type: 'address', indexed: true },
+            { name: 'value', type: 'uint256', indexed: false }
+          ]
+        }
+      ] as const;
 
-      // Count unique holders
-      const holderCounts = purchases?.reduce((acc: Record<string, number>, purchase) => {
-        const addr = purchase.buyer_wallet_address.toLowerCase();
-        acc[addr] = (acc[addr] || 0) + 1;
-        return acc;
-      }, {});
+      console.log('Fetching Transfer events for token:', songTokenAddress);
+      
+      // Get contract creation/deployment block from song metadata
+      const { data: songData } = await supabase
+        .from('songs')
+        .select('created_at')
+        .eq('id', songId)
+        .single();
+      
+      // Get Transfer events from contract deployment
+      // Base has ~2 second block time, estimate blocks since creation
+      const currentBlock = await publicClient.getBlockNumber();
+      const blocksSinceCreation = songData?.created_at 
+        ? Math.min(Math.floor((Date.now() - new Date(songData.created_at).getTime()) / 2000), 100000)
+        : 50000; // Default to 50k blocks if unknown
+      
+      const fromBlock = currentBlock - BigInt(blocksSinceCreation);
+      
+      console.log(`Querying from block ${fromBlock} to ${currentBlock} (${blocksSinceCreation} blocks)`);
+      
+      const logs = await publicClient.getLogs({
+        address: songTokenAddress,
+        event: ERC20_TRANSFER_ABI[0],
+        fromBlock,
+        toBlock: 'latest'
+      });
 
-      // Convert to array and sort by purchase count
-      const holdersList = Object.entries(holderCounts || {})
-        .map(([address, count]) => ({
+      // Track unique holders (recipients of transfers, excluding zero address)
+      const holderBalances: Record<string, bigint> = {};
+      
+      for (const log of logs) {
+        const { args } = log as any;
+        const from = args.from?.toLowerCase();
+        const to = args.to?.toLowerCase();
+        const value = BigInt(args.value || 0);
+        
+        // Skip zero address
+        const zeroAddress = '0x0000000000000000000000000000000000000000';
+        
+        // Subtract from sender (if not minting)
+        if (from && from !== zeroAddress) {
+          holderBalances[from] = (holderBalances[from] || BigInt(0)) - value;
+        }
+        
+        // Add to recipient (if not burning)
+        if (to && to !== zeroAddress) {
+          holderBalances[to] = (holderBalances[to] || BigInt(0)) + value;
+        }
+      }
+
+      // Filter out zero/negative balances and format
+      const holdersWithBalance = Object.entries(holderBalances)
+        .filter(([_, balance]) => balance > BigInt(0))
+        .map(([address, balance]) => ({
           address,
-          balance: count.toString(),
-          percentage: 0 // Will calculate after we have total
+          rawBalance: balance,
+          balance: (Number(balance) / 1e18).toFixed(2),
+          percentage: 0 // Will calculate after
         }))
-        .sort((a, b) => parseInt(b.balance) - parseInt(a.balance));
+        .sort((a, b) => Number(b.rawBalance - a.rawBalance));
 
       // Calculate percentages
-      const total = holdersList.reduce((sum, h) => sum + parseInt(h.balance), 0);
-      const holdersWithPercentage = holdersList.map(h => ({
-        ...h,
-        percentage: total > 0 ? (parseInt(h.balance) / total) * 100 : 0
+      const totalHeld = holdersWithBalance.reduce((sum, h) => sum + h.rawBalance, BigInt(0));
+      const formattedHolders = holdersWithBalance.map(h => ({
+        address: h.address,
+        balance: h.balance,
+        percentage: totalHeld > BigInt(0) 
+          ? (Number(h.rawBalance * BigInt(10000) / totalHeld) / 100)
+          : 0
       }));
 
-      setHolders(holdersWithPercentage.slice(0, 10)); // Top 10
+      setHolders(formattedHolders.slice(0, 10)); // Top 10
+      setHolderCount(formattedHolders.length);
+      
+      console.log(`Found ${formattedHolders.length} holders via Transfer events`);
+      
     } catch (error) {
-      console.error('Error fetching holders:', error);
+      console.error('Error fetching holders from blockchain:', error);
+      
+      // Fallback: count unique buyers from purchases table
+      try {
+        const { data: purchases } = await supabase
+          .from('song_purchases')
+          .select('buyer_wallet_address')
+          .eq('song_id', songId);
+        
+        const uniqueHolders = new Set(purchases?.map(p => p.buyer_wallet_address.toLowerCase()));
+        setHolderCount(uniqueHolders.size);
+        console.log(`Fallback: Found ${uniqueHolders.size} unique buyers from database`);
+      } catch (fallbackError) {
+        console.error('Fallback holder count failed:', fallbackError);
+        setHolderCount(0);
+      }
     } finally {
       setLoadingHolders(false);
     }
@@ -1020,7 +1100,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   if (!song) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="max-w-7xl mx-auto px-6 py-12 text-center">
           <h1 className="text-2xl font-mono text-muted-foreground">Song not found</h1>
           <Button onClick={() => navigate("/")} className="mt-4" variant="outline">
@@ -1052,8 +1131,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         <meta name="twitter:image" content={coverImageUrl} />
       </Helmet>
 
-      <Header />
-      <Navigation />
       <NetworkInfo />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8">
@@ -1243,20 +1320,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   <div className="space-y-2 text-xs md:text-sm font-mono">
                     {hasRealisticData ? (
                       <>
-                      {circulatingMarketCap !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground" title="Total value locked in the bonding curve (actual XRGE spent by all buyers)">Market Cap (TVL):</span>
+                        <span className="text-foreground font-semibold">
+                          ${marketCapUSD < 1 ? marketCapUSD.toFixed(6) : marketCapUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                        </span>
+                      </div>
+                      {fullyDilutedValue !== undefined && (
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground" title="Current price × tokens sold">Market Cap:</span>
-                          <span className="text-foreground font-semibold">
-                            ${circulatingMarketCap < 1 ? circulatingMarketCap.toFixed(6) : circulatingMarketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          <span className="text-muted-foreground" title="Market cap if all tokens were sold at current price">Fully Diluted Cap:</span>
+                          <span className="text-neon-green font-semibold">
+                            ${fullyDilutedValue < 1 ? fullyDilutedValue.toFixed(6) : fullyDilutedValue.toLocaleString(undefined, {maximumFractionDigits: 2})}
                           </span>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground" title="Total XRGE deposited into bonding curve">Total Value Locked:</span>
-                        <span className="text-neon-green font-semibold">
-                          ${realizedValueUSD < 1 ? realizedValueUSD.toFixed(6) : realizedValueUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
-                        </span>
-                      </div>
                       <div className="flex justify-between text-xs opacity-70">
                         <span className="text-muted-foreground" title="All-time XRGE spent on this token">Total Traded (XRGE):</span>
                         <span className="text-foreground">
@@ -1271,25 +1348,34 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                           </span>
                         </div>
                       )}
-                      {fullyDilutedValue !== undefined && fullyDilutedValue !== circulatingMarketCap && (
-                        <div className="flex justify-between text-xs opacity-70">
-                          <span className="text-muted-foreground">Fully Diluted:</span>
-                          <span className="text-foreground">
-                            ${fullyDilutedValue < 1 ? fullyDilutedValue.toFixed(6) : fullyDilutedValue.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground" title="Number of unique wallets holding this token">Holders:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-semibold">
+                            {loadingHolders ? '...' : holderCount.toLocaleString()}
                           </span>
+                          {songTokenAddress && (
+                            <a
+                              href={`https://basescan.org/token/${songTokenAddress}#balances`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-neon-green hover:text-neon-green/80 transition-colors"
+                              title="View holders on BaseScan"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </>
                   ) : (
                     <>
-                      {circulatingMarketCap !== undefined && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Initial Market Cap:</span>
-                          <span className="text-foreground opacity-60">
-                            ${circulatingMarketCap < 1 ? circulatingMarketCap.toFixed(6) : circulatingMarketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Market Cap:</span>
+                        <span className="text-foreground opacity-60">
+                          $0.00
+                        </span>
+                      </div>
                       {activeTradingSupply !== undefined && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Starting Supply:</span>
@@ -1358,8 +1444,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="trade" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 h-auto">
+          <TabsList className="grid w-full grid-cols-4 mb-4 md:mb-6 h-auto">
             <TabsTrigger value="trade" className="text-xs sm:text-sm">TRADE</TabsTrigger>
+            <TabsTrigger value="chart" className="text-xs sm:text-sm">CHART</TabsTrigger>
             <TabsTrigger value="holders" className="text-xs sm:text-sm">HOLDERS</TabsTrigger>
             <TabsTrigger value="comments" className="text-xs sm:text-sm">
               <span className="hidden sm:inline">COMMENTS ({comments.length})</span>
@@ -1673,6 +1760,16 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 </div>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Chart Tab */}
+          <TabsContent value="chart" className="mt-0">
+            {songTokenAddress && (
+              <SongTradingHistory 
+                tokenAddress={songTokenAddress}
+                xrgeUsdPrice={prices.xrge || 0}
+              />
+            )}
           </TabsContent>
 
           {/* Holders Tab */}

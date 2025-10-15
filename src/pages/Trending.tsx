@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Header from "@/components/Header";
-import Navigation from "@/components/Navigation";
 import NetworkInfo from "@/components/NetworkInfo";
 import { Loader2, TrendingUp, TrendingDown, Flame, Music } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
@@ -395,21 +393,18 @@ const Trending = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-24 md:pb-20">
-        <Header />
         <NetworkInfo />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
           </div>
         </main>
-        <Navigation />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-20">
-      <Header />
       <NetworkInfo />
       
       {/* Secondary Navigation */}
@@ -610,8 +605,6 @@ const Trending = () => {
           </TabsContent>
         </Tabs>
       </main>
-
-      <Navigation />
     </div>
   );
 };

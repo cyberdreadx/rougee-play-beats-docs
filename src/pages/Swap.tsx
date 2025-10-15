@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Header from "@/components/Header";
-import Navigation from "@/components/Navigation";
 import { useWallet } from "@/hooks/useWallet";
 import { 
   useXRGESwap, 
@@ -580,8 +578,6 @@ const Swap = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-      <Navigation />
       
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-2xl mb-24 md:mb-8">
         <div className="mb-8">

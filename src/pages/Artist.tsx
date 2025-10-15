@@ -1,8 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import Header from "@/components/Header";
 import NetworkInfo from "@/components/NetworkInfo";
-import Navigation from "@/components/Navigation";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useWallet } from "@/hooks/useWallet";
 import StoriesBar from "@/components/StoriesBar";
@@ -19,6 +17,8 @@ import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { usePublicClient } from "wagmi";
+import type { Address } from "viem";
 
 interface Song {
   id: string;
@@ -66,6 +66,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const navigate = useNavigate();
   const { fullAddress } = useWallet();
   const { profile, loading, error } = useArtistProfile(walletAddress || null);
+  const publicClient = usePublicClient();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -139,34 +140,163 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   }, [walletAddress, refreshKey]);
 
   useEffect(() => {
-    const fetchSocialStats = async () => {
-      if (!walletAddress) return;
+    const fetchHoldersFromBlockchain = async () => {
+      if (!walletAddress || !publicClient) return;
 
       try {
         setLoadingStats(true);
+        console.log('🔗 Fetching holders from blockchain for artist:', walletAddress);
         
-        // Get holders count (people who bought this artist's songs)
-        const { data: holdersData, error: holdersError } = await supabase
-          .rpc('get_holders_count', { artist_wallet: walletAddress });
+        // Get all artist's songs with token addresses
+        const { data: artistSongs, error: songsError } = await supabase
+          .from("songs")
+          .select("id, token_address, created_at")
+          .ilike("wallet_address", walletAddress)
+          .not('token_address', 'is', null);
 
-        if (holdersError) throw holdersError;
-        setHoldersCount(holdersData || 0);
+        if (songsError) throw songsError;
 
-        // Get holdings count (artists whose songs this wallet bought)
-        const { data: holdingsData, error: holdingsError } = await supabase
-          .rpc('get_holdings_count', { buyer_wallet: walletAddress });
+        if (!artistSongs || artistSongs.length === 0) {
+          console.log('No songs with token addresses found');
+          setHoldersCount(0);
+          setHoldingsCount(0);
+          setLoadingStats(false);
+          return;
+        }
 
-        if (holdingsError) throw holdingsError;
-        setHoldingsCount(holdingsData || 0);
+        console.log(`Found ${artistSongs.length} songs with tokens`);
+
+        // ERC20 Transfer event ABI
+        const ERC20_TRANSFER_ABI = [
+          {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { name: 'from', type: 'address', indexed: true },
+              { name: 'to', type: 'address', indexed: true },
+              { name: 'value', type: 'uint256', indexed: false }
+            ]
+          }
+        ] as const;
+
+        const allHolders = new Set<string>();
+        const currentBlock = await publicClient.getBlockNumber();
+
+        // Fetch holders for each song token
+        for (const song of artistSongs) {
+          if (!song.token_address) continue;
+
+          try {
+            // Calculate blocks since creation
+            const blocksSinceCreation = song.created_at 
+              ? Math.min(Math.floor((Date.now() - new Date(song.created_at).getTime()) / 2000), 100000)
+              : 50000;
+            
+            const fromBlock = currentBlock - BigInt(blocksSinceCreation);
+
+            console.log(`Querying token ${song.token_address} from block ${fromBlock}`);
+
+            const logs = await publicClient.getLogs({
+              address: song.token_address as Address,
+              event: ERC20_TRANSFER_ABI[0],
+              fromBlock,
+              toBlock: 'latest'
+            });
+
+            // Track holder balances
+            const holderBalances: Record<string, bigint> = {};
+            
+            for (const log of logs) {
+              const { args } = log as any;
+              const from = args.from?.toLowerCase();
+              const to = args.to?.toLowerCase();
+              const value = BigInt(args.value || 0);
+              
+              const zeroAddress = '0x0000000000000000000000000000000000000000';
+              
+              if (from && from !== zeroAddress) {
+                holderBalances[from] = (holderBalances[from] || BigInt(0)) - value;
+              }
+              
+              if (to && to !== zeroAddress) {
+                holderBalances[to] = (holderBalances[to] || BigInt(0)) + value;
+              }
+            }
+
+            // Add addresses with positive balances to unique holders set
+            Object.entries(holderBalances).forEach(([address, balance]) => {
+              if (balance > BigInt(0)) {
+                allHolders.add(address.toLowerCase());
+              }
+            });
+
+            console.log(`Token ${song.token_address}: ${Object.entries(holderBalances).filter(([_, bal]) => bal > BigInt(0)).length} holders`);
+          } catch (tokenError) {
+            console.error(`Error fetching holders for token ${song.token_address}:`, tokenError);
+          }
+        }
+
+        const uniqueHoldersCount = allHolders.size;
+        console.log(`✅ Total unique holders across all songs: ${uniqueHoldersCount}`);
+        setHoldersCount(uniqueHoldersCount);
+
+        // For holdings count, check what tokens this wallet holds
+        // (tokens from other artists that this wallet address has bought)
+        try {
+          const { data: allSongs, error: allSongsError } = await supabase
+            .from("songs")
+            .select("token_address, wallet_address")
+            .not('token_address', 'is', null)
+            .neq('wallet_address', walletAddress); // Songs NOT by this artist
+
+          if (allSongsError) throw allSongsError;
+
+          const holdingsSet = new Set<string>();
+
+          for (const song of (allSongs || [])) {
+            if (!song.token_address) continue;
+
+            try {
+              // Check balance of this wallet for this token
+              const balance = await publicClient.readContract({
+                address: song.token_address as Address,
+                abi: [{
+                  name: 'balanceOf',
+                  type: 'function',
+                  stateMutability: 'view',
+                  inputs: [{ name: 'account', type: 'address' }],
+                  outputs: [{ name: 'balance', type: 'uint256' }]
+                }],
+                functionName: 'balanceOf',
+                args: [walletAddress as Address]
+              } as any);
+
+              if (balance && BigInt(balance as any) > BigInt(0)) {
+                holdingsSet.add(song.wallet_address.toLowerCase());
+              }
+            } catch (balanceError) {
+              console.error(`Error checking balance for ${song.token_address}:`, balanceError);
+            }
+          }
+
+          console.log(`✅ Holdings count (artists whose tokens this wallet holds): ${holdingsSet.size}`);
+          setHoldingsCount(holdingsSet.size);
+        } catch (holdingsError) {
+          console.error('Error fetching holdings:', holdingsError);
+          setHoldingsCount(0);
+        }
+
       } catch (err) {
-        console.error("Error fetching social stats:", err);
+        console.error("Error fetching blockchain stats:", err);
+        setHoldersCount(0);
+        setHoldingsCount(0);
       } finally {
         setLoadingStats(false);
       }
     };
 
-    fetchSocialStats();
-  }, [walletAddress]);
+    fetchHoldersFromBlockchain();
+  }, [walletAddress, publicClient]);
 
   const toggleComments = async (postId: string) => {
     const isExpanded = expandedComments.has(postId);
@@ -264,7 +394,6 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
         </div>
@@ -275,7 +404,6 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <p className="font-mono text-muted-foreground">Artist profile not found</p>
           <Button variant="neon" onClick={() => navigate("/")}>
@@ -292,8 +420,6 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
   return (
     <div className="min-h-screen bg-background pb-16 md:pb-0">
-      <Header />
-      <Navigation />
       <NetworkInfo />
 
       {/* Cover Photo Hero */}
@@ -366,12 +492,14 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <Card className="console-bg tech-border p-4 text-center">
             <Music className="h-6 w-6 mx-auto mb-2 text-neon-green" />
-            <p className="text-2xl font-mono font-bold">{profile.total_songs || 0}</p>
+            <p className="text-2xl font-mono font-bold">{songs.length}</p>
             <p className="text-xs font-mono text-muted-foreground">SONGS</p>
           </Card>
           <Card className="console-bg tech-border p-4 text-center">
             <Play className="h-6 w-6 mx-auto mb-2 text-neon-green" />
-            <p className="text-2xl font-mono font-bold">{profile.total_plays || 0}</p>
+            <p className="text-2xl font-mono font-bold">
+              {songs.reduce((total, song) => total + (song.play_count || 0), 0)}
+            </p>
             <p className="text-xs font-mono text-muted-foreground">PLAYS</p>
           </Card>
           <Card className="console-bg tech-border p-4 text-center">
