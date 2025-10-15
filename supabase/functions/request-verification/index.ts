@@ -13,7 +13,12 @@ Deno.serve(async (req) => {
 
   try {
     // Validate Privy JWT and extract the caller's wallet
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    console.log('🔍 Request headers:', Object.fromEntries(req.headers.entries()));
+    const authHeader = req.headers.get('authorization');
+    console.log('🔑 Auth header present:', !!authHeader);
+    
+    const walletAddress = await requireWalletAddress(authHeader);
+    console.log('✅ Extracted wallet address:', walletAddress);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -44,8 +49,16 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('request-verification error:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.stack : undefined
+      }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
