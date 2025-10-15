@@ -157,112 +157,24 @@ const fetchSongs = async () => {
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-3 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg group gap-2 md:gap-3 active:scale-95"
-              style={{ 
-                transition: 'all 0.3s ease',
-                ':hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderColor: 'white',
-                  borderWidth: '2px',
-                  transform: 'scale(1.02)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 255, 0, 0.25)'
-                }
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.borderColor = 'white';
-                e.currentTarget.style.borderWidth = '2px';
-                e.currentTarget.style.transform = 'scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 255, 0, 0.25)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.borderWidth = '1px';
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-              }}
-              onTouchStart={(e) => {
-                // Touch feedback for mobile
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                e.currentTarget.style.borderColor = 'white';
-                e.currentTarget.style.borderWidth = '2px';
-                e.currentTarget.style.transform = 'scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 25px 50px -12px rgba(0, 255, 0, 0.25)';
-              }}
-              onTouchEnd={(e) => {
-                // Keep the effect for a moment on mobile
-                setTimeout(() => {
-                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.borderWidth = '1px';
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                }, 150);
-              }}
+              className="flex items-center justify-between p-3 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg hover:bg-white/10 hover:border-white hover:border-2 hover:scale-[1.02] hover:shadow-[0_25px_50px_-12px_rgba(0,255,0,0.25)] group gap-2 md:gap-3 active:scale-95 transition-all duration-300"
             >
               <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                 <span className="text-neon-green font-mono font-bold text-base md:text-lg w-6 md:w-8 flex-shrink-0 group-hover:scale-110 group-hover:drop-shadow-lg group-hover:drop-shadow-neon-green/50 transition-all duration-300">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
-                  <div 
-                    className="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-neon-green/30 shadow-md flex-shrink-0"
-                    onMouseEnter={(e) => {
-                      const img = e.currentTarget.querySelector('img');
-                      const overlay = e.currentTarget.querySelector('.play-overlay');
-                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
-                      if (img) img.style.filter = 'brightness(1.1)';
-                      if (overlay) overlay.style.opacity = '1';
-                      if (gradient) gradient.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      const img = e.currentTarget.querySelector('img');
-                      const overlay = e.currentTarget.querySelector('.play-overlay');
-                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
-                      if (img) img.style.filter = 'brightness(1)';
-                      if (overlay) overlay.style.opacity = '0';
-                      if (gradient) gradient.style.opacity = '0';
-                      e.currentTarget.style.transform = 'scale(1)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onTouchStart={(e) => {
-                      // Touch feedback for mobile album art
-                      const img = e.currentTarget.querySelector('img');
-                      const overlay = e.currentTarget.querySelector('.play-overlay');
-                      const gradient = e.currentTarget.querySelector('.gradient-overlay');
-                      if (img) img.style.filter = 'brightness(1.1)';
-                      if (overlay) overlay.style.opacity = '1';
-                      if (gradient) gradient.style.opacity = '1';
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
-                    }}
-                    onTouchEnd={(e) => {
-                      // Keep the effect for a moment on mobile
-                      setTimeout(() => {
-                        const img = e.currentTarget.querySelector('img');
-                        const overlay = e.currentTarget.querySelector('.play-overlay');
-                        const gradient = e.currentTarget.querySelector('.gradient-overlay');
-                        if (img) img.style.filter = 'brightness(1)';
-                        if (overlay) overlay.style.opacity = '0';
-                        if (gradient) gradient.style.opacity = '0';
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                      }, 200);
-                    }}
-                    style={{ transition: 'all 0.3s ease' }}
+                <div 
+                    className="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-neon-green/30 shadow-md flex-shrink-0 hover:scale-105 hover:shadow-[0_0_20px_rgba(0,255,0,0.3)] transition-all duration-300 group/cover"
                   >
                     <img 
                       src={getIPFSGatewayUrl(song.cover_cid)}
                       alt={song.title}
-                      className="w-full h-full object-cover"
-                      style={{ transition: 'filter 0.3s ease' }}
+                      className="w-full h-full object-cover group-hover/cover:brightness-110 transition-all duration-300"
                     />
-                    <div className="gradient-overlay absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0" style={{ transition: 'opacity 0.3s ease' }} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300" />
                     {/* Play button overlay on hover */}
-                    <div className="play-overlay absolute inset-0 flex items-center justify-center opacity-0" style={{ transition: 'opacity 0.3s ease' }}>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300">
                       <div className="w-8 h-8 md:w-10 md:h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg">
                         {isCurrentSong(song) && isPlaying ? (
                           <Pause className="w-4 h-4 md:w-5 md:h-5 text-black" />

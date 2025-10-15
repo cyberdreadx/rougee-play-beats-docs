@@ -42,11 +42,11 @@ export const useAudioPlayer = () => {
       setIsPlaying(true);
       incrementPlayCount(song.id);
       
-      if (newPlaylist && newPlaylist.length > 0) {
-        setPlaylist(newPlaylist);
-        const index = newPlaylist.findIndex(s => s.id === song.id);
-        setCurrentIndex(index >= 0 ? index : 0);
-      }
+      // If playlist provided, use it; otherwise create single-song playlist
+      const playlistToUse = newPlaylist && newPlaylist.length > 0 ? newPlaylist : [song];
+      setPlaylist(playlistToUse);
+      const index = playlistToUse.findIndex(s => s.id === song.id);
+      setCurrentIndex(index >= 0 ? index : 0);
     }
   }, [currentSong, isPlaying, incrementPlayCount]);
 
