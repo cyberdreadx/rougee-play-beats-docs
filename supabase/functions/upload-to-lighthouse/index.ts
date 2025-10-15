@@ -69,8 +69,9 @@ serve(async (req) => {
 
     // Validate cover if provided
     if (coverFile && coverFile.size > 0) {
-      if (coverFile.size > 5 * 1024 * 1024) {
-        return new Response(JSON.stringify({ error: 'Cover too large (max 5MB)' }), 
+      if (coverFile.size > 20 * 1024 * 1024) {
+        console.error('Cover image too large:', coverFile.size);
+        return new Response(JSON.stringify({ error: 'Cover image too large (max 20MB)' }), 
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
       }
       const validImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];

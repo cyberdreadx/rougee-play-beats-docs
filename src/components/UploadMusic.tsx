@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Music, Upload, AlertTriangle } from "lucide-react";
+import { Music, Upload, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/hooks/useWallet";
@@ -217,7 +217,7 @@ export default function UploadMusic() {
                       Drop your CD cover here or click to browse
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      JPG, PNG up to 10MB
+                      JPG, PNG, WEBP up to 20MB
                     </p>
                   </>
                 )}
@@ -234,8 +234,12 @@ export default function UploadMusic() {
               onChange={handleAudioChange}
               disabled={uploading || scanning}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              MP3, WAV, M4A, OGG up to 50MB
+            </p>
             {scanning && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-yellow-500 mt-1 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Scanning for copyright...
               </p>
             )}
