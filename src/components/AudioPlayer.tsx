@@ -198,13 +198,13 @@ const AudioPlayer = ({
     ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
     : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
   const audioSource = isAd 
-    ? getIPFSGatewayUrl(currentAd.audio_cid) // Direct from Lighthouse (fastest)
-    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid) : "");
+    ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true) // Use proxy first for reliability (Range/CORS)
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : "");
 
   // Get fallback URLs for robust loading (Lighthouse primary, other gateways as backup)
   const fallbackUrls = isAd 
-    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // No proxy, direct IPFS
-    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, true) // Proxy + gateways fallback
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, true) : []);
 
   // Debug logging
   useEffect(() => {
@@ -610,6 +610,7 @@ const AudioPlayer = ({
 
       {/* Hidden Audio Element */}
       <audio
+        key={(currentSong?.id || currentAd?.id) ?? 'no-media'}
         ref={audioRef}
         src={fallbackUrls[currentAudioUrlIndex] || audioSource}
         preload="metadata"
