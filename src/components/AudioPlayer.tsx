@@ -184,7 +184,29 @@ const AudioPlayer = ({
   const toggleMute = () => {
     setIsMuted(!isMuted);
   };
-
+  
+  // Ensure play/pause runs in a direct user gesture (iOS Safari requirement)
+  const handlePlayPauseClick = () => {
+    const audio = audioRef.current;
+    if (!audio) {
+      onPlayPause();
+      return;
+    }
+    if (isPlaying) {
+      try { audio.pause(); } catch {}
+      onPlayPause();
+    } else {
+      const p = audio.play();
+      if (p && typeof (p as any).catch === 'function') {
+        (p as Promise<void>).catch((error) => {
+          console.error('Playback error (direct):', error);
+          toast({ title: '❌ Playback failed', description: error.message || 'Could not play audio', variant: 'destructive' });
+        });
+      }
+      onPlayPause();
+    }
+  };
+  
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
@@ -347,7 +369,7 @@ const AudioPlayer = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onPlayPause}
+               onClick={handlePlayPauseClick}
               className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border border-neon-green/50 transition-all hover:scale-110"
             >
               {isPlaying ? (
@@ -509,7 +531,7 @@ const AudioPlayer = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onPlayPause}
+              onClick={handlePlayPauseClick}
               className="h-12 w-12 rounded-full bg-neon-green/20 hover:bg-neon-green/30 border-2 border-neon-green/50 transition-all hover:scale-110 shadow-lg shadow-neon-green/20"
             >
               {isPlaying ? (
