@@ -1179,7 +1179,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     variant="neon" 
                     size="sm"
                     className="flex-1 text-xs sm:text-sm"
-                    onClick={() => song && playSong(song)}
+                    onClick={() => {
+                      console.log('🎵 Play button clicked', { song, hasSong: !!song });
+                      if (song) {
+                        console.log('🎵 Calling playSong with:', song);
+                        playSong(song);
+                      } else {
+                        console.error('❌ No song data available to play');
+                      }
+                    }}
                   >
                     <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY"}
