@@ -386,6 +386,8 @@ const Admin = () => {
       const { error } = await supabase.functions.invoke('admin-process-verification', {
         headers: {
           Authorization: `Bearer ${token}`,
+          'x-privy-token': token,
+          'x-wallet-address': fullAddress.toLowerCase(),
         },
         body: { 
           requestId, 

@@ -4,7 +4,7 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-privy-token, x-wallet-address',
 };
 
 const verificationSchema = z.object({
@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
 
   try {
     // Validate Privy JWT and get wallet address
-    const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    const walletAddress = await requireWalletAddress(req.headers.get('authorization'), req);
 
     // Create service role client
     const supabase = createClient(
