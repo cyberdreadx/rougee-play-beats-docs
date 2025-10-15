@@ -198,13 +198,13 @@ const AudioPlayer = ({
     ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
     : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
   const audioSource = isAd 
-    ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true) // Use proxy first for reliability
-    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : "");
+    ? getIPFSGatewayUrl(currentAd.audio_cid) // Direct from Lighthouse (fastest)
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid) : "");
 
-  // Get fallback URLs for robust loading (Proxy first, then gateways)
+  // Get fallback URLs for robust loading (Lighthouse primary, other gateways as backup)
   const fallbackUrls = isAd 
-    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, true) // More fallbacks via proxy+gateways
-    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, true) : []);
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // No proxy, direct IPFS
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
 
   // Debug logging
   useEffect(() => {
