@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -29,9 +30,16 @@ const ArtistCard = ({
   size = 'medium'
 }: ArtistCardProps) => {
   const navigate = useNavigate();
+  const [avatarError, setAvatarError] = useState(false);
+  const [coverError, setCoverError] = useState(false);
 
-  const coverUrl = coverCid ? getIPFSGatewayUrl(coverCid, undefined, true) : null;
-  const avatarUrl = avatarCid ? getIPFSGatewayUrl(avatarCid, undefined, true) : null;
+  // Use IPFS proxy for more reliable loading
+  const coverUrl = coverCid && !coverError 
+    ? `https://phybdsfwycygroebrsdx.supabase.co/functions/v1/ipfs-proxy/${coverCid}`
+    : null;
+  const avatarUrl = avatarCid && !avatarError
+    ? `https://phybdsfwycygroebrsdx.supabase.co/functions/v1/ipfs-proxy/${avatarCid}`
+    : null;
 
   const sizeClasses = {
     small: 'h-32 w-48',
@@ -60,7 +68,14 @@ const ArtistCard = ({
       <div className="relative h-full p-4 flex flex-col justify-between">
         <div className="flex items-start justify-between">
           <Avatar className="h-12 w-12 border-2 border-neon-green">
-            <AvatarImage src={avatarUrl || undefined} alt={artistName || 'Artist'} />
+            <AvatarImage 
+              src={avatarUrl || undefined} 
+              alt={artistName || 'Artist'}
+              onError={() => {
+                console.warn(`Failed to load avatar for ${artistName}:`, avatarCid);
+                setAvatarError(true);
+              }}
+            />
             <AvatarFallback className="bg-primary/20 text-neon-green font-mono">
               {(artistName || '??').substring(0, 2).toUpperCase()}
             </AvatarFallback>
