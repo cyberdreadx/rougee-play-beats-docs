@@ -357,13 +357,15 @@ const Admin = () => {
       const { data, error } = await supabase.functions.invoke('admin-get-verification-requests', {
         headers: {
           Authorization: `Bearer ${token}`,
+          'x-privy-token': token,
+          'x-wallet-address': fullAddress.toLowerCase(),
         },
       });
 
       if (error) throw error;
 
       console.log('Verification requests loaded:', data);
-      setVerificationRequests(data || []);
+      setVerificationRequests((data as any)?.data ?? (Array.isArray(data) ? data : []));
     } catch (error) {
       console.error('Error fetching verification requests:', error);
       toast({
