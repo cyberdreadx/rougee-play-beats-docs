@@ -20,22 +20,33 @@ export const usePrivyWagmi = () => {
       // If wagmi is already connected, we're good
       if (isConnected) return;
 
-      // Get Privy's embedded wallet
+      // Get the primary wallet (external wallet first, then embedded)
+      const externalWallet = wallets.find(
+        (wallet) => wallet.walletClientType !== 'privy' && wallet.walletClientType !== 'embedded_wallet'
+      );
       const embeddedWallet = wallets.find(
-        (wallet) => wallet.walletClientType === 'privy'
+        (wallet) => wallet.walletClientType === 'privy' || wallet.walletClientType === 'embedded_wallet'
       );
 
-      if (!embeddedWallet) {
-        console.log('No Privy embedded wallet found yet');
+      const primaryWallet = externalWallet || embeddedWallet;
+      if (!primaryWallet) {
+        console.log('No wallet found yet');
         return;
       }
 
-      // Find the Privy connector in wagmi
+      console.log('🔍 Available wallets:', wallets.map(w => ({ type: w.walletClientType, address: w.address })));
+      console.log('🎯 Using wallet:', { type: primaryWallet.walletClientType, address: primaryWallet.address });
+
+      // Find the appropriate connector
+      const injected = connectors.find((c) => c.id === 'injected');
       const privyConnector = connectors.find(
         (connector) => /privy/i.test(connector.id) || /privy/i.test(connector.name)
       );
-      const injected = connectors.find((c) => c.id === 'injected');
-      const target = privyConnector || injected || connectors[0];
+      
+      // Prioritize injected connector for external wallets, privy for embedded
+      const target = (primaryWallet.walletClientType !== 'privy' && primaryWallet.walletClientType !== 'embedded_wallet') 
+        ? injected || privyConnector || connectors[0]
+        : privyConnector || injected || connectors[0];
 
       if (!target) {
         console.warn('No wagmi connector available to connect');
@@ -45,6 +56,7 @@ export const usePrivyWagmi = () => {
       if (!isConnected) {
         try {
           console.log('🔌 Connecting wallet to wagmi using', target.name, target.id);
+          console.log('🎯 Target wallet:', { type: primaryWallet.walletClientType, address: primaryWallet.address });
           await connect({ connector: target });
           console.log('✅ Wallet connected to wagmi');
         } catch (error) {

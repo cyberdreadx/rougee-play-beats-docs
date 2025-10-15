@@ -112,14 +112,18 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   
   const ensureWagmiConnected = async () => {
     if (wagmiConnected) return;
-    const privyConn = connectors.find(c => /privy/i.test(c.id) || /privy/i.test(c.name));
+    
+    // Prioritize injected connector for external wallets (like Base wallet)
     const injected = connectors.find(c => c.id === 'injected');
-    const target = privyConn || injected || connectors[0];
+    const privyConn = connectors.find(c => /privy/i.test(c.id) || /privy/i.test(c.name));
+    const target = injected || privyConn || connectors[0];
+    
     if (!target) {
       throw new Error('No wallet connector available');
     }
     try {
       console.log('🔌 Ensuring wagmi connection with', target.name, target.id);
+      console.log('🎯 Using connector priority: injected -> privy -> first available');
       await connectAsync({ connector: target });
     } catch (e) {
       console.error('Wagmi connect failed:', e);

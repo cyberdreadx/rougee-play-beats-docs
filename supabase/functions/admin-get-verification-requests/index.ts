@@ -3,7 +3,7 @@ import { requireWalletAddress } from '../_shared/privy.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-privy-token',
 };
 
 Deno.serve(async (req) => {
@@ -12,8 +12,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('🔍 Admin verification requests - Starting request');
+    
     // Validate Privy JWT and get wallet address
     const walletAddress = await requireWalletAddress(req.headers.get('authorization'));
+    console.log('✅ Wallet address extracted:', walletAddress);
 
     // Create service role client
     const supabase = createClient(
@@ -22,11 +25,19 @@ Deno.serve(async (req) => {
     );
 
     // Check if user is admin using server-side validation
-    const { data: isAdmin } = await supabase
+    console.log('🔍 Checking admin status for wallet:', walletAddress);
+    const { data: isAdmin, error: adminError } = await supabase
       .rpc('is_admin', { check_wallet: walletAddress });
 
+    if (adminError) {
+      console.error('❌ Error checking admin status:', adminError);
+      throw new Error(`Admin check failed: ${adminError.message}`);
+    }
+
+    console.log('🔍 Admin check result:', isAdmin);
+
     if (!isAdmin) {
-      console.log(`Unauthorized admin access attempt from ${walletAddress}`);
+      console.log(`❌ Unauthorized admin access attempt from ${walletAddress}`);
       return new Response(
         JSON.stringify({ error: 'Forbidden: Admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -34,6 +45,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch verification requests with profile data
+    console.log('🔍 Fetching verification requests...');
     const { data: requests, error } = await supabase
       .from('verification_requests')
       .select(`
@@ -50,9 +62,11 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching verification requests:', error);
-      throw error;
+      console.error('❌ Error fetching verification requests:', error);
+      throw new Error(`Database query failed: ${error.message}`);
     }
+
+    console.log('✅ Successfully fetched verification requests:', requests?.length || 0);
 
     console.log(`Admin ${walletAddress} fetched ${requests?.length || 0} verification requests`);
 
