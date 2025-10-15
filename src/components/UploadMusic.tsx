@@ -47,11 +47,7 @@ export default function UploadMusic() {
     // Check file size (20MB = 20 * 1024 * 1024 bytes)
     const maxSize = 20 * 1024 * 1024; // 20MB
     if (file.size > maxSize) {
-      toast({
-        title: "Cover image too large",
-        description: `Cover image must be less than 20MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
-        variant: "destructive",
-      });
+      toast.error(`Cover image too large. Must be less than 20MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`);
       // Clear the input
       e.target.value = '';
       return;
@@ -115,11 +111,7 @@ export default function UploadMusic() {
     // Check file size (50MB = 50 * 1024 * 1024 bytes)
     const maxSize = 50 * 1024 * 1024; // 50MB
     if (file.size > maxSize) {
-      toast({
-        title: "File too large",
-        description: `Audio file must be less than 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
-        variant: "destructive",
-      });
+      toast.error(`Audio file too large. Must be less than 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`);
       // Clear the input
       e.target.value = '';
       return;
