@@ -42,6 +42,7 @@ const StoryViewer = ({
   const [progress, setProgress] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const { fullAddress } = useWallet();
   const { toast } = useToast();
 
@@ -93,7 +94,12 @@ const StoryViewer = ({
 
   useEffect(() => {
     setProgress(0);
-    const duration = currentStory.media_type === "video" ? 15000 : 5000;
+    setVideoDuration(null);
+    
+    const duration = currentStory.media_type === "video" 
+      ? (videoDuration ? videoDuration * 1000 : 15000) 
+      : 5000;
+    
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -105,7 +111,7 @@ const StoryViewer = ({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [currentStoryIndex, currentWalletAddress]);
+  }, [currentStoryIndex, currentWalletAddress, videoDuration]);
 
   const handleNext = () => {
     if (currentStoryIndex < currentStories.length - 1) {
@@ -239,6 +245,7 @@ const StoryViewer = ({
             preload="metadata"
             className="max-h-full max-w-full object-contain"
             onEnded={handleNext}
+            onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
           />
         )}
 
