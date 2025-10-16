@@ -101,6 +101,7 @@ const Swap = () => {
   console.log('🔍 Approval Debug:', {
     hasApproval,
     sellAmount,
+    selectedToken,
     fullAddress,
     isPending,
     isConfirming
@@ -758,13 +759,70 @@ const Swap = () => {
                 <Button
                   type="button"
                   onClick={async () => {
-                    // Auto-handle approval for tokens
-                    if (selectedToken !== "ETH" && !((selectedToken === "USDC" && hasUSDCApproval) || (selectedToken === "KTA" && hasKTAApproval))) {
-                      await handleApprove();
-                      // Wait for approval to propagate
-                      await new Promise(resolve => setTimeout(resolve, 3000));
+                    // Validate amount
+                    if (!buyAmount || Number(buyAmount) <= 0) {
+                      toast({
+                        title: "Invalid Amount",
+                        description: `Please enter a valid ${selectedToken} amount`,
+                        variant: "destructive",
+                      });
+                      return;
                     }
-                    handleBuy();
+
+                    const slippageBps = Number(slippage) * 100;
+
+                    // ETH path needs no approval
+                    if (selectedToken === "ETH") {
+                      handleBuy();
+                      return;
+                    }
+
+                    // Ensure approval (KTA/USDC). We actively poll allowance to avoid stale UI state
+                    const ensureApproval = async (): Promise<boolean> => {
+                      if (selectedToken === "USDC") {
+                        if (!hasUSDCApproval) {
+                          await handleApprove();
+                        }
+                        for (let i = 0; i < 20; i++) {
+                          const res: any = await refetchUSDCApproval();
+                          const ok = res?.data?.[0] ?? false;
+                          if (ok) return true;
+                          await new Promise(r => setTimeout(r, 1500));
+                        }
+                        return false;
+                      }
+
+                      if (selectedToken === "KTA") {
+                        if (!hasKTAApproval) {
+                          await handleApprove();
+                        }
+                        for (let i = 0; i < 20; i++) {
+                          const res: any = await refetchKTAApproval();
+                          const ok = res?.data?.[0] ?? false;
+                          if (ok) return true;
+                          await new Promise(r => setTimeout(r, 1500));
+                        }
+                        return false;
+                      }
+
+                      return true;
+                    };
+
+                    const approved = await ensureApproval();
+                    if (!approved) {
+                      toast({
+                        title: "Still waiting for approval",
+                        description: "Please wait a few seconds and try again.",
+                      });
+                      return;
+                    }
+
+                    // Proceed with swap directly to avoid re-check race conditions
+                    if (selectedToken === "USDC") {
+                      await buyXRGEWithUSDC(buyAmount, slippageBps);
+                    } else if (selectedToken === "KTA") {
+                      await buyXRGEWithKTA(buyAmount, slippageBps);
+                    }
                   }}
                   disabled={
                     isPending || 
