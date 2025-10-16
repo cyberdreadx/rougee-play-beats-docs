@@ -402,7 +402,25 @@ export const useXRGESwap = () => {
 
     try {
       console.log("Approving KTA:", { amount, accountAddress, chainId, KTA_TOKEN_ADDRESS, XRGE_SWAPPER_ADDRESS });
-      // Use a much larger approval amount to avoid "unsafe allowance change" errors
+      
+      // First, reset allowance to 0 to avoid "unsafe allowance change" errors
+      const resetConfig = {
+        account: accountAddress,
+        chainId: chainId,
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [XRGE_SWAPPER_ADDRESS, BigInt(0)],
+        gas: BigInt(80000),
+      };
+
+      await writeContractAsync(resetConfig as any);
+      console.log("Allowance reset to 0");
+      
+      // Wait a bit for the reset to propagate
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Now approve the actual amount
       const value = parseEther("1000000000"); // 1 billion KTA tokens
       const config = {
         account: accountAddress,
