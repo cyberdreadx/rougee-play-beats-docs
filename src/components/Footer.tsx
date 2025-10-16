@@ -28,10 +28,10 @@ const Footer = () => {
 
   return (
     <footer className="w-full mt-16 border-t border-neon-green/20 glass">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="container mx-auto px-4 md:px-6 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-6xl mx-auto">
           {/* Brand Section */}
-          <div className="col-span-1 md:col-span-1">
+          <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-3">
               <Music className="h-4 w-4 text-neon-green" />
               <h3 className="text-sm font-bold neon-text font-mono">
@@ -118,8 +118,8 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-8 pt-6 border-t border-neon-green/10 flex flex-col md:flex-row justify-between items-center gap-3">
-          <p className="text-[10px] text-muted-foreground font-mono">
+        <div className="mt-8 pt-6 border-t border-neon-green/10 flex flex-col md:flex-row justify-between items-center gap-3 max-w-6xl mx-auto">
+          <p className="text-[10px] text-muted-foreground font-mono text-center md:text-left">
             © {currentYear} ROUGEE.PLAY. All rights reserved.
           </p>
           <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono">

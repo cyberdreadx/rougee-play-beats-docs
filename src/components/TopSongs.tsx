@@ -143,7 +143,7 @@ const fetchSongs = async () => {
 
   return (
     <section className="w-full overflow-x-hidden">
-      <div className="glass-card p-3 md:p-4 space-y-2 mx-4">
+      <div className="glass-card p-3 md:p-4 space-y-2 mx-0 md:mx-4">
         {loading ? (
           <div className="text-muted-foreground font-mono">Loading songs...</div>
         ) : songs.length === 0 ? (

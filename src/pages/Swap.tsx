@@ -21,7 +21,8 @@ import {
   KTA_TOKEN_ADDRESS,
   USDC_TOKEN_ADDRESS
 } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info, GripVertical } from "lucide-react";
+import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info, GripVertical, CreditCard } from "lucide-react";
+import { useFundWallet } from "@privy-io/react-auth";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
@@ -60,6 +61,7 @@ const ERC20_ABI = [
 const Swap = () => {
   const navigate = useNavigate();
   const { isConnected, fullAddress, isPrivyReady } = useWallet();
+  const { fundWallet } = useFundWallet();
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
   const [slippage, setSlippage] = useState("5");
@@ -637,6 +639,39 @@ const Swap = () => {
             {/* Buy Tab */}
             <TabsContent value="buy" className="space-y-6">
               <div className="space-y-4">
+                {/* Transaction Guide - Only show when token is selected */}
+                {selectedToken && (
+                  <Alert className="bg-blue-500/10 border-blue-500/20">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="font-mono text-sm">
+                      <div className="space-y-2">
+                        <div className="font-bold text-blue-400">💡 Transaction Guide:</div>
+                        {selectedToken === "ETH" && (
+                          <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                            <div className="font-bold text-green-400">ETH → XRGE</div>
+                            <div>⚡ 1 transaction - Direct swap</div>
+                            <div>💰 No approval needed</div>
+                          </div>
+                        )}
+                        {selectedToken === "USDC" && (
+                          <div className="bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+                            <div className="font-bold text-yellow-400">USDC → XRGE</div>
+                            <div>⚡ 2 transactions - Approve + swap</div>
+                            <div>💰 Standard ERC-20 process</div>
+                          </div>
+                        )}
+                        {selectedToken === "KTA" && (
+                          <div className="bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                            <div className="font-bold text-blue-400">KTA → XRGE</div>
+                            <div>⚡ 3-5 transactions - Multi-step process</div>
+                            <div>💰 Reset allowance + approve + swap</div>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div>
                   <Label htmlFor="token-select" className="font-mono text-sm">
                     Pay With
@@ -860,6 +895,24 @@ const Swap = () => {
                   ) : (
                     `BUY XRGE WITH ${selectedToken}`
                   )}
+                </Button>
+
+                {/* Apple Pay / Fiat Onramp Button */}
+                <Button
+                  onClick={() => {
+                    if (fullAddress) {
+                      fundWallet({ address: fullAddress as `0x${string}` });
+                      toast({
+                        title: "Opening Fiat Onramp",
+                        description: "Buy ETH with Apple Pay, then return to swap to XRGE!",
+                      });
+                    }
+                  }}
+                  className="w-full font-mono bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+                  size="lg"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  BUY ETH WITH APPLE PAY
                 </Button>
               </div>
             </TabsContent>

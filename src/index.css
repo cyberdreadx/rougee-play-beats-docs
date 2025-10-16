@@ -4,6 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar utilities */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  /* Marquee horizontal scrolling */
+  .marquee-container {
+    overflow: hidden;
+    position: relative;
+  }
+  .marquee {
+    display: inline-block;
+    white-space: nowrap;
+    animation: marquee 12s linear infinite;
+    will-change: transform;
+  }
+  .marquee:hover {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
 /* ROUGEE.PLAY - Blockchain Music DApp Design System */
 
 @layer base {

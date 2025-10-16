@@ -344,7 +344,6 @@ export const useXRGESwap = () => {
         abi: XRGE_SWAPPER_ABI,
         functionName: "swapKTAForXRGESimple",
         args: [value, BigInt(slippageBps)],
-        gas: BigInt(300000),
       };
 
       const submittedHash = await writeContractAsync(config as any);
@@ -500,6 +499,18 @@ export const useXRGESwap = () => {
 
       const submittedHash = await writeContractAsync(config as any);
       
+      // Wait for approval transaction to be mined
+      for (let i = 0; i < 30; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const receipt = await publicClient.getTransactionReceipt({ hash: submittedHash });
+        if (receipt) {
+          break;
+        }
+        if (i === 29) {
+          throw new Error("Approval transaction timed out");
+        }
+      }
+      
       toast({
         title: "✅ KTA Approved!",
         description: "You can now swap KTA for XRGE",
@@ -604,9 +615,7 @@ export const useXRGESwap = () => {
     }
 
     try {
-      // Use a much larger approval amount to avoid "unsafe allowance change" errors
-      // USDC has 6 decimals, so 1 billion USDC = 1,000,000,000 * 10^6
-      const value = parseUnits("1000000000", 6); // 1 billion USDC
+      const value = parseUnits("1000000000", 6);
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -617,6 +626,19 @@ export const useXRGESwap = () => {
       };
 
       const submittedHash = await writeContractAsync(config as any);
+      
+      // Wait for approval transaction to be mined
+      for (let i = 0; i < 30; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const receipt = await publicClient.getTransactionReceipt({ hash: submittedHash });
+        if (receipt) {
+          break;
+        }
+        if (i === 29) {
+          throw new Error("Approval transaction timed out");
+        }
+      }
+      
       return submittedHash;
     } catch (err) {
       toast({

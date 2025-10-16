@@ -74,7 +74,7 @@ const FeaturedSong = ({ song }: { song: Song }) => {
   const volumeUSD = xrgeRaised ? (Number(xrgeRaised) / 1e18) * (prices.xrge || 0) : 0;
   
   return (
-    <div className="mb-6 relative overflow-hidden rounded-2xl border border-neon-green/30 bg-gradient-to-br from-neon-green/5 via-transparent to-purple-500/5 backdrop-blur-xl p-6">
+    <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-neon-green/30 bg-gradient-to-br from-neon-green/5 via-transparent to-purple-500/5 backdrop-blur-xl p-6">
       <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-mono font-bold px-3 py-1 rounded-full flex items-center gap-1">
         <Flame className="w-3 h-3" />
         #1 TRENDING
@@ -412,9 +412,9 @@ const Trending = () => {
     <div className="min-h-screen bg-background pb-24 md:pb-20">
       <NetworkInfo />
       
-      <main className="container mx-auto px-4 py-6 md:py-8">
+      <main className="w-full px-0 md:container md:mx-auto md:px-4 py-6 md:py-8">
         {/* Live Stats Ticker */}
-        <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 px-4 md:px-0">
           <div className="bg-gradient-to-br from-neon-green/10 to-transparent border border-neon-green/20 rounded-xl p-4 backdrop-blur-sm">
             <div className="text-xs text-muted-foreground font-mono mb-1">TOTAL SONGS</div>
             <div className="text-2xl font-bold font-mono neon-text">{songs.length}</div>
@@ -440,7 +440,7 @@ const Trending = () => {
         {/* Featured/Promoted Banner with Real Data */}
         {songs.length > 0 && songs[0] && <FeaturedSong song={songs[0]} />}
 
-        <div className="mb-6">
+        <div className="mb-6 px-4 md:px-0">
           <h1 className="text-3xl md:text-4xl font-bold font-mono mb-2 neon-text flex items-center gap-3">
             <Flame className="w-8 h-8 text-orange-500 animate-pulse" />
             TRENDING
@@ -450,7 +450,7 @@ const Trending = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="songs" className="w-full">
+        <Tabs defaultValue="songs" className="w-full px-4 md:px-0">
           <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 bg-black/20 backdrop-blur-xl border border-white/10 rounded-xl p-1">
             <TabsTrigger 
               value="songs"
@@ -467,7 +467,7 @@ const Trending = () => {
           </TabsList>
 
           <TabsContent value="songs" className="space-y-4">
-            <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border hover:bg-transparent">
@@ -498,7 +498,7 @@ const Trending = () => {
           </TabsContent>
 
           <TabsContent value="artists" className="space-y-4">
-            <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border hover:bg-transparent">

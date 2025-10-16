@@ -43,7 +43,7 @@ const TrendingArtists = () => {
 
   if (loading) {
     return (
-      <section className="w-full px-6 py-6">
+      <section className="w-full px-4 md:px-6 py-6">
         <h2 className="text-xl font-bold font-mono mb-4 neon-text">
           TRENDING ARTISTS
         </h2>
@@ -56,7 +56,7 @@ const TrendingArtists = () => {
 
   if (artists.length === 0) {
     return (
-      <section className="w-full px-6 py-6">
+      <section className="w-full px-4 md:px-6 py-6">
         <h2 className="text-xl font-bold font-mono mb-4 neon-text">
           TRENDING ARTISTS
         </h2>

@@ -354,9 +354,46 @@ export const useSellSongTokens = () => {
 export const useApproveToken = () => {
   const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const publicClient = usePublicClient();
+  const { address: accountAddress } = useAccount();
 
   const approve = async (tokenAddress: Address, amount: string) => {
+    if (!accountAddress || !publicClient) {
+      throw new Error("Wallet not connected");
+    }
+
     try {
+      // Check current allowance
+      const currentAllowance = await publicClient.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [accountAddress, BONDING_CURVE_ADDRESS],
+      } as any) as bigint;
+      
+      // If there's an existing allowance, reset it to 0 first (required by some tokens like KTA)
+      if (currentAllowance > BigInt(0)) {
+        const resetTxHash = await writeContractAsync({
+          address: tokenAddress,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [BONDING_CURVE_ADDRESS, BigInt(0)],
+        } as any);
+        
+        // Wait for reset transaction to be mined
+        for (let i = 0; i < 30; i++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const receipt = await publicClient.getTransactionReceipt({ hash: resetTxHash });
+          if (receipt) {
+            break;
+          }
+          if (i === 29) {
+            throw new Error("Reset transaction timed out");
+          }
+        }
+      }
+      
+      // Now approve the new amount
       const txHash = await writeContractAsync({
         address: tokenAddress,
         abi: ERC20_ABI,
@@ -365,7 +402,6 @@ export const useApproveToken = () => {
       } as any);
       return txHash;
     } catch (err) {
-      console.error('Error approving token:', err);
       toast.error('Failed to approve token');
       throw err;
     }

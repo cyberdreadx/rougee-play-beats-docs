@@ -27,8 +27,9 @@ import { useBalance, useConnect, useWaitForTransactionReceipt, usePublicClient }
 import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
+import { useFundWallet } from "@privy-io/react-auth";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
-import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink } from "lucide-react";
+import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink, CreditCard } from "lucide-react";
 
 interface Song {
   id: string;
@@ -65,20 +66,13 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const { songId } = useParams<{ songId: string }>();
   const navigate = useNavigate();
   const { fullAddress, isConnected } = useWallet();
+  const { fundWallet } = useFundWallet();
   const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount(); // Wagmi account check
   const { getAuthHeaders } = usePrivyToken();
   const { prices } = useTokenPrices();
   
   // Ensure Privy wallet is connected to wagmi
   usePrivyWagmi();
-  
-  // Debug wallet state
-  useEffect(() => {
-    console.log('💳 Wallet State:', {
-      privy: { isConnected, address: fullAddress },
-      wagmi: { isConnected: wagmiConnected, address: wagmiAddress },
-    });
-  }, [isConnected, fullAddress, wagmiConnected, wagmiAddress]);
 
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,11 +116,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       throw new Error('No wallet connector available');
     }
     try {
-      console.log('🔌 Ensuring wagmi connection with', target.name, target.id);
-      console.log('🎯 Using connector priority: injected -> privy -> first available');
       await connectAsync({ connector: target });
     } catch (e) {
-      console.error('Wagmi connect failed:', e);
       throw e;
     }
   };
@@ -267,26 +258,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           ]
         }
       ] as const;
-
-      console.log('Fetching Transfer events for token:', songTokenAddress);
       
-      // Get contract creation/deployment block from song metadata
       const { data: songData } = await supabase
         .from('songs')
         .select('created_at')
         .eq('id', songId)
         .single();
       
-      // Get Transfer events from contract deployment
-      // Base has ~2 second block time, estimate blocks since creation
       const currentBlock = await publicClient.getBlockNumber();
       const blocksSinceCreation = songData?.created_at 
         ? Math.min(Math.floor((Date.now() - new Date(songData.created_at).getTime()) / 2000), 100000)
-        : 50000; // Default to 50k blocks if unknown
+        : 50000;
       
       const fromBlock = currentBlock - BigInt(blocksSinceCreation);
-      
-      console.log(`Querying from block ${fromBlock} to ${currentBlock} (${blocksSinceCreation} blocks)`);
       
       const logs = await publicClient.getLogs({
         address: songTokenAddress,
@@ -339,15 +323,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           : 0
       }));
 
-      setHolders(formattedHolders.slice(0, 10)); // Top 10
+      setHolders(formattedHolders.slice(0, 10));
       setHolderCount(formattedHolders.length);
       
-      console.log(`Found ${formattedHolders.length} holders via Transfer events`);
-      
     } catch (error) {
-      console.error('Error fetching holders from blockchain:', error);
-      
-      // Fallback: count unique buyers from purchases table
       try {
         const { data: purchases } = await supabase
           .from('song_purchases')
@@ -356,9 +335,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         
         const uniqueHolders = new Set(purchases?.map(p => p.buyer_wallet_address.toLowerCase()));
         setHolderCount(uniqueHolders.size);
-        console.log(`Fallback: Found ${uniqueHolders.size} unique buyers from database`);
       } catch (fallbackError) {
-        console.error('Fallback holder count failed:', fallbackError);
         setHolderCount(0);
       }
     } finally {
@@ -449,7 +426,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       if (error) throw error;
       setSong(data);
     } catch (error) {
-      console.error("Error fetching song:", error);
       toast({
         title: "Error",
         description: "Failed to load song",
@@ -485,7 +461,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
       setComments(commentsWithProfiles as Comment[]);
     } catch (error) {
-      console.error("Error fetching comments:", error);
+      // Silent fail for comments
     } finally {
       setLoadingComments(false);
     }
@@ -575,69 +551,40 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         });
       } else if (paymentToken === 'KTA') {
         try {
-          console.log("=== Starting KTA to Song Token Swap Process ===");
-          console.log("KTA amount:", buyAmount);
-          console.log("Expected XRGE from quote:", xrgeEquivalent);
-          
-          // Calculate the XRGE amount we'll use (from the quote)
           const xrgeAmountToUse = xrgeEquivalent || "0";
           
           if (parseFloat(xrgeAmountToUse) === 0) {
             throw new Error("Cannot calculate XRGE amount from KTA. Please try again.");
           }
           
-          console.log("🎯 Will use XRGE amount for purchase:", xrgeAmountToUse);
-          
-          // Step 1: Approve KTA for swap
-          toast({
-            title: "Step 1/3: Approve KTA",
-            description: "⏳ Please confirm the transaction in your wallet popup...",
-          });
-          
-          console.log("Requesting KTA approval...");
-          const approveHash = await approveKTA(buyAmount);
-          console.log("✅ KTA approval hash:", approveHash);
-          
-          // Wait for approval to be mined
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Step 2: Swap KTA to XRGE
-          toast({
-            title: "Step 2/3: Swapping KTA to XRGE",
-            description: `⏳ Swapping ${buyAmount} KTA for ~${parseFloat(xrgeAmountToUse).toFixed(2)} XRGE...`,
-          });
-          
-          // Get XRGE balance BEFORE swap
+          // Step 1 & 2: Approve KTA and swap to XRGE (hooks show their own toasts)
           const xrgeBalanceBefore = await getXRGEBalance();
-          console.log("XRGE balance before KTA swap:", xrgeBalanceBefore);
           
-          console.log("Requesting KTA to XRGE swap...");
-          const swapHash = await buyXRGEWithKTA(buyAmount, 500);
-          console.log("✅ KTA to XRGE swap hash:", swapHash);
-          console.log("🔗 Check transaction on BaseScan:", `https://basescan.org/tx/${swapHash}`);
+          // KTA approval and swap
+          await approveKTA(buyAmount);
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait longer for approval to mine
           
-          // Wait for swap transaction to be mined and get actual XRGE received
+          await buyXRGEWithKTA(buyAmount, 500);
+          
+          // Wait for XRGE to arrive
           toast({
-            title: "Waiting for swap confirmation...",
-            description: "This usually takes a few seconds on Base",
+            title: "Checking XRGE balance...",
+            description: "Waiting for swap to complete",
           });
           
           let actualXRGEReceived = "0";
           let swapAttempts = 0;
           const maxSwapAttempts = 60;
           
-          // Initial wait
           await new Promise(resolve => setTimeout(resolve, 5000));
           
           while (swapAttempts < maxSwapAttempts) {
             swapAttempts++;
             const currentBalance = await getXRGEBalance();
             const balanceDiff = parseFloat(currentBalance) - parseFloat(xrgeBalanceBefore);
-            console.log(`KTA Swap - Balance check attempt ${swapAttempts}: ${currentBalance} XRGE (diff: +${balanceDiff})`);
             
             if (balanceDiff > 0) {
               actualXRGEReceived = balanceDiff.toString();
-              console.log(`✅ XRGE received from KTA swap: ${actualXRGEReceived} (before: ${xrgeBalanceBefore}, after: ${currentBalance})`);
               break;
             }
             
@@ -648,73 +595,36 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             throw new Error("KTA to XRGE swap failed - no XRGE received");
           }
           
-          // Step 3: Approve XRGE and buy song tokens
-          toast({
-            title: "Step 3/3: Buying song tokens",
-            description: `⏳ Approving and purchasing with ${parseFloat(actualXRGEReceived).toFixed(2)} XRGE...`,
-          });
-          
-          console.log("🔐 Approving XRGE for bonding curve...");
-          console.log("Bonding curve address:", BONDING_CURVE_ADDRESS);
-          console.log("Actual XRGE received to approve:", actualXRGEReceived);
-          const approveXRGEHash = await approveXRGE(actualXRGEReceived, BONDING_CURVE_ADDRESS as `0x${string}`);
-          console.log("✅ XRGE approval hash:", approveXRGEHash);
-          console.log("🔗 Check approval on BaseScan:", `https://basescan.org/tx/${approveXRGEHash}`);
-          
-          // Wait for the approval transaction to be confirmed on-chain
-          console.log("⏳ Waiting for XRGE approval to be confirmed on-chain...");
-          if (publicClient && approveXRGEHash) {
-            try {
-              const receipt = await publicClient.waitForTransactionReceipt({
-                hash: approveXRGEHash as `0x${string}`,
-                confirmations: 1,
-                timeout: 30000, // 30 second timeout
-              });
-              console.log("✅ XRGE approval confirmed! Block:", receipt.blockNumber);
-            } catch (waitError) {
-              console.warn("Could not wait for receipt, falling back to fixed delay:", waitError);
-              await new Promise(resolve => setTimeout(resolve, 6000));
-            }
-          } else {
-            // Fallback to fixed delay if publicClient not available
-            console.log("No publicClient available, using fixed delay");
-            await new Promise(resolve => setTimeout(resolve, 6000));
-          }
-          
-          // Use 98% of the actual XRGE received from swap
+          // Step 3: Buy song tokens with XRGE
           const amountToSpend = parseFloat(actualXRGEReceived) * 0.98;
-          const safeAmount = amountToSpend.toFixed(18); // Keep 18 decimals
-          console.log(`Using 98% of actual XRGE received: ${safeAmount} (98% of ${actualXRGEReceived})`);
-          console.log("Final safe amount to spend:", safeAmount);
+          const safeAmount = amountToSpend.toFixed(18);
           
           if (parseFloat(safeAmount) <= 0) {
-            throw new Error("Cannot proceed with zero XRGE amount");
+            throw new Error("Insufficient XRGE amount after swap");
           }
           
-          // Check how many tokens we'd get with this amount
-          console.log("🔍 Checking bonding curve quote for amount:", safeAmount);
-          console.log("Current bonding curve price (XRGE):", priceData);
-          console.log("Bonding curve supply:", bondingSupply);
+          toast({
+            title: "Approving XRGE",
+            description: "Confirm to approve XRGE for song token purchase",
+          });
           
-          console.log("🎵 Buying song tokens with XRGE amount:", safeAmount);
-          
-          const buyHash = await buyWithXRGE(songTokenAddress, safeAmount, "0");
-          console.log("✅ Song token purchase hash:", buyHash);
-          console.log("🔗 Check transaction on BaseScan:", `https://basescan.org/tx/${buyHash}`);
+          // This approves XRGE for BONDING_CURVE_ADDRESS (not swapper!)
+          await approve(XRGE_TOKEN, safeAmount);
           
           toast({
-            title: "Purchase successful!",
-            description: `Bought tokens using ${buyAmount} KTA`,
+            title: "Buying song tokens",
+            description: `Purchasing with ${parseFloat(actualXRGEReceived).toFixed(2)} XRGE...`,
+          });
+          
+          await buyWithXRGE(songTokenAddress, safeAmount, "0");
+          
+          toast({
+            title: "✅ Purchase successful!",
+            description: `Bought song tokens using ${buyAmount} KTA`,
           });
         } catch (error) {
-          console.error("❌ KTA swap process failed:", error);
-          console.error("Full error object:", JSON.stringify(error, null, 2));
-          
-          // Provide specific error messages based on the error
           let errorMessage = "Failed to complete KTA swap process";
           if (error instanceof Error) {
-            console.error("Error details:", error.message);
-            console.error("Error stack:", error.stack);
             
             if (error.message.includes("User rejected") || error.message.includes("user rejected") || error.message.includes("User denied")) {
               errorMessage = "Transaction was cancelled. Please try again and approve all transactions.";
@@ -746,39 +656,28 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         });
         
         const usdcTxHash = await approveUSDC(buyAmount);
-        console.log("USDC Approval tx hash:", usdcTxHash);
         
         toast({
           title: "Step 2/3: Swapping USDC to XRGE",
           description: "Converting your USDC to XRGE...",
         });
         
-        // Get XRGE balance BEFORE swap
         const balanceBefore = await getXRGEBalance();
-        console.log("XRGE balance before USDC swap:", balanceBefore);
-        
         const swapTxHash = await buyXRGEWithUSDC(buyAmount, 500);
-        console.log("USDC → XRGE swap tx hash:", swapTxHash);
         
-        // Get XRGE balance difference after swap
         let xrgeReceived = "0";
         let attempts = 0;
         const maxAttempts = 60;
         
-        console.log("Waiting for XRGE balance increase after USDC swap...");
-        
-        // Initial wait for transaction to be mined
         await new Promise(resolve => setTimeout(resolve, 5000));
         
         while (attempts < maxAttempts) {
           attempts++;
           const currentBalance = await getXRGEBalance();
           const balanceDiff = parseFloat(currentBalance) - parseFloat(balanceBefore);
-          console.log(`USDC Swap - Balance check attempt ${attempts}: ${currentBalance} XRGE (diff: +${balanceDiff})`);
           
           if (balanceDiff > 0) {
             xrgeReceived = balanceDiff.toString();
-            console.log(`✅ XRGE received from USDC swap: ${xrgeReceived} (before: ${balanceBefore}, after: ${currentBalance})`);
             break;
           }
           
@@ -795,16 +694,12 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         });
         
         const xrgeApproveTxHash = await approveXRGE(xrgeReceived, BONDING_CURVE_ADDRESS);
-        console.log("XRGE Approval for bonding curve tx hash:", xrgeApproveTxHash);
         
-        // Wait for XRGE approval to be confirmed on-chain
         if (publicClient && xrgeApproveTxHash) {
-          console.log("Waiting for XRGE approval to be mined...");
           await publicClient.waitForTransactionReceipt({
             hash: xrgeApproveTxHash as `0x${string}`,
             confirmations: 1,
           });
-          console.log("✅ XRGE approval confirmed on-chain");
         }
         
         toast({
@@ -812,14 +707,11 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           description: "Purchasing with swapped XRGE...",
         });
         
-        // Use 98% of XRGE to account for precision/slippage
         const safeAmount = (parseFloat(xrgeReceived) * 0.98).toString();
-        console.log(`Final purchase with XRGE amount: ${safeAmount} (98% of ${xrgeReceived})`);
-        
         await buyWithXRGE(songTokenAddress, safeAmount, "0");
         
         toast({
-          title: "Purchase successful!",
+          title: "✅ Purchase successful!",
           description: `Bought tokens using ${buyAmount} USDC`,
         });
       }
@@ -836,46 +728,35 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             });
           
           if (purchaseError) {
-            console.error('Failed to record purchase:', purchaseError);
             // Don't fail the whole transaction, just log it
-          } else {
-            console.log('✅ Purchase recorded in database');
           }
         } catch (dbError) {
-          console.error('Database error recording purchase:', dbError);
+          // Silent fail
         }
       }
-      
-      // Refetch all balances and bonding curve data after successful purchase
-      console.log("🔄 Refreshing balances and bonding curve data...");
       
       toast({
         title: "Updating balances...",
         description: "Fetching latest data from blockchain",
       });
       
-      // Wait a bit for blockchain to update
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       try {
-        // Refetch bonding curve data
         await refetchPrice();
         await refetchSupply();
         await refetchMetadata();
         
-        console.log("✅ Data refreshed");
-        
         toast({
-          title: "Balances updated! ✅",
+          title: "✅ Balances updated!",
           description: "All data has been refreshed",
         });
       } catch (refreshError) {
-        console.error("Error refreshing data:", refreshError);
+        // Silent fail
       }
       
       setBuyAmount("");
     } catch (error) {
-      console.error("Buy error:", error);
       toast({
         title: "Purchase failed",
         description: error instanceof Error ? error.message : "Failed to buy tokens",
@@ -1488,6 +1369,43 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 </h3>
 
                 <div className="space-y-3 md:space-y-4">
+                  {/* Transaction Guide - Only show when token is selected */}
+                  {paymentToken && (
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
+                      <div className="font-mono text-xs space-y-2">
+                        <div className="font-bold text-blue-400">💡 Transaction Guide:</div>
+                        {paymentToken === "XRGE" && (
+                          <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                            <div className="font-bold text-green-400">XRGE → Song</div>
+                            <div>⚡ 1 transaction - Direct purchase</div>
+                            <div>💰 No intermediate swaps needed</div>
+                          </div>
+                        )}
+                        {paymentToken === "ETH" && (
+                          <div className="bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+                            <div className="font-bold text-yellow-400">ETH → Song</div>
+                            <div>⚡ 2 transactions - ETH → XRGE → Song</div>
+                            <div>💰 ETH swap + song purchase</div>
+                          </div>
+                        )}
+                        {paymentToken === "USDC" && (
+                          <div className="bg-orange-500/10 p-2 rounded border border-orange-500/20">
+                            <div className="font-bold text-orange-400">USDC → Song</div>
+                            <div>⚡ 3 transactions - USDC → XRGE → Song</div>
+                            <div>💰 USDC approve + swap + song purchase</div>
+                          </div>
+                        )}
+                        {paymentToken === "KTA" && (
+                          <div className="bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                            <div className="font-bold text-blue-400">KTA → Song</div>
+                            <div>⚡ 5 transactions - KTA → XRGE → Song</div>
+                            <div>💰 KTA reset + approve + swap + XRGE approve + song purchase</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Payment Token Selector */}
                   <div>
                     <label className="text-xs md:text-sm font-mono text-muted-foreground mb-2 block">
@@ -1655,16 +1573,36 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     </div>
                   </div>
 
-                  <Button 
-                    onClick={handleBuy} 
-                    className="w-full" 
-                    variant="neon" 
-                    size="sm"
-                    disabled={isProcessingBuy || isBuying || isApproving || isSwapping || !songTokenAddress}
-                  >
-                    {(isProcessingBuy || isBuying || isApproving || isSwapping) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    {isApproving || isSwapping ? "PROCESSING..." : isProcessingBuy || isBuying ? "BUYING..." : `BUY WITH ${paymentToken}`}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={handleBuy} 
+                      className="w-full" 
+                      variant="neon" 
+                      size="sm"
+                      disabled={isProcessingBuy || isBuying || isApproving || isSwapping || !songTokenAddress}
+                    >
+                      {(isProcessingBuy || isBuying || isApproving || isSwapping) ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      {isApproving || isSwapping ? "PROCESSING..." : isProcessingBuy || isBuying ? "BUYING..." : `BUY WITH ${paymentToken}`}
+                    </Button>
+
+                    {/* Apple Pay / Fiat Onramp Button */}
+                    <Button
+                      onClick={() => {
+                        if (fullAddress) {
+                          fundWallet({ address: fullAddress as `0x${string}` });
+                          toast({
+                            title: "Opening Fiat Onramp",
+                            description: "Buy ETH with Apple Pay, then return to purchase song tokens!",
+                          });
+                        }
+                      }}
+                      className="w-full font-mono bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+                      size="sm"
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      BUY ETH WITH APPLE PAY
+                    </Button>
+                  </div>
 
                   {(paymentToken === 'KTA' || paymentToken === 'USDC') && (
                     <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 font-mono text-center">

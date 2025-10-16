@@ -260,10 +260,26 @@ const AudioPlayer = ({
     return null;
   }
 
+
   return (
     <Card className="fixed bottom-14 md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />
+
+      {/* Top marquee header - scrolls across entire player width */}
+      <div className="relative z-10 border-b border-white/10 px-3 py-1">
+        <div className="marquee-container">
+          <div className="marquee font-mono text-xs md:text-sm text-muted-foreground">
+            <span className="text-foreground font-semibold">{displayTitle}</span>
+            <span className="mx-2">—</span>
+            <span>{displayArtist}</span>
+            {!isAd && currentSong?.ticker && (
+              <span className="ml-2 text-neon-green">${currentSong.ticker}</span>
+            )}
+          </div>
+        </div>
+      </div>
       
       {/* Visualizer bars */}
       {isPlaying && (
@@ -286,7 +302,7 @@ const AudioPlayer = ({
         <div className="flex items-center gap-3 p-3 pb-2">
           {displayCover && (
             <div 
-              className="relative w-12 h-12 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
+              className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
               onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
               <img 
@@ -299,33 +315,7 @@ const AudioPlayer = ({
               )}
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <div className="font-mono text-base font-semibold text-foreground truncate flex items-center gap-2">
-              <span className="truncate">{displayTitle}</span>
-              {!isAd && currentSong?.ticker && (
-                <span className="text-neon-green text-sm flex-shrink-0">${currentSong.ticker}</span>
-              )}
-            </div>
-            <div 
-              className="font-mono text-sm text-muted-foreground hover:text-neon-green cursor-pointer truncate flex items-center gap-1 transition-colors"
-              onClick={() => !isAd && currentSong && navigate(`/artist/${currentSong.wallet_address}`)}
-            >
-              <span className="truncate">{displayArtist}</span>
-              {!isAd && isVerified && (
-                <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
-              )}
-              {!isAd && artistTicker && <span className="text-neon-green flex-shrink-0">${artistTicker}</span>}
-            </div>
-            {/* Additional info line for mobile */}
-            {!isAd && currentSong && (
-              <div className="font-mono text-xs text-muted-foreground flex items-center gap-2">
-                <span>{currentSong.play_count} plays</span>
-                <span>•</span>
-                <span>{new Date(currentSong.created_at).toLocaleDateString()}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
             {onShuffle && (
               <Button
                 variant="ghost"
@@ -366,6 +356,16 @@ const AudioPlayer = ({
                 className="h-8 w-8 text-muted-foreground"
               >
                 <SkipForward className="w-4 h-4" />
+              </Button>
+            )}
+            {currentSong && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/song/${currentSong.id}`)}
+                className="h-8 px-3 font-mono text-xs"
+              >
+                Trade
               </Button>
             )}
             {onRepeat && (
@@ -437,10 +437,10 @@ const AudioPlayer = ({
       {/* Desktop Full Player */}
       <div className="hidden md:flex items-center gap-4 p-4 relative z-10">
         {/* Song Info */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
           {displayCover && (
             <div 
-              className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20 cursor-pointer hover:border-neon-green/60 transition-all hover:scale-105"
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg shadow-neon-green/20 cursor-pointer hover:border-neon-green/60 transition-all hover:scale-105"
               onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
               <img 
@@ -453,27 +453,10 @@ const AudioPlayer = ({
               )}
             </div>
           )}
-          <div className="min-w-0">
-            <div className="font-mono text-sm font-semibold text-foreground truncate flex items-center gap-2">
-              <span className="truncate">{displayTitle}</span>
-              {!isAd && currentSong?.ticker && (
-                <span className="text-neon-green text-xs flex-shrink-0">${currentSong.ticker}</span>
-              )}
-            </div>
-            <div 
-              className="font-mono text-xs text-muted-foreground hover:text-neon-green cursor-pointer truncate transition-colors flex items-center gap-1"
-              onClick={() => !isAd && currentSong && navigate(`/artist/${currentSong.wallet_address}`)}
-            >
-              <span className="truncate">{displayArtist}</span>
-              {!isAd && isVerified && (
-                <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
-              )}
-              {!isAd && artistTicker && <span className="text-neon-green flex-shrink-0">${artistTicker}</span>}
-            </div>
-          </div>
+          {/* Removed title/artist block beside cover; info is in top marquee */}
         </div>
 
-        {/* Controls */}
+        {/* Controls + Trade button */}
         <div className="flex flex-col items-center gap-2 flex-1 max-w-2xl">
           {/* Main control buttons */}
           <div className="flex items-center gap-3">
@@ -535,6 +518,16 @@ const AudioPlayer = ({
                 ) : (
                   <Repeat className="w-4 h-4" />
                 )}
+              </Button>
+            )}
+            {currentSong && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/song/${currentSong.id}`)}
+                className="h-8 px-3 font-mono text-xs ml-2"
+              >
+                Trade
               </Button>
             )}
           </div>
