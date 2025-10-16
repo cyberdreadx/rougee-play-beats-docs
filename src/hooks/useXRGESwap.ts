@@ -324,6 +324,7 @@ export const useXRGESwap = () => {
         abi: XRGE_SWAPPER_ABI,
         functionName: "swapKTAForXRGESimple",
         args: [value, BigInt(slippageBps)],
+        gas: BigInt(300000), // Fixed gas limit for BASE
       };
 
       const submittedHash = await writeContractAsync(config as any);
@@ -410,6 +411,7 @@ export const useXRGESwap = () => {
         abi: ERC20_ABI,
         functionName: "approve",
         args: [XRGE_SWAPPER_ADDRESS, value],
+        gas: BigInt(80000), // Fixed gas limit for BASE approval
       };
 
       const submittedHash = await writeContractAsync(config as any);
