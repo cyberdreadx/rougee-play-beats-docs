@@ -6,6 +6,10 @@
 
 /* Custom scrollbar utilities */
 @layer utilities {
+  /* iOS safe-area helpers */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

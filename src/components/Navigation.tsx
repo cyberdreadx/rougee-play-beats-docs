@@ -37,9 +37,10 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "WALLET", path: "/wallet", icon: Wallet },
+    // Always include a profile entry for listeners/artists
     ...(isArtist 
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
-      : []
+      : [{ name: "PROFILE", path: "/profile/edit", icon: User }]
     ),
   ];
 

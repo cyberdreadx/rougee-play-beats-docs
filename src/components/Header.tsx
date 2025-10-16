@@ -37,7 +37,7 @@ const Header = () => {
   }, [isConnected, fullAddress, isPrivyReady]);
 
   return (
-    <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10">
+    <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10 pt-safe">
       <div className="flex items-center justify-between">
         {/* Brand */}
         <div 
