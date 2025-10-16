@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { useWallet } from "@/hooks/useWallet";
+import { useToast } from "@/hooks/use-toast";
 
 interface Story {
   id: string;
@@ -14,6 +16,8 @@ interface Story {
   caption: string | null;
   created_at: string;
   expires_at: string;
+  view_count?: number;
+  like_count?: number;
 }
 
 interface StoryViewerProps {
@@ -36,12 +40,56 @@ const StoryViewer = ({
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [currentWalletAddress, setCurrentWalletAddress] = useState(currentWallet);
   const [progress, setProgress] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const { fullAddress } = useWallet();
+  const { toast } = useToast();
 
   const walletAddresses = Object.keys(allStories);
   const currentWalletIndex = walletAddresses.indexOf(currentWalletAddress);
   const currentStories = allStories[currentWalletAddress];
   const currentStory = currentStories[currentStoryIndex];
   const currentProfile = profiles[currentWalletAddress];
+
+  // Record view when story changes
+  useEffect(() => {
+    const recordView = async () => {
+      if (!fullAddress || !currentStory) return;
+      
+      try {
+        await supabase
+          .from('story_views')
+          .insert({
+            story_id: currentStory.id,
+            viewer_wallet_address: fullAddress.toLowerCase()
+          });
+      } catch (error) {
+        // Ignore duplicate errors (user already viewed this story)
+        console.log('View already recorded');
+      }
+    };
+
+    recordView();
+  }, [currentStory?.id, fullAddress]);
+
+  // Check if user liked current story and get like count
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (!fullAddress || !currentStory) return;
+      
+      const { data } = await supabase
+        .from('story_likes')
+        .select('id')
+        .eq('story_id', currentStory.id)
+        .eq('wallet_address', fullAddress.toLowerCase())
+        .maybeSingle();
+      
+      setHasLiked(!!data);
+      setLikeCount(currentStory.like_count || 0);
+    };
+
+    checkLikeStatus();
+  }, [currentStory?.id, fullAddress]);
 
   useEffect(() => {
     setProgress(0);
@@ -77,6 +125,49 @@ const StoryViewer = ({
       const prevWallet = walletAddresses[currentWalletIndex - 1];
       setCurrentWalletAddress(prevWallet);
       setCurrentStoryIndex(allStories[prevWallet].length - 1);
+    }
+  };
+
+  const handleLike = async () => {
+    if (!fullAddress) {
+      toast({
+        title: "Login required",
+        description: "Please connect your wallet to like stories",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      if (hasLiked) {
+        // Unlike
+        await supabase
+          .from('story_likes')
+          .delete()
+          .eq('story_id', currentStory.id)
+          .eq('wallet_address', fullAddress.toLowerCase());
+        
+        setHasLiked(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Like
+        await supabase
+          .from('story_likes')
+          .insert({
+            story_id: currentStory.id,
+            wallet_address: fullAddress.toLowerCase()
+          });
+        
+        setHasLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update like",
+        variant: "destructive",
+      });
     }
   };
 
@@ -151,14 +242,40 @@ const StoryViewer = ({
           />
         )}
 
-        {/* Caption */}
-        {currentStory.caption && (
-          <div className="absolute bottom-20 left-0 right-0 text-center px-8">
-            <p className="text-white text-lg font-medium bg-black/50 px-4 py-2 rounded-lg inline-block">
+        {/* Caption and Stats */}
+        <div className="absolute bottom-20 left-0 right-0 px-8">
+          {currentStory.caption && (
+            <p className="text-white text-lg font-medium bg-black/50 px-4 py-2 rounded-lg inline-block mb-4">
               {currentStory.caption}
             </p>
+          )}
+          
+          {/* View and Like counts */}
+          <div className="flex items-center gap-4 justify-center text-white">
+            <div className="flex items-center gap-1 bg-black/50 px-3 py-1 rounded-full">
+              <Eye className="w-4 h-4" />
+              <span className="text-sm font-medium">{currentStory.view_count || 0}</span>
+            </div>
+            <div className="flex items-center gap-1 bg-black/50 px-3 py-1 rounded-full">
+              <Heart className={`w-4 h-4 ${hasLiked ? 'fill-red-500 text-red-500' : ''}`} />
+              <span className="text-sm font-medium">{likeCount}</span>
+            </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Like Button */}
+      <div className="absolute bottom-32 right-8 z-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`w-14 h-14 rounded-full ${hasLiked ? 'bg-red-500/20' : 'bg-black/50'}`}
+          onClick={handleLike}
+        >
+          <Heart 
+            className={`w-7 h-7 ${hasLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
+          />
+        </Button>
       </div>
 
       {/* Navigation */}

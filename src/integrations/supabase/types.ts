@@ -475,9 +475,11 @@ export type Database = {
           expires_at: string
           file_size: number
           id: string
+          like_count: number | null
           media_path: string
           media_type: string
           updated_at: string
+          view_count: number | null
           wallet_address: string
         }
         Insert: {
@@ -486,9 +488,11 @@ export type Database = {
           expires_at?: string
           file_size: number
           id?: string
+          like_count?: number | null
           media_path?: string
           media_type: string
           updated_at?: string
+          view_count?: number | null
           wallet_address: string
         }
         Update: {
@@ -497,12 +501,72 @@ export type Database = {
           expires_at?: string
           file_size?: number
           id?: string
+          like_count?: number | null
           media_path?: string
           media_type?: string
           updated_at?: string
+          view_count?: number | null
           wallet_address?: string
         }
         Relationships: []
+      }
+      story_likes: {
+        Row: {
+          created_at: string
+          id: string
+          story_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          story_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          story_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_likes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_views: {
+        Row: {
+          id: string
+          story_id: string
+          viewed_at: string
+          viewer_wallet_address: string
+        }
+        Insert: {
+          id?: string
+          story_id: string
+          viewed_at?: string
+          viewer_wallet_address: string
+        }
+        Update: {
+          id?: string
+          story_id?: string
+          viewed_at?: string
+          viewer_wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
