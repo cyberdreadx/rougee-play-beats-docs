@@ -333,7 +333,12 @@ export const useXRGESwap = () => {
 
     try {
       console.log("Swapping KTA to XRGE:", { ktaAmount, slippageBps, accountAddress, chainId, XRGE_SWAPPER_ADDRESS });
-      const value = parseEther(ktaAmount);
+      const ktaDecimals = await publicClient.readContract({
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "decimals",
+      } as any) as number;
+      const value = parseUnits(ktaAmount, Number(ktaDecimals));
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -438,7 +443,12 @@ export const useXRGESwap = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Now approve the actual amount
-      const value = parseEther("1000000000"); // 1 billion KTA tokens
+      const ktaDecimals = await publicClient.readContract({
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "decimals",
+      } as any) as number;
+      const value = parseUnits("1000000000", Number(ktaDecimals)); // 1 billion KTA tokens
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -721,7 +731,13 @@ export const useUSDCApproval = (userAddress: Address | undefined, amount: string
 
 // Hook to check KTA approval for buying XRGE
 export const useKTAApproval = (userAddress: Address | undefined, amount: string) => {
-  const value = amount ? parseEther(amount) : BigInt(0); // KTA has 18 decimals
+  const { data: ktaDecimals } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: !!amount && Number(amount) > 0 },
+  });
+  const value = amount && ktaDecimals !== undefined ? parseUnits(amount, Number(ktaDecimals)) : BigInt(0);
 
   const { data, isLoading, refetch } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
@@ -729,7 +745,7 @@ export const useKTAApproval = (userAddress: Address | undefined, amount: string)
     functionName: "checkKTAApproval",
     args: userAddress && value ? [userAddress, value] : undefined,
     query: {
-      enabled: !!userAddress && !!amount && Number(amount) > 0,
+      enabled: !!userAddress && !!amount && Number(amount) > 0 && ktaDecimals !== undefined,
     },
   });
 
@@ -773,7 +789,13 @@ export const useKTAAllowance = (userAddress: Address | undefined, amount: string
 
 // Hook to get quote for buying XRGE with KTA
 export const useXRGEQuoteFromKTA = (ktaAmount: string) => {
-  const value = ktaAmount ? parseEther(ktaAmount) : BigInt(0);
+  const { data: ktaDecimals } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: !!ktaAmount && Number(ktaAmount) > 0 },
+  });
+  const value = ktaAmount && ktaDecimals !== undefined ? parseUnits(ktaAmount, Number(ktaDecimals)) : BigInt(0);
 
   const { data, isLoading } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
@@ -781,7 +803,7 @@ export const useXRGEQuoteFromKTA = (ktaAmount: string) => {
     functionName: "getExpectedXRGEFromKTA",
     args: [value],
     query: {
-      enabled: !!ktaAmount && Number(ktaAmount) > 0,
+      enabled: !!ktaAmount && Number(ktaAmount) > 0 && ktaDecimals !== undefined,
     },
   });
 
