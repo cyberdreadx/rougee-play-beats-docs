@@ -234,8 +234,10 @@ export const useXRGESwap = () => {
     }
 
     try {
-      const value = parseEther(amount);
-      console.log("Parsed value:", value.toString());
+      // Use a much larger approval amount to avoid "unsafe allowance change" errors
+      // This approves for 1 billion XRGE tokens, which should be more than enough
+      const value = parseEther("1000000000"); // 1 billion XRGE
+      console.log("Parsed value (large approval):", value.toString());
 
       const config = {
         account: accountAddress,
@@ -399,7 +401,8 @@ export const useXRGESwap = () => {
 
     try {
       console.log("Approving KTA:", { amount, accountAddress, chainId, KTA_TOKEN_ADDRESS, XRGE_SWAPPER_ADDRESS });
-      const value = parseEther(amount);
+      // Use a much larger approval amount to avoid "unsafe allowance change" errors
+      const value = parseEther("1000000000"); // 1 billion KTA tokens
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -512,8 +515,9 @@ export const useXRGESwap = () => {
     }
 
     try {
-      // USDC has 6 decimals
-      const value = parseUnits(amount, 6);
+      // Use a much larger approval amount to avoid "unsafe allowance change" errors
+      // USDC has 6 decimals, so 1 billion USDC = 1,000,000,000 * 10^6
+      const value = parseUnits("1000000000", 6); // 1 billion USDC
       const config = {
         account: accountAddress,
         chainId: chainId,
