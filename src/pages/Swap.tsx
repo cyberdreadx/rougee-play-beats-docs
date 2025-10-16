@@ -801,7 +801,7 @@ const Swap = () => {
                       }
 
                       if (selectedToken === "KTA") {
-                        if (!hasKTAApproval) {
+                        if (!effectiveHasKTAApproval) {
                           await handleApprove();
                         }
                         for (let i = 0; i < 20; i++) {
