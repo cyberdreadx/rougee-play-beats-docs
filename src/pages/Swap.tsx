@@ -97,6 +97,15 @@ const Swap = () => {
     sellAmount
   );
   
+  // Debug approval status
+  console.log('🔍 Approval Debug:', {
+    hasApproval,
+    sellAmount,
+    fullAddress,
+    isPending,
+    isConfirming
+  });
+  
   const { hasApproval: hasUSDCApproval, refetch: refetchUSDCApproval } = useUSDCApproval(
     fullAddress as any,
     buyAmount
