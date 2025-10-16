@@ -168,6 +168,23 @@ const ERC20_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export const useXRGESwap = () => {
@@ -719,6 +736,36 @@ export const useKTAApproval = (userAddress: Address | undefined, amount: string)
   return {
     hasApproval: data?.[0] ?? false,
     currentAllowance: data?.[1] ? formatEther(data[1]) : "0",
+    isLoading,
+    refetch,
+  };
+};
+
+// Additional on-chain KTA allowance check (fallback)
+export const useKTAAllowance = (userAddress: Address | undefined, amount: string) => {
+  const enabledBase = !!userAddress && !!amount && Number(amount) > 0;
+  const { data: ktaDecimals } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: enabledBase },
+  });
+
+  const scaledAmount = enabledBase && ktaDecimals !== undefined ? parseUnits(amount, Number(ktaDecimals)) : BigInt(0);
+
+  const { data: allowance, isLoading, refetch } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: enabledBase ? [userAddress as Address, XRGE_SWAPPER_ADDRESS] : undefined,
+    query: { enabled: enabledBase },
+  });
+
+  const hasApproval = allowance !== undefined && (allowance as bigint) >= (scaledAmount as bigint);
+
+  return {
+    hasApproval,
+    currentAllowance: allowance ? allowance.toString() : "0",
     isLoading,
     refetch,
   };

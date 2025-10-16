@@ -12,6 +12,7 @@ import {
   useXRGEApproval,
   useUSDCApproval,
   useKTAApproval,
+  useKTAAllowance,
   useXRGEQuoteFromKTA,
   useKTAQuote,
   useXRGEQuoteFromUSDC,
@@ -116,17 +117,24 @@ const Swap = () => {
     fullAddress as any,
     buyAmount
   );
+  const { hasApproval: hasKTAAllowance, refetch: refetchKTAAllowance } = useKTAAllowance(
+    fullAddress as any,
+    buyAmount
+  );
   
-  // Refetch approval status when transaction succeeds
+  // Effective approval if either source says approved
+  const effectiveHasKTAApproval = hasKTAApproval || hasKTAAllowance;
+  
   useEffect(() => {
     if (isSuccess) {
       console.log("Transaction successful, refetching approval status...");
       // Wait a bit for blockchain to update
-      setTimeout(() => {
-        refetchApproval();
-        refetchUSDCApproval();
-        refetchKTAApproval();
-      }, 2000);
+        setTimeout(() => {
+          refetchApproval();
+          refetchUSDCApproval();
+          refetchKTAApproval();
+          refetchKTAAllowance();
+        }, 2000);
     }
   }, [isSuccess, refetchApproval, refetchUSDCApproval, refetchKTAApproval]);
 
@@ -311,7 +319,7 @@ const Swap = () => {
     }
     
     // Check KTA approval if using KTA
-    if (selectedToken === "KTA" && !hasKTAApproval) {
+    if (selectedToken === "KTA" && !effectiveHasKTAApproval) {
       toast({
         title: "Approval Required",
         description: "Please approve KTA first before buying",
@@ -434,7 +442,7 @@ const Swap = () => {
         if (selectedToken === "USDC") {
           await refetchUSDCApproval();
         } else if (selectedToken === "KTA") {
-          await refetchKTAApproval();
+          await Promise.all([refetchKTAApproval(), refetchKTAAllowance()]);
         }
         
         if (attempts >= maxAttempts) {
