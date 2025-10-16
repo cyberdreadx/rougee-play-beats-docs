@@ -26,7 +26,7 @@ import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import { useBalance, useReadContract } from "wagmi";
-import { formatEther } from "viem";
+import { formatEther, parseUnits } from "viem";
 import {
   Select,
   SelectContent,
@@ -173,6 +173,11 @@ const Swap = () => {
 
   const { data: xrgeDecimals } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+  });
+  const { data: ktaTokenDecimals } = useReadContract({
+    address: KTA_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
   });
@@ -456,7 +461,7 @@ const Swap = () => {
         if (selectedToken === "USDC") {
           await refetchUSDCApproval();
         } else if (selectedToken === "KTA") {
-          await refetchKTAApproval();
+          await Promise.all([refetchKTAApproval(), refetchKTAAllowance()]);
         }
         clearInterval(pollInterval);
         toast({
@@ -805,9 +810,20 @@ const Swap = () => {
                           await handleApprove();
                         }
                         for (let i = 0; i < 20; i++) {
-                          const res: any = await refetchKTAApproval();
-                          const ok = res?.data?.[0] ?? false;
-                          if (ok) return true;
+                          const [resA, resB]: any = await Promise.all([
+                            refetchKTAApproval(),
+                            refetchKTAAllowance(),
+                          ]);
+                          const approvedByContract = resA?.data?.[0] ?? false;
+                          const allowanceRaw = resB?.data as bigint | undefined;
+                          const needed = ktaTokenDecimals !== undefined
+                            ? parseUnits(buyAmount, Number(ktaTokenDecimals))
+                            : undefined;
+                          const approvedByAllowance =
+                            allowanceRaw !== undefined &&
+                            needed !== undefined &&
+                            allowanceRaw >= (needed as bigint);
+                          if (approvedByContract || approvedByAllowance) return true;
                           await new Promise(r => setTimeout(r, 1500));
                         }
                         return false;
