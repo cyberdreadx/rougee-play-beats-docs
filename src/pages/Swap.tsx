@@ -755,51 +755,21 @@ const Swap = () => {
                   </div>
                 </div>
 
-                {selectedToken !== "ETH" && !((selectedToken === "USDC" && hasUSDCApproval) || (selectedToken === "KTA" && hasKTAApproval)) && (
-                  <Alert className="border-neon-green/30 bg-neon-green/5">
-                    <Info className="h-4 w-4 text-neon-green" />
-                    <AlertDescription className="font-mono text-xs">
-                      Buying with {selectedToken} requires 2 transactions: First approve {selectedToken}, then confirm the swap.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {selectedToken !== "ETH" && (
-                  <Button
-                    onClick={handleApprove}
-                    disabled={
-                      isPending || 
-                      isConfirming || 
-                      !buyAmount || 
-                      (selectedToken === "USDC" && hasUSDCApproval) ||
-                      (selectedToken === "KTA" && hasKTAApproval)
-                    }
-                    className="w-full font-mono"
-                    variant={(selectedToken === "USDC" && hasUSDCApproval) || (selectedToken === "KTA" && hasKTAApproval) ? "default" : "outline"}
-                    size="sm"
-                  >
-                    {isPending || isConfirming ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        APPROVING...
-                      </>
-                    ) : (selectedToken === "USDC" && hasUSDCApproval) || (selectedToken === "KTA" && hasKTAApproval) ? (
-                      `✓ ${selectedToken} APPROVED`
-                    ) : (
-                      `STEP 1: APPROVE ${selectedToken}`
-                    )}
-                  </Button>
-                )}
-
                 <Button
                   type="button"
-                  onClick={handleBuy}
+                  onClick={async () => {
+                    // Auto-handle approval for tokens
+                    if (selectedToken !== "ETH" && !((selectedToken === "USDC" && hasUSDCApproval) || (selectedToken === "KTA" && hasKTAApproval))) {
+                      await handleApprove();
+                      // Wait for approval to propagate
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
+                    handleBuy();
+                  }}
                   disabled={
                     isPending || 
                     isConfirming || 
-                    !buyAmount || 
-                    (selectedToken === "USDC" && !hasUSDCApproval) ||
-                    (selectedToken === "KTA" && !hasKTAApproval)
+                    !buyAmount
                   }
                   className="w-full font-mono relative z-10 pointer-events-auto"
                   variant="neon"
@@ -810,8 +780,6 @@ const Swap = () => {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {isPending ? "CONFIRMING..." : "PROCESSING..."}
                     </>
-                  ) : selectedToken === "USDC" || selectedToken === "KTA" ? (
-                    `STEP 2: BUY XRGE WITH ${selectedToken}`
                   ) : (
                     `BUY XRGE WITH ${selectedToken}`
                   )}
@@ -821,13 +789,6 @@ const Swap = () => {
 
             {/* Sell Tab */}
             <TabsContent value="sell" className="space-y-6">
-              {/* Info Alert */}
-              <Alert className="border-neon-green/20 bg-neon-green/5">
-                <Info className="h-4 w-4 text-neon-green" />
-                <AlertDescription className="font-mono text-sm">
-                  Selling requires 2 transactions: First approve XRGE, then confirm the sell.
-                </AlertDescription>
-              </Alert>
               
               <div className="space-y-4">
                 {/* Token Selector */}
@@ -943,41 +904,30 @@ const Swap = () => {
                   </div>
                 </div>
 
-                {!hasApproval && sellAmount && Number(sellAmount) > 0 ? (
-                  <Button
-                    onClick={handleApproveXRGE}
-                    disabled={isPending || isConfirming}
-                    className="w-full font-mono"
-                    variant="outline"
-                    size="lg"
-                  >
-                    {isPending || isConfirming ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        APPROVING...
-                      </>
-                    ) : (
-                      "STEP 1: APPROVE XRGE"
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleSell}
-                    disabled={isPending || isConfirming || !sellAmount || !hasApproval}
-                    className="w-full font-mono"
-                    variant="neon"
-                    size="lg"
-                  >
-                    {isPending || isConfirming ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {isPending ? "CONFIRMING..." : "PROCESSING..."}
-                      </>
-                    ) : (
-                      "STEP 2: SELL XRGE"
-                    )}
-                  </Button>
-                )}
+                <Button
+                  onClick={async () => {
+                    // Auto-handle approval if needed
+                    if (!hasApproval) {
+                      await handleApproveXRGE();
+                      // Wait for approval to propagate
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+                    }
+                    handleSell();
+                  }}
+                  disabled={isPending || isConfirming || !sellAmount}
+                  className="w-full font-mono"
+                  variant="neon"
+                  size="lg"
+                >
+                  {isPending || isConfirming ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isPending ? "CONFIRMING..." : "PROCESSING..."}
+                    </>
+                  ) : (
+                    `SELL XRGE FOR ${selectedToken}`
+                  )}
+                </Button>
               </div>
             </TabsContent>
           </Tabs>
