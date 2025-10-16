@@ -39,11 +39,11 @@ interface SongTokenItemProps {
   onBalanceLoaded?: (songId: string, hasBalance: boolean) => void;
 }
 
-const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick, onBalanceLoaded }: SongTokenItemProps) => {
+  const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick, onBalanceLoaded }: SongTokenItemProps) => {
   const navigate = useNavigate();
   
   // Get user's balance of this token
-  const { data: balanceData } = useReadContract({
+  const { data: balanceData, isLoading: balanceLoading, isError } = useReadContract({
     address: song.token_address as Address,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -61,9 +61,18 @@ const SongTokenItem = ({ song, userAddress, xrgeUsdPrice, onClick, onBalanceLoad
   // Notify parent about balance status
   useEffect(() => {
     if (balanceData !== undefined && onBalanceLoaded) {
-      onBalanceLoaded(song.id, balance > 0);
+      const hasBalance = balance > 0;
+      console.log(`🎵 ${song.ticker}: balance=${balance.toFixed(4)}, hasBalance=${hasBalance}, balanceData=${balanceData?.toString()}`);
+      onBalanceLoaded(song.id, hasBalance);
     }
-  }, [song.id, balance, balanceData, onBalanceLoaded]);
+  }, [song.id, balance, balanceData, onBalanceLoaded, song.ticker]);
+  
+  // Log errors
+  useEffect(() => {
+    if (isError) {
+      console.error(`❌ Error fetching balance for ${song.ticker} (${song.token_address})`);
+    }
+  }, [isError, song.ticker, song.token_address]);
   
   // Only render if user has a balance
   if (balance === 0) return null;
@@ -249,8 +258,12 @@ const Wallet = () => {
         .select('id, title, artist, ticker, token_address, cover_cid')
         .not('token_address', 'is', null);
         
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching songs:', error);
+        throw error;
+      }
       
+      console.log(`✅ Fetched ${songs?.length || 0} songs with token addresses for wallet UI`);
       setAllSongs(songs || []);
     } catch (error) {
       console.error('Error fetching songs:', error);
