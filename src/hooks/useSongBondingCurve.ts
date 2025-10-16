@@ -641,12 +641,26 @@ export const useSongTradeEvents = (songTokenAddress: Address | undefined) => {
 
         // Get unique block numbers and fetch timestamps
         const blockNumbers = [...new Set(allLogs.map(log => log.blockNumber))];
-        const blocks = await Promise.all(
-          blockNumbers.map(blockNumber => publicClient.getBlock({ blockNumber }))
-        );
-        const blockTimestamps = new Map(
-          blocks.map(block => [block.number, Number(block.timestamp)])
-        );
+        let blockTimestamps = new Map<bigint, number>();
+        
+        try {
+          const blocks = await Promise.all(
+            blockNumbers.map(blockNumber => publicClient.getBlock({ blockNumber }))
+          );
+          blockTimestamps = new Map(
+            blocks.map(block => [block.number, Number(block.timestamp)])
+          );
+        } catch (error) {
+          console.warn('getBlock not supported by RPC, using estimated timestamps');
+          // Fallback: estimate timestamps based on block numbers
+          const currentBlock = await publicClient.getBlockNumber();
+          const currentTime = Date.now();
+          blockNumbers.forEach(blockNum => {
+            const blockDiff = Number(currentBlock - blockNum);
+            const estimatedTime = Math.floor((currentTime - (blockDiff * 2000)) / 1000); // Base has ~2s blocks
+            blockTimestamps.set(blockNum, estimatedTime);
+          });
+        }
 
         // Process buy events (viem gives us typed args)
         const buyEvents = buyLogs.map(log => {

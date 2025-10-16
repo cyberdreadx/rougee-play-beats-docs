@@ -124,7 +124,18 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice }: SongTradingHistoryPr
           continue;
         }
 
-        const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+        // Get block timestamp - fallback to estimated time if RPC doesn't support getBlock
+        let timestamp: number;
+        try {
+          const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+          timestamp = Number(block.timestamp) * 1000;
+        } catch (error) {
+          // If getBlock not supported, estimate timestamp from block number
+          // Base has ~2 second block time
+          const currentBlock = await publicClient.getBlockNumber();
+          const blockDiff = Number(currentBlock - log.blockNumber);
+          timestamp = Date.now() - (blockDiff * 2000);
+        }
         
         // BUY: FROM bonding curve TO user
         // SELL: FROM user TO bonding curve
@@ -146,10 +157,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice }: SongTradingHistoryPr
         console.log(`📊 ${isBuy ? 'BUY' : 'SELL'}: ${amount.toLocaleString()} tokens`);
         console.log(`   Supply: ${trackedSupply.toLocaleString()} (${(trackedSupply/990_000_000*100).toFixed(2)}% of bonding curve)`);
         console.log(`   Price: ${priceInXRGE.toFixed(6)} XRGE = $${priceUSD.toFixed(8)}`);
-        console.log(`   Time: ${new Date(Number(block.timestamp) * 1000).toLocaleString()}`);
+        console.log(`   Time: ${new Date(timestamp).toLocaleString()}`);
         
         allTrades.push({
-          timestamp: Number(block.timestamp) * 1000,
+          timestamp,
           price: priceInXRGE,
           type: isBuy ? 'buy' : 'sell',
           amount,

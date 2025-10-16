@@ -35,6 +35,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
+import ethLogo from "@/assets/tokens/ethereum-eth.svg";
+import ktaLogo from "@/assets/tokens/kta.png";
+import usdcLogo from "@/assets/tokens/usdc.jpg";
+import xrgeLogo from "@/assets/tokens/xrge.png";
 
 const ERC20_ABI = [
   {
@@ -62,6 +66,7 @@ const Swap = () => {
   const [selectedToken, setSelectedToken] = useState<"ETH" | "KTA" | "USDC">("ETH");
   const [chartHeight, setChartHeight] = useState(280); // Default mobile height
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const { prices, calculateUsdValue } = useTokenPrices();
 
@@ -98,15 +103,6 @@ const Swap = () => {
     sellAmount
   );
   
-  // Debug approval status
-  console.log('🔍 Approval Debug:', {
-    hasApproval,
-    sellAmount,
-    selectedToken,
-    fullAddress,
-    isPending,
-    isConfirming
-  });
   
   const { hasApproval: hasUSDCApproval, refetch: refetchUSDCApproval } = useUSDCApproval(
     fullAddress as any,
@@ -127,14 +123,12 @@ const Swap = () => {
   
   useEffect(() => {
     if (isSuccess) {
-      console.log("Transaction successful, refetching approval status...");
-      // Wait a bit for blockchain to update
-        setTimeout(() => {
-          refetchApproval();
-          refetchUSDCApproval();
-          refetchKTAApproval();
-          refetchKTAAllowance();
-        }, 2000);
+      setTimeout(() => {
+        refetchApproval();
+        refetchUSDCApproval();
+        refetchKTAApproval();
+        refetchKTAAllowance();
+      }, 2000);
     }
   }, [isSuccess, refetchApproval, refetchUSDCApproval, refetchKTAApproval]);
 
@@ -242,7 +236,6 @@ const Swap = () => {
     if (error) {
       const message = (error as any)?.shortMessage || (error as Error)?.message || 'Transaction failed';
       toast({ title: 'Transaction Error', description: message, variant: 'destructive' });
-      console.error('Transaction error:', error);
     }
   }, [error]);
 
@@ -263,24 +256,15 @@ const Swap = () => {
 
     try {
       const txHash = await approveUSDC(buyAmount);
-      console.log("USDC Approval transaction submitted, hash:", txHash);
-      
-      toast({
-        title: "Approval Submitted",
-        description: "Waiting for confirmation...",
-      });
 
-      // Poll for approval status
       let attempts = 0;
       const maxAttempts = 20;
       const pollInterval = setInterval(async () => {
         attempts++;
-        console.log(`Polling USDC approval status... attempt ${attempts}/${maxAttempts}`);
         await refetchUSDCApproval();
         
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
-          console.log("Max polling attempts reached for USDC approval");
         }
       }, 2000);
 
@@ -294,7 +278,6 @@ const Swap = () => {
         });
       }, 5000);
     } catch (err) {
-      console.error("USDC Approval error:", err);
       toast({
         title: "Approval Failed",
         description: err instanceof Error ? err.message : "Failed to approve USDC",
@@ -380,8 +363,6 @@ const Swap = () => {
         txHash = await sellXRGEForUSDC(sellAmount, slippageBps);
       }
       
-      console.log("Sell transaction hash:", txHash);
-      
       // Reset the amount to clear the approval state
       setSellAmount("");
       
@@ -398,7 +379,6 @@ const Swap = () => {
         description: `Swapped ${sellAmount} XRGE for ${selectedToken}`,
       });
     } catch (error) {
-      console.error("Sell failed:", error);
       // Error toast already shown by hook
     }
   };
@@ -418,11 +398,6 @@ const Swap = () => {
       return;
     }
     
-    toast({
-      title: `Approving ${selectedToken}`,
-      description: "Please confirm the approval in your wallet...",
-    });
-    
     try {
       let txHash;
       if (selectedToken === "KTA") {
@@ -431,19 +406,14 @@ const Swap = () => {
         txHash = await approveUSDC(buyAmount);
       }
       
-      console.log(`${selectedToken} Approval transaction submitted, hash:`, txHash);
-      
-      toast({
-        title: "Approval Submitted",
-        description: "Waiting for confirmation...",
-      });
+      if (!txHash) {
+        throw new Error("No transaction hash returned from approval");
+      }
 
-      // Poll for approval status
       let attempts = 0;
       const maxAttempts = 20;
       const pollInterval = setInterval(async () => {
         attempts++;
-        console.log(`Polling ${selectedToken} approval status... attempt ${attempts}/${maxAttempts}`);
         if (selectedToken === "USDC") {
           await refetchUSDCApproval();
         } else if (selectedToken === "KTA") {
@@ -452,7 +422,6 @@ const Swap = () => {
         
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
-          console.log(`Max polling attempts reached for ${selectedToken} approval`);
         }
       }, 2000);
 
@@ -464,18 +433,23 @@ const Swap = () => {
           await Promise.all([refetchKTAApproval(), refetchKTAAllowance()]);
         }
         clearInterval(pollInterval);
-        toast({
-          title: `${selectedToken} Approved`,
-          description: "You can now buy XRGE",
-        });
       }, 5000);
-    } catch (err) {
-      console.error(`${selectedToken} Approval error:`, err);
-      toast({
-        title: "Approval Failed",
-        description: err instanceof Error ? err.message : `Failed to approve ${selectedToken}`,
-        variant: "destructive",
-      });
+    } catch (err: any) {
+      // Check if user rejected the transaction
+      const isUserRejection = err?.message?.includes('User rejected') || 
+                              err?.message?.includes('user rejected') ||
+                              err?.code === 4001 ||
+                              err?.code === 'ACTION_REJECTED';
+      
+      if (isUserRejection) {
+        toast({
+          title: "Transaction Cancelled",
+          description: "You cancelled the approval",
+        });
+      }
+      
+      // Re-throw to let the calling function know approval failed
+      throw err;
     }
   };
   
@@ -567,17 +541,12 @@ const Swap = () => {
     
     try {
       const txHash = await approveXRGE(sellAmount);
-      console.log("XRGE approval tx:", txHash);
       
-      // Wait a bit for the transaction to be mined
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Refetch approval status multiple times to ensure it updates
-      console.log("Refetching approval status...");
       for (let i = 0; i < 5; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
         await refetchApproval();
-        console.log(`Approval check ${i + 1}/5`);
       }
       
       toast({
@@ -585,7 +554,6 @@ const Swap = () => {
         description: "You can now proceed to sell XRGE",
       });
     } catch (error) {
-      console.error("Approval failed:", error);
       // Error toast already shown by hook
     }
   };
@@ -680,7 +648,10 @@ const Swap = () => {
                     <SelectContent>
                       <SelectItem value="ETH" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>ETH</span>
+                          <div className="flex items-center gap-2">
+                            <img src={ethLogo} alt="ETH" className="w-5 h-5" />
+                            <span>ETH</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
                           </span>
@@ -688,7 +659,10 @@ const Swap = () => {
                       </SelectItem>
                       <SelectItem value="KTA" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>KTA</span>
+                          <div className="flex items-center gap-2">
+                            <img src={ktaLogo} alt="KTA" className="w-5 h-5 rounded-full" />
+                            <span>KTA</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
                           </span>
@@ -696,7 +670,10 @@ const Swap = () => {
                       </SelectItem>
                       <SelectItem value="USDC" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>USDC</span>
+                          <div className="flex items-center gap-2">
+                            <img src={usdcLogo} alt="USDC" className="w-5 h-5 rounded-full" />
+                            <span>USDC</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
                           </span>
@@ -772,95 +749,113 @@ const Swap = () => {
                 <Button
                   type="button"
                   onClick={async () => {
-                    // Validate amount
-                    if (!buyAmount || Number(buyAmount) <= 0) {
-                      toast({
-                        title: "Invalid Amount",
-                        description: `Please enter a valid ${selectedToken} amount`,
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    const slippageBps = Number(slippage) * 100;
-
-                    // ETH path needs no approval
-                    if (selectedToken === "ETH") {
-                      handleBuy();
-                      return;
-                    }
-
-                    // Ensure approval (KTA/USDC). We actively poll allowance to avoid stale UI state
-                    const ensureApproval = async (): Promise<boolean> => {
-                      if (selectedToken === "USDC") {
-                        if (!hasUSDCApproval) {
-                          await handleApprove();
-                        }
-                        for (let i = 0; i < 20; i++) {
-                          const res: any = await refetchUSDCApproval();
-                          const ok = res?.data?.[0] ?? false;
-                          if (ok) return true;
-                          await new Promise(r => setTimeout(r, 1500));
-                        }
-                        return false;
+                    try {
+                      setIsProcessing(true);
+                      
+                      // Validate amount
+                      if (!buyAmount || Number(buyAmount) <= 0) {
+                        toast({
+                          title: "Invalid Amount",
+                          description: `Please enter a valid ${selectedToken} amount`,
+                          variant: "destructive",
+                        });
+                        return;
                       }
 
-                      if (selectedToken === "KTA") {
-                        if (!effectiveHasKTAApproval) {
-                          await handleApprove();
-                        }
-                        for (let i = 0; i < 20; i++) {
-                          const [resA, resB]: any = await Promise.all([
-                            refetchKTAApproval(),
-                            refetchKTAAllowance(),
-                          ]);
-                          const approvedByContract = resA?.data?.[0] ?? false;
-                          const allowanceRaw = resB?.data as bigint | undefined;
-                          const needed = ktaTokenDecimals !== undefined
-                            ? parseUnits(buyAmount, Number(ktaTokenDecimals))
-                            : undefined;
-                          const approvedByAllowance =
-                            allowanceRaw !== undefined &&
-                            needed !== undefined &&
-                            allowanceRaw >= (needed as bigint);
-                          if (approvedByContract || approvedByAllowance) return true;
-                          await new Promise(r => setTimeout(r, 1500));
-                        }
-                        return false;
+                      const slippageBps = Number(slippage) * 100;
+
+                      // ETH path needs no approval
+                      if (selectedToken === "ETH") {
+                        handleBuy();
+                        return;
                       }
 
-                      return true;
-                    };
+                      // Ensure approval (KTA/USDC). We actively poll allowance to avoid stale UI state
+                      const ensureApproval = async (): Promise<boolean> => {
+                        try {
+                          if (selectedToken === "USDC") {
+                            if (!hasUSDCApproval) {
+                              await handleApprove();
+                            }
+                            for (let i = 0; i < 20; i++) {
+                              const res: any = await refetchUSDCApproval();
+                              const ok = res?.data?.[0] ?? false;
+                              if (ok) return true;
+                              await new Promise(r => setTimeout(r, 1500));
+                            }
+                            return false;
+                          }
 
-                    const approved = await ensureApproval();
-                    if (!approved) {
-                      toast({
-                        title: "Still waiting for approval",
-                        description: "Please wait a few seconds and try again.",
-                      });
-                      return;
-                    }
+                          if (selectedToken === "KTA") {
+                            if (!effectiveHasKTAApproval) {
+                              await handleApprove();
+                            }
+                            for (let i = 0; i < 20; i++) {
+                              const [resA, resB]: any = await Promise.all([
+                                refetchKTAApproval(),
+                                refetchKTAAllowance(),
+                              ]);
+                              const approvedByContract = resA?.data?.[0] ?? false;
+                              const allowanceRaw = resB?.data as bigint | undefined;
+                              const needed = ktaTokenDecimals !== undefined
+                                ? parseUnits(buyAmount, Number(ktaTokenDecimals))
+                                : undefined;
+                              const approvedByAllowance =
+                                allowanceRaw !== undefined &&
+                                needed !== undefined &&
+                                allowanceRaw >= (needed as bigint);
+                              if (approvedByContract || approvedByAllowance) return true;
+                              await new Promise(r => setTimeout(r, 1500));
+                            }
+                            return false;
+                          }
 
-                    // Proceed with swap directly to avoid re-check race conditions
-                    if (selectedToken === "USDC") {
-                      await buyXRGEWithUSDC(buyAmount, slippageBps);
-                    } else if (selectedToken === "KTA") {
-                      await buyXRGEWithKTA(buyAmount, slippageBps);
+                          return true;
+                        } catch (error) {
+                          console.error("Approval error:", error);
+                          // User rejected or error occurred, return false
+                          return false;
+                        }
+                      };
+
+                      const approved = await ensureApproval();
+                      if (!approved) {
+                        toast({
+                          title: "Approval Required",
+                          description: "Please approve the transaction to continue.",
+                        });
+                        return;
+                      }
+
+                      // Proceed with swap directly to avoid re-check race conditions
+                      try {
+                        if (selectedToken === "USDC") {
+                          await buyXRGEWithUSDC(buyAmount, slippageBps);
+                        } else if (selectedToken === "KTA") {
+                          await buyXRGEWithKTA(buyAmount, slippageBps);
+                        }
+                      } catch (swapError) {
+                        console.error("Swap error:", swapError);
+                        // Error toast will be shown by the hook
+                      }
+                    } finally {
+                      setIsProcessing(false);
                     }
                   }}
                   disabled={
                     isPending || 
                     isConfirming || 
+                    isProcessing ||
                     !buyAmount
                   }
                   className="w-full font-mono relative z-10 pointer-events-auto"
                   variant="neon"
                   size="lg"
                 >
-                  {isPending || isConfirming ? (
+                  {isPending || isConfirming || isProcessing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isPending ? "CONFIRMING..." : "PROCESSING..."}
+                      {isProcessing ? "PROCESSING..." : isPending ? "CONFIRMING..." : "FINALIZING..."}
                     </>
                   ) : (
                     `BUY XRGE WITH ${selectedToken}`
@@ -885,7 +880,10 @@ const Swap = () => {
                     <SelectContent>
                       <SelectItem value="ETH" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>ETH</span>
+                          <div className="flex items-center gap-2">
+                            <img src={ethLogo} alt="ETH" className="w-5 h-5" />
+                            <span>ETH</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
                           </span>
@@ -893,7 +891,10 @@ const Swap = () => {
                       </SelectItem>
                       <SelectItem value="KTA" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>KTA</span>
+                          <div className="flex items-center gap-2">
+                            <img src={ktaLogo} alt="KTA" className="w-5 h-5 rounded-full" />
+                            <span>KTA</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
                           </span>
@@ -901,7 +902,10 @@ const Swap = () => {
                       </SelectItem>
                       <SelectItem value="USDC" className="font-mono">
                         <div className="flex items-center justify-between w-full">
-                          <span>USDC</span>
+                          <div className="flex items-center gap-2">
+                            <img src={usdcLogo} alt="USDC" className="w-5 h-5 rounded-full" />
+                            <span>USDC</span>
+                          </div>
                           <span className="text-xs text-muted-foreground ml-4">
                             {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
                           </span>

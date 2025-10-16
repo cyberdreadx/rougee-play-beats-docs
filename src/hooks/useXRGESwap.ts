@@ -3,7 +3,7 @@ import { parseEther, parseUnits, formatEther, Address } from "viem";
 import { toast } from "@/hooks/use-toast";
 
 // XRGESwapper contract address on Base
-const XRGE_SWAPPER_ADDRESS = "0x53BeF6a3e261798246919854bC3ACCab2576F31F" as Address;
+const XRGE_SWAPPER_ADDRESS = "0xA8a861e7076529E7bAe38B48ed434a2383e2F40b" as Address;
 export const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as Address;
 export const KTA_TOKEN_ADDRESS = "0xc0634090F2Fe6c6d75e61Be2b949464aBB498973" as Address; // KTA Token on Base
 export const USDC_TOKEN_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address;
@@ -196,10 +196,7 @@ export const useXRGESwap = () => {
 
   // Buy XRGE with ETH
   const buyXRGE = async (ethAmount: string, slippageBps: number = 500) => {
-    console.log("buyXRGE called with:", { ethAmount, slippageBps, accountAddress, chainId });
-
     if (!accountAddress || !chainId) {
-      console.error("Wallet not properly connected");
       toast({
         title: "Wallet Error",
         description: "Please ensure your wallet is properly connected",
@@ -210,8 +207,6 @@ export const useXRGESwap = () => {
 
     try {
       const value = parseEther(ethAmount);
-      console.log("Parsed value:", value.toString());
-
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -222,11 +217,8 @@ export const useXRGESwap = () => {
         value,
       };
 
-      console.log("Calling writeContractAsync with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (buy) hash:", submittedHash);
     } catch (err) {
-      console.error("Buy XRGE error:", err);
       toast({
         title: "Transaction Failed",
         description: err instanceof Error ? err.message : "Failed to swap ETH for XRGE",
@@ -237,11 +229,9 @@ export const useXRGESwap = () => {
 
   // Approve XRGE for swapper contract
   const approveXRGE = async (amount: string, spenderAddress?: Address) => {
-    const spender = spenderAddress || XRGE_SWAPPER_ADDRESS; // Default to swapper if not specified
-    console.log("approveXRGE called with:", { amount, spender, accountAddress, chainId });
-
+    const spender = spenderAddress || XRGE_SWAPPER_ADDRESS;
+    
     if (!accountAddress || !chainId) {
-      console.error("Wallet not properly connected");
       toast({
         title: "Wallet Error",
         description: "Please ensure your wallet is properly connected",
@@ -251,11 +241,7 @@ export const useXRGESwap = () => {
     }
 
     try {
-      // Use a much larger approval amount to avoid "unsafe allowance change" errors
-      // This approves for 1 billion XRGE tokens, which should be more than enough
-      const value = parseEther("1000000000"); // 1 billion XRGE
-      console.log("Parsed value (large approval):", value.toString());
-
+      const value = parseEther("1000000000");
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -265,12 +251,9 @@ export const useXRGESwap = () => {
         args: [spender, value],
       };
 
-      console.log("Calling writeContractAsync for approval with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (approve) hash:", submittedHash);
       return submittedHash;
     } catch (err) {
-      console.error("Approve error:", err);
       toast({
         title: "Approval Failed",
         description: err instanceof Error ? err.message : "Failed to approve XRGE",
@@ -282,10 +265,7 @@ export const useXRGESwap = () => {
 
   // Sell XRGE for ETH
   const sellXRGE = async (xrgeAmount: string, slippageBps: number = 500) => {
-    console.log("sellXRGE called with:", { xrgeAmount, slippageBps, accountAddress, chainId });
-
     if (!accountAddress || !chainId) {
-      console.error("Wallet not properly connected");
       toast({
         title: "Wallet Error",
         description: "Please ensure your wallet is properly connected",
@@ -296,8 +276,6 @@ export const useXRGESwap = () => {
 
     try {
       const value = parseEther(xrgeAmount);
-      console.log("Parsed value:", value.toString());
-
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -307,11 +285,8 @@ export const useXRGESwap = () => {
         args: [value, BigInt(slippageBps)],
       };
 
-      console.log("Calling writeContractAsync for sell with config:", config);
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (sell) hash:", submittedHash);
     } catch (err) {
-      console.error("Sell XRGE error:", err);
       toast({
         title: "Transaction Failed",
         description: err instanceof Error ? err.message : "Failed to swap XRGE for ETH",
@@ -323,22 +298,45 @@ export const useXRGESwap = () => {
   // Buy XRGE with KTA
   const buyXRGEWithKTA = async (ktaAmount: string, slippageBps: number = 500) => {
     if (!accountAddress || !chainId) {
-      toast({
-        title: "Wallet Error",
-        description: "Please ensure your wallet is properly connected",
-        variant: "destructive",
-      });
       throw new Error("Wallet not connected");
     }
 
     try {
-      console.log("Swapping KTA to XRGE:", { ktaAmount, slippageBps, accountAddress, chainId, XRGE_SWAPPER_ADDRESS });
       const ktaDecimals = await publicClient.readContract({
         address: KTA_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "decimals",
       } as any) as number;
+      
       const value = parseUnits(ktaAmount, Number(ktaDecimals));
+      
+      const ktaBalance = await publicClient.readContract({
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [accountAddress],
+      } as any) as bigint;
+      
+      if (ktaBalance < value) {
+        throw new Error(`Insufficient KTA balance. You have ${(Number(ktaBalance) / 10**Number(ktaDecimals)).toFixed(4)} KTA`);
+      }
+      
+      const allowance = await publicClient.readContract({
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [accountAddress, XRGE_SWAPPER_ADDRESS],
+      } as any) as bigint;
+      
+      if (allowance < value) {
+        throw new Error(`KTA not approved. Please approve KTA first. Current allowance: ${(Number(allowance) / 10**Number(ktaDecimals)).toFixed(4)} KTA`);
+      }
+      
+      toast({
+        title: "Swapping KTA for XRGE",
+        description: "Confirm swap in your wallet...",
+      });
+      
       const config = {
         account: accountAddress,
         chainId: chainId,
@@ -346,23 +344,47 @@ export const useXRGESwap = () => {
         abi: XRGE_SWAPPER_ABI,
         functionName: "swapKTAForXRGESimple",
         args: [value, BigInt(slippageBps)],
-        gas: BigInt(300000), // Fixed gas limit for BASE
+        gas: BigInt(300000),
       };
 
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (buy with KTA) hash:", submittedHash);
       
       toast({
-        title: "KTA to XRGE Swap",
-        description: "Swap transaction submitted successfully",
+        title: "✅ Swap Submitted!",
+        description: `Swapping ${ktaAmount} KTA for XRGE...`,
       });
       
       return submittedHash;
-    } catch (err) {
-      console.error("Buy XRGE with KTA error:", err);
+    } catch (err: any) {
+      
+      // Check if user rejected
+      const isUserRejection = err?.message?.includes('User rejected') || 
+                              err?.message?.includes('user rejected') ||
+                              err?.code === 4001 ||
+                              err?.code === 'ACTION_REJECTED';
+      
+      if (isUserRejection) {
+        // Silent for user rejection
+        throw err;
+      }
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to swap KTA for XRGE";
+      if (err.message) {
+        if (err.message.includes("Insufficient KTA balance")) {
+          errorMessage = err.message;
+        } else if (err.message.includes("not approved")) {
+          errorMessage = err.message;
+        } else if (err.message.includes("slippage")) {
+          errorMessage = "Price moved too much. Try increasing slippage tolerance.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       toast({
-        title: "Transaction Failed",
-        description: err instanceof Error ? err.message : "Failed to swap KTA for XRGE",
+        title: "Swap Failed",
+        description: errorMessage,
         variant: "destructive",
       });
       throw err;
@@ -381,8 +403,6 @@ export const useXRGESwap = () => {
     }
 
     try {
-      console.log("Selling XRGE for KTA:", { xrgeAmount, slippageBps, accountAddress, chainId });
-      
       const value = parseEther(xrgeAmount);
       const config = {
         account: accountAddress,
@@ -394,14 +414,12 @@ export const useXRGESwap = () => {
       };
 
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (sell for KTA) hash:", submittedHash);
       toast({
         title: "Swap Submitted",
         description: "Please wait for confirmation...",
       });
       return submittedHash;
     } catch (err) {
-      console.error("Sell XRGE for KTA error:", err);
       toast({
         title: "Transaction Failed",
         description: err instanceof Error ? err.message : "Failed to swap XRGE for KTA",
@@ -414,25 +432,57 @@ export const useXRGESwap = () => {
   // Approve KTA for swapper contract
   const approveKTA = async (amount: string) => {
     if (!accountAddress || !chainId) {
-      toast({
-        title: "Wallet Error",
-        description: "Please ensure your wallet is properly connected",
-        variant: "destructive",
-      });
       throw new Error("Wallet not connected");
     }
 
     try {
-      console.log("Approving KTA:", { amount, accountAddress, chainId, KTA_TOKEN_ADDRESS, XRGE_SWAPPER_ADDRESS });
-      
-      // Get KTA decimals
       const ktaDecimals = await publicClient.readContract({
         address: KTA_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "decimals",
       } as any) as number;
       
-      // Approve a very large amount (1 billion KTA tokens)
+      const currentAllowance = await publicClient.readContract({
+        address: KTA_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [accountAddress, XRGE_SWAPPER_ADDRESS],
+      } as any) as bigint;
+      
+      if (currentAllowance > BigInt(0)) {
+        toast({
+          title: "KTA Approval (Step 1/2)",
+          description: "Confirm wallet to reset existing approval...",
+        });
+        
+        const resetConfig = {
+          account: accountAddress,
+          chainId: chainId,
+          address: KTA_TOKEN_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [XRGE_SWAPPER_ADDRESS, BigInt(0)],
+        };
+        
+        const resetHash = await writeContractAsync(resetConfig as any);
+        
+        toast({
+          title: "KTA Approval (Step 1/2)",
+          description: "Waiting for reset transaction to confirm...",
+        });
+        
+        for (let i = 0; i < 30; i++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const receipt = await publicClient.getTransactionReceipt({ hash: resetHash });
+          if (receipt) {
+            break;
+          }
+          if (i === 29) {
+            throw new Error("Reset transaction timed out. Please try again.");
+          }
+        }
+      }
+      
       const value = parseUnits("1000000000", Number(ktaDecimals));
       const config = {
         account: accountAddress,
@@ -441,25 +491,36 @@ export const useXRGESwap = () => {
         abi: ERC20_ABI,
         functionName: "approve",
         args: [XRGE_SWAPPER_ADDRESS, value],
-        gas: BigInt(80000), // Fixed gas limit for BASE approval
       };
 
+      toast({
+        title: currentAllowance > BigInt(0) ? "KTA Approval (Step 2/2)" : "KTA Approval",
+        description: "Confirm approval in your wallet...",
+      });
+
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (approve KTA) hash:", submittedHash);
       
       toast({
-        title: "KTA Approved",
-        description: "KTA approval transaction submitted successfully",
+        title: "✅ KTA Approved!",
+        description: "You can now swap KTA for XRGE",
       });
       
       return submittedHash;
     } catch (err) {
-      console.error("Approve KTA error:", err);
-      toast({
-        title: "Approval Failed",
-        description: err instanceof Error ? err.message : "Failed to approve KTA",
-        variant: "destructive",
-      });
+      
+      // Check if user rejected
+      const isUserRejection = (err as any)?.message?.includes('User rejected') || 
+                              (err as any)?.message?.includes('user rejected') ||
+                              (err as any)?.code === 4001 ||
+                              (err as any)?.code === 'ACTION_REJECTED';
+      
+      if (!isUserRejection) {
+        toast({
+          title: "Approval Failed",
+          description: err instanceof Error ? err.message : "Failed to approve KTA",
+          variant: "destructive",
+        });
+      }
       throw err;
     }
   };
@@ -488,10 +549,8 @@ export const useXRGESwap = () => {
       };
 
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (buy with USDC) hash:", submittedHash);
       return submittedHash;
     } catch (err) {
-      console.error("Buy XRGE with USDC error:", err);
       toast({
         title: "Transaction Failed",
         description: err instanceof Error ? err.message : "Failed to swap USDC for XRGE",
@@ -524,9 +583,7 @@ export const useXRGESwap = () => {
       };
 
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (sell for USDC) hash:", submittedHash);
     } catch (err) {
-      console.error("Sell XRGE for USDC error:", err);
       toast({
         title: "Transaction Failed",
         description: err instanceof Error ? err.message : "Failed to swap XRGE for USDC",
@@ -560,10 +617,8 @@ export const useXRGESwap = () => {
       };
 
       const submittedHash = await writeContractAsync(config as any);
-      console.log("Transaction submitted (approve USDC) hash:", submittedHash);
       return submittedHash;
     } catch (err) {
-      console.error("Approve USDC error:", err);
       toast({
         title: "Approval Failed",
         description: err instanceof Error ? err.message : "Failed to approve USDC",
@@ -587,14 +642,10 @@ export const useXRGESwap = () => {
 
   const getXRGEBalance = async () => {
     if (!accountAddress || !publicClient) {
-      console.log("Cannot get XRGE balance: missing accountAddress or publicClient");
       return "0";
     }
     
     try {
-      console.log("Getting XRGE balance for address:", accountAddress);
-      
-      // Use publicClient to directly read from the blockchain (bypasses cache)
       const balance = await publicClient.readContract({
         address: XRGE_TOKEN_ADDRESS,
         abi: ERC20_ABI,
@@ -602,11 +653,8 @@ export const useXRGESwap = () => {
         args: [accountAddress],
       } as any) as bigint;
       
-      const formattedBalance = formatEther(balance);
-      console.log("XRGE balance fetched:", formattedBalance, "for address:", accountAddress);
-      return formattedBalance;
+      return formatEther(balance);
     } catch (error) {
-      console.error("Error fetching XRGE balance:", error);
       return "0";
     }
   };

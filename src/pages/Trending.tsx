@@ -171,7 +171,8 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         const blocksIn24h = 43200;
         const fromBlock = currentBlock - BigInt(blocksIn24h);
         
-        // Get bonding supply from 24h ago
+        // Try to get bonding supply from 24h ago (requires archive node)
+        // This may fail on some RPC providers
         const supply24hAgo = await publicClient.readContract({
           address: song.token_address as Address,
           abi: SONG_TOKEN_ABI,
@@ -196,9 +197,13 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
             setPriceChange24h(change);
           }
         }
-      } catch (error) {
-        console.error('Error fetching 24h price change:', error);
-        // Fallback to estimated change
+      } catch (error: any) {
+        // Silently handle historical state query errors (common with basic RPC providers)
+        // Only log if it's not a "method not supported" error
+        if (!error?.message?.includes('not supported') && !error?.code) {
+          console.warn('Historical price data not available, using estimate');
+        }
+        // Fallback to estimated change based on current activity
         const tokensSold = bondingSupply ? (990_000_000 - Number(bondingSupply) / 1e18) : 0;
         if (tokensSold > 0) {
           // Estimate ~25% growth in 24h for new tokens
