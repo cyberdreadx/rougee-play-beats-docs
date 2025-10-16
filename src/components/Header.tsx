@@ -97,6 +97,24 @@ const Header = () => {
               <span className="hidden md:inline">MY PROFILE</span>
             </Button>
           )}
+          {/* Mobile quick profile icon */}
+          {isConnected && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (profile) {
+                  navigate(`/artist/${fullAddress}`);
+                } else {
+                  navigate("/profile/edit");
+                }
+              }}
+              className="md:hidden h-9 w-9"
+              title="Profile"
+            >
+              <User className="h-5 w-5" />
+            </Button>
+          )}
           <WalletButton />
         </div>
       </div>
