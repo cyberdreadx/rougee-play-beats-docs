@@ -779,17 +779,25 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         <div className="space-y-3">
                           {comments[post.id]?.map((comment) => (
                             <div key={comment.id} className="flex gap-3">
-                              <Avatar className="h-8 w-8 flex-shrink-0">
-                                <AvatarImage 
-                                  src={comment.profiles?.avatar_cid ? getIPFSGatewayUrl(comment.profiles.avatar_cid) : undefined} 
-                                />
-                                <AvatarFallback className="bg-primary/20 text-neon-green text-xs">
-                                  {(comment.profiles?.artist_name || comment.wallet_address).substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
+                              <div 
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                              >
+                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                  <AvatarImage 
+                                    src={comment.profiles?.avatar_cid ? getIPFSGatewayUrl(comment.profiles.avatar_cid) : undefined} 
+                                  />
+                                  <AvatarFallback className="bg-primary/20 text-neon-green text-xs">
+                                    {(comment.profiles?.artist_name || comment.wallet_address).substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-mono text-xs font-semibold">
+                                  <span 
+                                    className="font-mono text-xs font-semibold cursor-pointer hover:text-neon-green transition-colors"
+                                    onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                                  >
                                     {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
                                   </span>
                                   <span className="text-xs text-muted-foreground">

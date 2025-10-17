@@ -376,13 +376,21 @@ export default function Feed() {
               </div> : posts.map(post => <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col">
                   {/* Post Header */}
                   <div className="flex items-center gap-2 mb-3">
-                    {post.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(post.profiles.avatar_cid)} alt="Avatar" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-primary text-xs">
-                          {post.profiles?.artist_name?.[0] || '?'}
-                        </span>
-                      </div>}
+                    <div 
+                      className="cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => navigate(`/artist/${post.wallet_address}`)}
+                    >
+                      {post.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(post.profiles.avatar_cid)} alt="Avatar" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-primary text-xs">
+                            {post.profiles?.artist_name?.[0] || '?'}
+                          </span>
+                        </div>}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate flex items-center gap-1">
+                      <p 
+                        className="font-semibold text-sm truncate flex items-center gap-1 cursor-pointer hover:text-neon-green transition-colors"
+                        onClick={() => navigate(`/artist/${post.wallet_address}`)}
+                      >
                         {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
                         {post.profiles?.verified && (
                           <CheckCircle className="h-3.5 w-3.5 text-neon-green flex-shrink-0" aria-label="Verified artist" />
@@ -444,13 +452,21 @@ export default function Feed() {
                       {/* Comments List */}
                       <div className="space-y-3">
                         {comments[post.id]?.map(comment => <div key={comment.id} className="flex gap-3">
-                            {comment.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(comment.profiles.avatar_cid)} alt="Avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                                <span className="text-primary text-xs">
-                                  {comment.profiles?.artist_name?.[0] || '?'}
-                                </span>
-                              </div>}
+                            <div 
+                              className="cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                            >
+                              {comment.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(comment.profiles.avatar_cid)} alt="Avatar" className="w-8 h-8 rounded-full object-cover flex-shrink-0" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-primary text-xs">
+                                    {comment.profiles?.artist_name?.[0] || '?'}
+                                  </span>
+                                </div>}
+                            </div>
                             <div className="flex-1">
-                              <p className="text-sm font-semibold flex items-center gap-1">
+                              <p 
+                                className="text-sm font-semibold flex items-center gap-1 cursor-pointer hover:text-neon-green transition-colors"
+                                onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                              >
                                 {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
                                 {comment.profiles?.verified && (
                                   <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />

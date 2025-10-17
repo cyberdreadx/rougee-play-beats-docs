@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StoryViewer from "./StoryViewer";
@@ -22,6 +23,7 @@ interface GroupedStories {
 }
 
 const StoriesBar = () => {
+  const navigate = useNavigate();
   const { fullAddress } = useWallet();
   const [stories, setStories] = useState<GroupedStories>({});
   const [profiles, setProfiles] = useState<{ [key: string]: any }>({});
@@ -193,7 +195,13 @@ const StoriesBar = () => {
                     </div>
                   </div>
                 </div>
-                <span className="text-xs font-mono max-w-[80px] truncate">
+                <span 
+                  className="text-xs font-mono max-w-[80px] truncate cursor-pointer hover:text-neon-green transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/artist/${walletAddress}`);
+                  }}
+                >
                   {profile?.display_name ||
                     `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
                 </span>

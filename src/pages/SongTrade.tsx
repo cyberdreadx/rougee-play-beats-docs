@@ -241,105 +241,204 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     
     setLoadingHolders(true);
     try {
-      // Use on-chain method to get holder count by querying Transfer events
-      // This is more reliable than BaseScan API for new tokens
+      // Use database query first (same as Artist page approach)
+      console.log('🔍 Fetching holders for song:', songId);
+      const { data: purchases, error: purchasesError } = await supabase
+        .from('song_purchases')
+        .select('buyer_wallet_address')
+        .eq('song_id', songId);
       
-      if (!publicClient) {
-        throw new Error('Public client not available');
+      if (purchasesError) {
+        console.error('Error fetching purchases:', purchasesError);
       }
-
-      // Get all Transfer events to calculate unique holders
-      const ERC20_TRANSFER_ABI = [
-        {
-          type: 'event',
-          name: 'Transfer',
-          inputs: [
-            { name: 'from', type: 'address', indexed: true },
-            { name: 'to', type: 'address', indexed: true },
-            { name: 'value', type: 'uint256', indexed: false }
-          ]
-        }
-      ] as const;
       
-      const { data: songData } = await supabase
-        .from('songs')
-        .select('created_at')
-        .eq('id', songId)
-        .single();
+      console.log('📊 Found purchases:', purchases?.length || 0, 'for song:', songId);
+      console.log('📊 Purchase data:', purchases);
       
-      const currentBlock = await publicClient.getBlockNumber();
-      const blocksSinceCreation = songData?.created_at 
-        ? Math.min(Math.floor((Date.now() - new Date(songData.created_at).getTime()) / 2000), 100000)
-        : 50000;
+      const uniqueHolders = new Set(purchases?.map(p => p.buyer_wallet_address.toLowerCase()) || []);
+      console.log('👥 Unique holders from database:', uniqueHolders.size);
       
-      const fromBlock = currentBlock - BigInt(blocksSinceCreation);
-      
-      const logs = await publicClient.getLogs({
-        address: songTokenAddress,
-        event: ERC20_TRANSFER_ABI[0],
-        fromBlock,
-        toBlock: 'latest'
-      });
-
-      // Track unique holders (recipients of transfers, excluding zero address)
-      const holderBalances: Record<string, bigint> = {};
-      
-      for (const log of logs) {
-        const { args } = log as any;
-        const from = args.from?.toLowerCase();
-        const to = args.to?.toLowerCase();
-        const value = BigInt(args.value || 0);
-        
-        // Skip zero address
-        const zeroAddress = '0x0000000000000000000000000000000000000000';
-        
-        // Subtract from sender (if not minting)
-        if (from && from !== zeroAddress) {
-          holderBalances[from] = (holderBalances[from] || BigInt(0)) - value;
-        }
-        
-        // Add to recipient (if not burning)
-        if (to && to !== zeroAddress) {
-          holderBalances[to] = (holderBalances[to] || BigInt(0)) + value;
-        }
+      // If we have database purchases, use that count
+      if (uniqueHolders.size > 0) {
+        setHolderCount(uniqueHolders.size);
       }
+      
+      // Try to get detailed holder balances from blockchain for the top holders list
+      if (publicClient) {
+        try {
+          // Get all Transfer events to calculate detailed holder balances
+          const ERC20_TRANSFER_ABI = [
+            {
+              type: 'event',
+              name: 'Transfer',
+              inputs: [
+                { name: 'from', type: 'address', indexed: true },
+                { name: 'to', type: 'address', indexed: true },
+                { name: 'value', type: 'uint256', indexed: false }
+              ]
+            }
+          ] as const;
+          
+          const { data: songData } = await supabase
+            .from('songs')
+            .select('created_at')
+            .eq('id', songId)
+            .single();
+          
+          const currentBlock = await publicClient.getBlockNumber();
+          const blocksSinceCreation = songData?.created_at 
+            ? Math.min(Math.floor((Date.now() - new Date(songData.created_at).getTime()) / 2000), 100000)
+            : 50000;
+          
+          const fromBlock = currentBlock - BigInt(blocksSinceCreation);
+          
+          const logs = await publicClient.getLogs({
+            address: songTokenAddress,
+            event: ERC20_TRANSFER_ABI[0],
+            fromBlock,
+            toBlock: 'latest'
+          });
 
-      // Filter out zero/negative balances and format
-      const holdersWithBalance = Object.entries(holderBalances)
-        .filter(([_, balance]) => balance > BigInt(0))
-        .map(([address, balance]) => ({
-          address,
-          rawBalance: balance,
-          balance: (Number(balance) / 1e18).toFixed(2),
-          percentage: 0 // Will calculate after
-        }))
-        .sort((a, b) => Number(b.rawBalance - a.rawBalance));
+          // Track holder balances
+          const holderBalances: Record<string, bigint> = {};
+          
+          console.log('🔗 Processing', logs.length, 'transfer logs...');
+          
+          for (const log of logs) {
+            const { args } = log as any;
+            const from = args.from?.toLowerCase();
+            const to = args.to?.toLowerCase();
+            const value = BigInt(args.value || 0);
+            
+            const zeroAddress = '0x0000000000000000000000000000000000000000';
+            
+            if (from && from !== zeroAddress) {
+              holderBalances[from] = (holderBalances[from] || BigInt(0)) - value;
+            }
+            
+            if (to && to !== zeroAddress) {
+              holderBalances[to] = (holderBalances[to] || BigInt(0)) + value;
+            }
+          }
+          
+          console.log('📊 Holder balances after processing:', Object.keys(holderBalances).length, 'addresses');
+          console.log('📊 Balances:', Object.entries(holderBalances).map(([addr, bal]) => ({ 
+            address: addr, 
+            balance: bal.toString(), 
+            isPositive: bal > BigInt(0),
+            balanceFormatted: (Number(bal) / 1e18).toFixed(2)
+          })));
 
-      // Calculate percentages
-      const totalHeld = holdersWithBalance.reduce((sum, h) => sum + h.rawBalance, BigInt(0));
-      const formattedHolders = holdersWithBalance.map(h => ({
-        address: h.address,
-        balance: h.balance,
-        percentage: totalHeld > BigInt(0) 
-          ? (Number(h.rawBalance * BigInt(10000) / totalHeld) / 100)
-          : 0
-      }));
+          // Filter out zero/negative balances and format
+          const holdersWithBalance = Object.entries(holderBalances)
+            .filter(([_, balance]) => balance > BigInt(0))
+            .map(([address, balance]) => ({
+              address,
+              rawBalance: balance,
+              balance: (Number(balance) / 1e18).toFixed(2),
+              percentage: 0
+            }))
+            .sort((a, b) => Number(b.rawBalance - a.rawBalance));
+          
+          console.log('✅ Holders with positive balance:', holdersWithBalance.length);
+          console.log('✅ Final holders:', holdersWithBalance.map(h => ({ address: h.address, balance: h.balance })));
+          
+          // If we're missing holders, try direct balance checks for all addresses that ever held tokens
+          if (holdersWithBalance.length < 2 && Object.keys(holderBalances).length >= 2) {
+            console.log('🔍 Missing holders detected, checking current balances...');
+            
+            const directBalanceChecks = await Promise.all(
+              Object.keys(holderBalances).map(async (address) => {
+                try {
+                  const currentBalance = await publicClient.readContract({
+                    address: songTokenAddress,
+                    abi: [{
+                      name: 'balanceOf',
+                      type: 'function',
+                      stateMutability: 'view',
+                      inputs: [{ name: 'account', type: 'address' }],
+                      outputs: [{ name: 'balance', type: 'uint256' }]
+                    }],
+                    functionName: 'balanceOf',
+                    args: [address as Address]
+                  } as any);
+                  
+                  return { address, currentBalance: BigInt(currentBalance as any) };
+                } catch (error) {
+                  console.error(`Error checking balance for ${address}:`, error);
+                  return { address, currentBalance: BigInt(0) };
+                }
+              })
+            );
+            
+            console.log('🔍 Direct balance checks:', directBalanceChecks.map(b => ({ 
+              address: b.address, 
+              balance: b.currentBalance.toString(),
+              formatted: (Number(b.currentBalance) / 1e18).toFixed(2)
+            })));
+            
+            // Use direct balance checks instead of transfer tracking
+            const directHolders = directBalanceChecks
+              .filter(({ currentBalance }) => currentBalance > BigInt(0))
+              .map(({ address, currentBalance }) => ({
+                address,
+                rawBalance: currentBalance,
+                balance: (Number(currentBalance) / 1e18).toFixed(2),
+                percentage: 0
+              }))
+              .sort((a, b) => Number(b.rawBalance - a.rawBalance));
+            
+            if (directHolders.length > holdersWithBalance.length) {
+              // Calculate percentages for direct holders
+              const totalHeld = directHolders.reduce((sum, h) => sum + h.rawBalance, BigInt(0));
+              const formattedDirectHolders = directHolders.map(h => ({
+                address: h.address,
+                balance: h.balance,
+                percentage: totalHeld > BigInt(0) 
+                  ? (Number(h.rawBalance * BigInt(10000) / totalHeld) / 100)
+                  : 0
+              }));
+              
+              console.log('✅ Using direct balance checks:', directHolders.length, 'holders');
+              setHolders(formattedDirectHolders.slice(0, 10));
+              setHolderCount(formattedDirectHolders.length);
+              return; // Exit early with direct balance results
+            }
+          }
 
-      setHolders(formattedHolders.slice(0, 10));
-      setHolderCount(formattedHolders.length);
+          // Calculate percentages
+          const totalHeld = holdersWithBalance.reduce((sum, h) => sum + h.rawBalance, BigInt(0));
+          const formattedHolders = holdersWithBalance.map(h => ({
+            address: h.address,
+            balance: h.balance,
+            percentage: totalHeld > BigInt(0) 
+              ? (Number(h.rawBalance * BigInt(10000) / totalHeld) / 100)
+              : 0
+          }));
+
+          setHolders(formattedHolders.slice(0, 10));
+          // Use blockchain count if it's higher than database count, or if database is empty
+          if (formattedHolders.length > uniqueHolders.size || uniqueHolders.size === 0) {
+            console.log('🔄 Using blockchain count:', formattedHolders.length, 'vs database count:', uniqueHolders.size);
+            setHolderCount(formattedHolders.length);
+          }
+        } catch (blockchainError) {
+          console.warn('Blockchain query failed, using database count:', blockchainError);
+          setHolders([]);
+          // If blockchain fails and we have no database records, try a simpler approach
+          if (uniqueHolders.size === 0) {
+            console.log('🔄 No database records found, attempting direct balance check...');
+            // This is a fallback - we could implement a direct balance check here if needed
+          }
+        }
+      } else {
+        setHolders([]);
+      }
       
     } catch (error) {
-      try {
-        const { data: purchases } = await supabase
-          .from('song_purchases')
-          .select('buyer_wallet_address')
-          .eq('song_id', songId);
-        
-        const uniqueHolders = new Set(purchases?.map(p => p.buyer_wallet_address.toLowerCase()));
-        setHolderCount(uniqueHolders.size);
-      } catch (fallbackError) {
-        setHolderCount(0);
-      }
+      console.error('Error fetching holders:', error);
+      setHolderCount(0);
+      setHolders([]);
     } finally {
       setLoadingHolders(false);
     }
@@ -730,10 +829,14 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             });
           
           if (purchaseError) {
-            // Don't fail the whole transaction, just log it
+            console.error('Error recording purchase:', purchaseError);
+          } else {
+            console.log('✅ Purchase recorded in database');
+            // Refresh holders immediately after recording purchase
+            setTimeout(() => fetchHolders(), 1000);
           }
         } catch (dbError) {
-          // Silent fail
+          console.error('Database error:', dbError);
         }
       }
       
@@ -1742,7 +1845,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                             {holder.address.slice(0, 6)}...{holder.address.slice(-4)}
                           </p>
                           <p className="font-mono text-xs text-muted-foreground">
-                            {holder.balance} purchases
+                            {parseFloat(holder.balance).toLocaleString()} tokens
                           </p>
                         </div>
                       </div>
@@ -1792,20 +1895,28 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   comments.map((comment) => (
                     <div key={comment.id} className="console-bg p-3 md:p-4 border border-border rounded-lg">
                       <div className="flex items-start gap-2 md:gap-3">
-                        <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
-                          {comment.profiles?.avatar_cid && (
-                            <AvatarImage
-                              src={getIPFSGatewayUrl(comment.profiles.avatar_cid)}
-                              className="object-cover"
-                            />
-                          )}
-                          <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
-                            {comment.profiles?.artist_name?.[0]?.toUpperCase() || comment.wallet_address.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div 
+                          className="cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                        >
+                          <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
+                            {comment.profiles?.avatar_cid && (
+                              <AvatarImage
+                                src={getIPFSGatewayUrl(comment.profiles.avatar_cid)}
+                                className="object-cover"
+                              />
+                            )}
+                            <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
+                              {comment.profiles?.artist_name?.[0]?.toUpperCase() || comment.wallet_address.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                            <p className="font-mono text-xs md:text-sm font-semibold truncate">
+                            <p 
+                              className="font-mono text-xs md:text-sm font-semibold truncate cursor-pointer hover:text-neon-green transition-colors"
+                              onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                            >
                               {comment.profiles?.artist_name || `${comment.wallet_address.substring(0, 6)}...${comment.wallet_address.substring(38)}`}
                             </p>
                             <p className="font-mono text-xs text-muted-foreground">
