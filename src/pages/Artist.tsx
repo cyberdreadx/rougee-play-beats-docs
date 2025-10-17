@@ -621,7 +621,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                     <Card
                       key={song.id}
                       className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors group"
-                      onClick={() => playSong(song)}
+                      onClick={() => navigate(`/song/${song.id}`)}
                     >
                       <div className="flex items-center gap-4">
                         {/* Album Artwork */}

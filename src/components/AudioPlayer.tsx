@@ -436,7 +436,7 @@ const AudioPlayer = ({
 
       {/* Desktop Full Player */}
       <div className="hidden md:flex items-center gap-4 p-4 relative z-10">
-        {/* Song Info */}
+        {/* Left info area with cover art */}
         <div className="flex items-center gap-4 min-w-0 flex-1">
           {displayCover && (
             <div 
@@ -453,11 +453,10 @@ const AudioPlayer = ({
               )}
             </div>
           )}
-          {/* Removed title/artist block beside cover; info is in top marquee */}
         </div>
 
-        {/* Controls + Trade button */}
-        <div className="flex flex-col items-center gap-2 flex-1 max-w-2xl">
+        {/* Controls + Trade button (center column) */}
+        <div className="flex flex-col items-center gap-2 flex-[2] max-w-3xl mx-auto">
           {/* Main control buttons */}
           <div className="flex items-center gap-3">
             {onShuffle && (
@@ -551,7 +550,7 @@ const AudioPlayer = ({
         </div>
 
         {/* Volume */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-end flex-1">
           <Button
             variant="ghost"
             size="sm"
