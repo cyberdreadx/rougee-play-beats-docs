@@ -108,12 +108,21 @@ export default function LikeButton({
         console.error('❌ Edge function error:', error);
         console.error('Error details:', { message: error.message, context: error.context });
         
-        // Try to get the actual error message from the response
+        // Try to parse the error response
+        let errorData;
         try {
-          const errorResponse = await error.context?.json();
-          console.error('📝 Server error response:', errorResponse);
+          errorData = await error.context?.json();
+          console.error('📝 Server error response:', errorData);
         } catch (e) {
           console.error('Could not parse error response');
+        }
+
+        // Check if it's an "already liked" error
+        if (errorData?.alreadyLiked) {
+          toast.info("You already liked this!");
+          // Update local state to reflect already liked
+          setIsLiked(true);
+          return;
         }
         
         throw error;

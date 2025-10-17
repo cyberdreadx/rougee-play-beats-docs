@@ -35,6 +35,21 @@ Deno.serve(async (req) => {
     );
 
     if (action === 'like') {
+      // Check if already liked
+      const { data: existing } = await supabase
+        .from('feed_likes')
+        .select('id')
+        .eq('wallet_address', walletAddress)
+        .eq('post_id', postId)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(
+          JSON.stringify({ error: 'Already liked', alreadyLiked: true }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const { error } = await supabase.from('feed_likes').insert({
         wallet_address: walletAddress,
         post_id: postId
