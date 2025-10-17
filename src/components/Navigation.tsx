@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, ListMusic } from "lucide-react";
 import MusicBars from "./MusicBars";
 
 interface NavigationProps {
@@ -21,6 +21,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
+    { name: "PLAYLISTS", path: "/playlists", icon: ListMusic },
     ...(isArtist 
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
@@ -35,6 +36,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
+    { name: "PLAYLISTS", path: "/playlists", icon: ListMusic },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     // Always include a profile entry for listeners/artists
@@ -72,6 +74,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
     if (tab.path === "/swap") {
       return location.pathname === "/swap";
+    }
+    if (tab.path === "/playlists") {
+      return location.pathname.startsWith("/playlist");
     }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
