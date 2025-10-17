@@ -27,10 +27,11 @@ export default function LikeButton({
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Always fetch the public like count; only check personal like state when connected
   useEffect(() => {
+    fetchLikeCount();
     if (isConnected && address) {
       checkIfLiked();
-      fetchLikeCount();
     }
   }, [songId, isConnected, address]);
 

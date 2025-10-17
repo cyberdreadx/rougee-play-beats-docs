@@ -37,16 +37,17 @@ const Header = () => {
   }, [isConnected, fullAddress, isPrivyReady]);
 
   return (
-    <header className="w-full p-4 md:p-6 glass sticky top-0 z-40 border-b border-neon-green/10 pt-safe">
-      <div className="flex items-center justify-between">
+    <header className="w-full glass sticky top-0 z-40 border-b border-neon-green/10 pt-safe px-4 md:px-6">
+      <div className="flex items-center justify-between h-14 md:h-16">
         {/* Brand */}
         <div 
           className="flex items-center gap-2 md:gap-3 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <h1 className="text-xs md:text-sm font-bold neon-text font-mono tracking-wider hover:opacity-80 transition-opacity">
-            ROUGEE.PLAY
-          </h1>
+          <div className="flex items-center gap-2 min-h-[28px] md:min-h-[32px]">
+            <img src="/favicon.png" alt="Rougee logo" className="h-5 w-5 md:h-6 md:w-6" />
+            <span className="text-xs md:text-sm font-bold neon-text font-mono tracking-wider">ROUGEE.PLAY</span>
+          </div>
           
           {/* User wallet info - hidden on mobile */}
           <div className="hidden lg:flex items-center gap-2 text-[10px] text-muted-foreground font-mono ml-4">
