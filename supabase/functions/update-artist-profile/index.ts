@@ -28,10 +28,12 @@ Deno.serve(async (req) => {
 
     let walletAddress: string;
     if (providedWalletAddress && typeof providedWalletAddress === 'string' && providedWalletAddress.toLowerCase().startsWith('0x')) {
-      walletAddress = providedWalletAddress.toLowerCase();
+      // Don't lowercase - preserve original casing from request
+      walletAddress = providedWalletAddress;
       console.log('✅ Using wallet from request:', walletAddress);
     } else if (user.walletAddress) {
-      walletAddress = user.walletAddress.toLowerCase();
+      // Don't lowercase - preserve original casing from JWT
+      walletAddress = user.walletAddress;
       console.log('✅ Using wallet from JWT:', walletAddress);
     } else {
       throw new Error('No wallet address provided');
@@ -111,11 +113,17 @@ Deno.serve(async (req) => {
     console.log('Processing profile update for:', walletAddress);
 
     // Fetch existing profile to preserve image CIDs if not uploading new ones
+    // Use case-insensitive comparison for wallet address lookup
     const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('avatar_cid, cover_cid, artist_ticker')
-      .eq('wallet_address', walletAddress)
+      .select('avatar_cid, cover_cid, artist_ticker, wallet_address')
+      .ilike('wallet_address', walletAddress)
       .maybeSingle();
+    
+    // Use the existing wallet address casing if profile exists
+    if (existingProfile?.wallet_address) {
+      walletAddress = existingProfile.wallet_address;
+    }
 
     // Validate ticker if provided AND if it's different from existing ticker
     if (artistTicker) {
