@@ -163,7 +163,7 @@ export default function TagAutocomplete({
       {showDropdown && suggestions.length > 0 && (
         <Card
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto bg-card border-border shadow-lg"
+          className="absolute z-[9999] mt-1 w-full max-h-64 overflow-y-auto bg-card/95 backdrop-blur-sm border-border shadow-2xl"
         >
           <div className="py-1">
             {suggestions.map((suggestion, index) => (
