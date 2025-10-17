@@ -12,6 +12,7 @@ import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
 import LikeButton from '@/components/LikeButton';
 import { usePrivy } from '@privy-io/react-auth';
+import TaggedText from '@/components/TaggedText';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -224,6 +225,15 @@ export default function Feed() {
         ...prev,
         [postId]: commentsWithProfiles as FeedComment[]
       }));
+
+      // Sync the comment count with actual comments after loading
+      setPosts(prevPosts => 
+        prevPosts.map(p => 
+          p.id === postId 
+            ? { ...p, comment_count: commentsData?.length || 0 }
+            : p
+        )
+      );
     } catch (error) {
       console.error('Error loading comments:', error);
     }
@@ -405,7 +415,11 @@ export default function Feed() {
                   </div>
 
                   {/* Post Content */}
-                  {post.content_text && <p className="mb-3 text-sm whitespace-pre-wrap line-clamp-6">{post.content_text}</p>}
+                  {post.content_text && (
+                    <div className="mb-3 text-sm whitespace-pre-wrap line-clamp-6">
+                      <TaggedText text={post.content_text} />
+                    </div>
+                  )}
 
                   {/* Post Media */}
                   {post.media_cid && <div className="mb-3 rounded-lg overflow-hidden">

@@ -794,6 +794,10 @@ export type Database = {
         Args: { ticker: string }
         Returns: boolean
       }
+      sync_feed_comment_count: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       update_artist_stats: {
         Args: { artist_wallet: string }
         Returns: undefined
