@@ -1084,7 +1084,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     if (!song) return;
     try {
       setSharing(true);
-      const text = `Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`;
+      const text = `Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE PLAY`;
       if (navigator.share) {
         await navigator.share({ title: song.title, text, url: pageUrl });
         toast({ title: "Shared", description: "Thanks for spreading the word!" });
@@ -1128,18 +1128,18 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">
       <Helmet>
-        <title>{song.title} - {song.artist || 'Unknown Artist'} | ROUGEE.PLAY</title>
-        <meta name="description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY. Stream and trade music NFTs on the blockchain.`} />
+        <title>{song.title} - {song.artist || 'Unknown Artist'} | ROUGEE PLAY</title>
+        <meta name="description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE PLAY. Stream and trade music NFTs on the blockchain.`} />
         
         <meta property="og:title" content={`${song.title} - ${song.artist || 'Unknown Artist'}`} />
-        <meta property="og:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`} />
+        <meta property="og:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE PLAY`} />
         <meta property="og:image" content={coverImageUrl} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:type" content="music.song" />
         
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${song.title} - ${song.artist || 'Unknown Artist'}`} />
-        <meta name="twitter:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`} />
+        <meta name="twitter:description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE PLAY`} />
         <meta name="twitter:image" content={coverImageUrl} />
       </Helmet>
 

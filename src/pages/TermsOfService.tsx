@@ -9,8 +9,8 @@ const TermsOfService = () => {
   return (
     <>
       <Helmet>
-        <title>Terms of Service - ROUGEE.PLAY</title>
-        <meta name="description" content="Terms of Service for ROUGEE.PLAY - Decentralized music platform" />
+        <title>Terms of Service - ROUGEE PLAY</title>
+        <meta name="description" content="Terms of Service for ROUGEE PLAY - Decentralized music platform" />
       </Helmet>
       
       <div className="min-h-screen bg-background">
@@ -31,7 +31,7 @@ const TermsOfService = () => {
           <Alert className="mb-6 sm:mb-8 border-primary/50 bg-primary/5">
             <AlertTriangle className="h-4 w-4 text-primary" />
             <AlertDescription className="text-sm sm:text-base">
-              <strong>Important:</strong> Please read these terms carefully before using ROUGEE.PLAY. 
+              <strong>Important:</strong> Please read these terms carefully before using ROUGEE PLAY. 
               By accessing or using our platform, you agree to be bound by these terms.
             </AlertDescription>
           </Alert>
@@ -46,8 +46,8 @@ const TermsOfService = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
               <p>
-                Welcome to ROUGEE.PLAY ("Platform", "Service", "we", "us", or "our"). These Terms of Service 
-                ("Terms") govern your access to and use of the ROUGEE.PLAY platform, including our website, 
+                Welcome to ROUGEE PLAY ("Platform", "Service", "we", "us", or "our"). These Terms of Service 
+                ("Terms") govern your access to and use of the ROUGEE PLAY platform, including our website,
                 smart contracts, and any related services.
               </p>
               <p>
@@ -70,7 +70,7 @@ const TermsOfService = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
-              <p>To use ROUGEE.PLAY, you must:</p>
+              <p>To use ROUGEE PLAY, you must:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Be at least 18 years old or the age of majority in your jurisdiction</li>
                 <li>Have the legal capacity to enter into binding contracts</li>
@@ -91,7 +91,7 @@ const TermsOfService = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
               <p>
-                ROUGEE.PLAY is a decentralized music platform built on blockchain technology (Base Network) 
+                ROUGEE PLAY is a decentralized music platform built on blockchain technology (Base Network) 
                 that enables:
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
@@ -145,7 +145,7 @@ const TermsOfService = () => {
             <CardContent className="space-y-4 text-sm sm:text-base leading-relaxed">
               <div>
                 <h4 className="font-semibold mb-2">5.1 Content Ownership & Rights</h4>
-                <p>By uploading music to ROUGEE.PLAY, you represent and warrant that:</p>
+                <p>By uploading music to ROUGEE PLAY, you represent and warrant that:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
                   <li>You own all rights to the content or have obtained necessary licenses</li>
                   <li>Your content does not infringe any third-party copyrights, trademarks, or other rights</li>
@@ -164,7 +164,7 @@ const TermsOfService = () => {
               <div>
                 <h4 className="font-semibold mb-2">5.3 Content License</h4>
                 <p>
-                  By uploading content, you grant ROUGEE.PLAY and its users a non-exclusive, worldwide, 
+                  By uploading content, you grant ROUGEE PLAY and its users a non-exclusive, worldwide, 
                   royalty-free license to:
                 </p>
                 <ul className="list-disc list-inside space-y-1 ml-4 mt-2">
@@ -203,7 +203,7 @@ const TermsOfService = () => {
               <div>
                 <h4 className="font-semibold mb-2">6.1 No Investment Advice</h4>
                 <p>
-                  ROUGEE.PLAY does not provide investment, financial, legal, or tax advice. Nothing on the 
+                  ROUGEE PLAY does not provide investment, financial, legal, or tax advice. Nothing on the 
                   Platform should be considered as an offer to sell or solicitation to buy securities. You 
                   are solely responsible for your trading decisions.
                 </p>
@@ -273,7 +273,7 @@ const TermsOfService = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
               <p>
-                Content uploaded to ROUGEE.PLAY is stored on IPFS (InterPlanetary File System), a 
+                Content uploaded to ROUGEE PLAY is stored on IPFS (InterPlanetary File System), a 
                 decentralized storage network. This means:
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
@@ -320,7 +320,7 @@ const TermsOfService = () => {
               <div>
                 <h4 className="font-semibold mb-2">9.4 Limitation of Liability</h4>
                 <p className="uppercase font-bold">
-                  TO THE MAXIMUM EXTENT PERMITTED BY LAW, ROUGEE.PLAY, ITS AFFILIATES, AND TEAM MEMBERS 
+                  TO THE MAXIMUM EXTENT PERMITTED BY LAW, ROUGEE PLAY, ITS AFFILIATES, AND TEAM MEMBERS 
                   SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE 
                   DAMAGES, OR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE, ARISING FROM YOUR USE OF THE 
                   PLATFORM.
@@ -340,7 +340,7 @@ const TermsOfService = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-sm sm:text-base leading-relaxed">
               <p>
-                You agree to indemnify, defend, and hold harmless ROUGEE.PLAY, its affiliates, officers, 
+                You agree to indemnify, defend, and hold harmless ROUGEE PLAY, its affiliates, officers, 
                 directors, employees, and agents from any claims, damages, losses, liabilities, and expenses 
                 (including legal fees) arising from:
               </p>
@@ -430,7 +430,7 @@ const TermsOfService = () => {
           <Alert className="bg-primary/10 border-primary">
             <CheckCircle2 className="h-4 w-4 text-primary" />
             <AlertDescription className="text-sm sm:text-base">
-              <strong>By using ROUGEE.PLAY, you acknowledge that you have read, understood, and agree to be 
+              <strong>By using ROUGEE PLAY, you acknowledge that you have read, understood, and agree to be 
               bound by these Terms of Service.</strong> If you do not agree, please discontinue use of the 
               Platform immediately.
             </AlertDescription>
