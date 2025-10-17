@@ -349,10 +349,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice }: SongTradingHistoryPr
               </div>
               <div className="text-right">
                 <div className="text-neon-green font-mono font-bold">
-                  ${trade.priceUSD.toFixed(6)}
+                  ${(trade.priceUSD * trade.amount).toFixed(2)}
                 </div>
                 <div className="text-muted-foreground text-xs font-mono">
-                  {trade.price.toFixed(4)} XRGE
+                  {(trade.price * trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2})} XRGE
                 </div>
               </div>
             </div>
