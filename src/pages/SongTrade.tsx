@@ -1809,10 +1809,12 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
           {/* Chart Tab */}
           <TabsContent value="chart" className="mt-0">
-            {songTokenAddress && (
+            {songTokenAddress && song && (
               <SongTradingHistory 
                 tokenAddress={songTokenAddress}
                 xrgeUsdPrice={prices.xrge || 0}
+                songTicker={song.ticker || undefined}
+                coverCid={song.cover_cid || undefined}
               />
             )}
           </TabsContent>

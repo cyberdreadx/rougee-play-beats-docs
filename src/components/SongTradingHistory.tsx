@@ -4,6 +4,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
 import { Loader2 } from 'lucide-react';
+import { getIPFSGatewayUrl } from '@/lib/ipfs';
 
 interface TradeData {
   timestamp: number;
@@ -22,9 +23,11 @@ interface ChartDataPoint {
 interface SongTradingHistoryProps {
   tokenAddress: Address;
   xrgeUsdPrice: number;
+  songTicker?: string;
+  coverCid?: string;
 }
 
-const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice }: SongTradingHistoryProps) => {
+const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }: SongTradingHistoryProps) => {
   const [trades, setTrades] = useState<TradeData[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -338,12 +341,23 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice }: SongTradingHistoryPr
                 }`}>
                   {trade.type.toUpperCase()}
                 </div>
-                <div className="text-sm font-mono">
-                  <div className="text-foreground font-semibold">
-                    {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} tokens
-                  </div>
-                  <div className="text-muted-foreground text-xs">
-                    {new Date(trade.timestamp).toLocaleTimeString()}
+                <div className="flex items-center gap-2">
+                  {coverCid && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-neon-green/30 flex-shrink-0">
+                      <img 
+                        src={getIPFSGatewayUrl(coverCid)}
+                        alt={songTicker || 'Song'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="text-sm font-mono">
+                    <div className="text-foreground font-semibold">
+                      {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} {songTicker ? `$${songTicker}` : 'tokens'}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      {new Date(trade.timestamp).toLocaleTimeString()}
+                    </div>
                   </div>
                 </div>
               </div>
