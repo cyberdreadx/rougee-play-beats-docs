@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, ExternalLink, Edit, Music, Play, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle, Upload } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Pause, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle, Upload } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -620,8 +620,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                   return (
                     <Card
                       key={song.id}
-                      className="console-bg tech-border p-4 cursor-pointer hover:border-neon-green transition-colors group"
-                      onClick={() => navigate(`/song/${song.id}`)}
+                      className="console-bg tech-border p-4 hover:border-neon-green transition-colors group"
                     >
                       <div className="flex items-center gap-4">
                         {/* Album Artwork */}
@@ -639,18 +638,22 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                               </div>
                             )}
                           </div>
-                          {/* Play Icon Overlay */}
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Play Button Overlay */}
+                          <button
+                            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); playSong(song); }}
+                            aria-label="Play"
+                          >
                             {currentSong?.id === song.id && isPlaying ? (
-                              <Loader2 className="h-6 w-6 text-neon-green animate-spin" />
+                              <Pause className="h-6 w-6 text-neon-green" />
                             ) : (
                               <Play className="h-6 w-6 text-neon-green" />
                             )}
-                          </div>
+                          </button>
                         </div>
                         
-                        {/* Song Info */}
-                        <div className="flex-1 min-w-0">
+                        {/* Song Info (click to details) */}
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/song/${song.id}`)}>
                           <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
                             <span className="truncate">{song.title}</span>
                             {song.ticker && (
@@ -663,7 +666,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         </div>
 
                         {/* Action Buttons */}
-                        <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                           <LikeButton songId={song.id} size="sm" showCount={false} />
                           <ReportButton songId={song.id} />
                         </div>

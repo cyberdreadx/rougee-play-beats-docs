@@ -29,7 +29,7 @@ import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
 import { useFundWallet } from "@privy-io/react-auth";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
-import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink, CreditCard } from "lucide-react";
+import { Play, TrendingUp, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink, CreditCard, Share2, Pause } from "lucide-react";
 
 interface Song {
   id: string;
@@ -88,6 +88,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [holders, setHolders] = useState<Array<{ address: string; balance: string; percentage: number }>>([]);
   const [loadingHolders, setLoadingHolders] = useState(false);
   const [holderCount, setHolderCount] = useState<number>(0);
+  const [sharing, setSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Fetch artist profile from IPFS
   const { profile: artistProfile } = useArtistProfile(song?.wallet_address || null);
@@ -974,6 +976,27 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
   };
 
+  const handleShare = async () => {
+    if (!song) return;
+    try {
+      setSharing(true);
+      const text = `Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE.PLAY`;
+      if (navigator.share) {
+        await navigator.share({ title: song.title, text, url: pageUrl });
+        toast({ title: "Shared", description: "Thanks for spreading the word!" });
+      } else {
+        await navigator.clipboard.writeText(pageUrl);
+        setCopied(true);
+        toast({ title: "Link copied", description: "Song link copied to clipboard" });
+        setTimeout(() => setCopied(false), 1200);
+      }
+    } catch (e) {
+      // ignore cancellation
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1033,6 +1056,21 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 </AvatarFallback>
               </Avatar>
 
+              {/* Play/Pause */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => playSong(song)}
+                className="h-12 w-12 rounded-full bg-neon-green/10 hover:bg-neon-green/20 border border-neon-green/40"
+                aria-label="Play or Pause"
+              >
+                {currentSong?.id === song.id && isPlaying ? (
+                  <Pause className="w-6 h-6 text-neon-green" />
+                ) : (
+                  <Play className="w-6 h-6 text-neon-green" />
+                )}
+              </Button>
+
               <div className="flex-1 w-full min-w-0">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold neon-text mb-1 md:mb-2 truncate">
                   {song.title}
@@ -1040,68 +1078,19 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-mono mb-3 md:mb-4 truncate">
                   By {song.artist || "Unknown Artist"}
                 </p>
-
-                <div className="flex flex-wrap gap-2 md:gap-3 mb-3 md:mb-4">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    <Play className="h-3 w-3 mr-1" />
-                    {song.play_count} plays
-                  </Badge>
-                  {marketCap !== undefined && marketCap > 0 && (
-                    <Badge variant="outline" className="font-mono text-xs">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      ${marketCap < 0.01 ? marketCap.toFixed(6) : marketCap.toFixed(2)} MCap
-                    </Badge>
-                  )}
-                  {songTokenAddress && !hasRealisticData && (
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      🎯 Ready to Trade
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex gap-2 md:gap-3">
-                  <Button 
-                    variant="neon" 
-                    size="sm"
-                    className="flex-1 text-xs sm:text-sm"
-                    onClick={() => {
-                      console.log('🎵 Play button clicked', { song, hasSong: !!song });
-                      if (song) {
-                        console.log('🎵 Calling playSong with:', song);
-                        playSong(song);
-                      } else {
-                        console.error('❌ No song data available to play');
-                      }
-                    }}
-                  >
-                    <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    {currentSong?.id === song.id && isPlaying ? "PLAYING..." : "PLAY"}
-                  </Button>
-                  
-                  {!songTokenAddress && song.wallet_address?.toLowerCase() === fullAddress?.toLowerCase() && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleDeploy}
-                      disabled={isDeploying}
-                      className="text-xs sm:text-sm"
-                    >
-                      {isDeploying ? (
-                        <>
-                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
-                          DEPLOYING...
-                        </>
-                      ) : (
-                        <>
-                          <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          DEPLOY
-                        </>
-                      )}
-                    </Button>
-                  )}
-                  
+                <div className="flex flex-wrap items-center gap-2">
                   <LikeButton songId={song.id} size="sm" />
                   <ReportButton songId={song.id} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShare}
+                    className="font-mono"
+                    disabled={sharing}
+                  >
+                    {copied ? <Check className="h-4 w-4 mr-2" /> : <Share2 className="h-4 w-4 mr-2" />}
+                    {copied ? 'COPIED' : 'SHARE'}
+                  </Button>
                 </div>
               </div>
             </div>

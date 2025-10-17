@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
@@ -53,6 +53,7 @@ export default function Feed() {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
   useEffect(() => {
     loadPosts();
     if (isConnected && fullAddress) {
@@ -301,6 +302,23 @@ export default function Feed() {
       console.error('Error toggling like:', error);
     }
   };
+  const handleSharePost = async (post: FeedPost) => {
+    const url = `${window.location.origin}/feed#post-${post.id}`;
+    const text = post.content_text ? post.content_text.slice(0, 140) : 'Check out this post on ROUGEE.PLAY';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'ROUGEE.PLAY', text, url });
+        toast({ title: 'Shared', description: 'Post shared successfully' });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopiedPostId(post.id);
+        toast({ title: 'Link copied', description: 'Post link copied to clipboard' });
+        setTimeout(() => setCopiedPostId(null), 1200);
+      }
+    } catch (_) {
+      // ignore cancel
+    }
+  };
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -393,9 +411,16 @@ export default function Feed() {
                       <span>{comments[post.id]?.length || post.comment_count || 0}</span>
                     </button>
 
-                    <button className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors ml-auto">
-                      <Share2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSharePost(post)}
+                        title="Share"
+                      >
+                        {copiedPostId === post.id ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Comments Section */}
