@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
 import type { Address } from "viem";
+import { HoldersModal } from "@/components/HoldersModal";
 
 interface Song {
   id: string;
@@ -73,11 +74,15 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [holdersCount, setHoldersCount] = useState<number>(0);
   const [holdingsCount, setHoldingsCount] = useState<number>(0);
+  const [holderWallets, setHolderWallets] = useState<string[]>([]);
+  const [holdingWallets, setHoldingWallets] = useState<string[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showHoldersModal, setShowHoldersModal] = useState(false);
+  const [showHoldingsModal, setShowHoldingsModal] = useState(false);
 
   const isOwnProfile = fullAddress?.toLowerCase() === walletAddress?.toLowerCase();
 
@@ -237,8 +242,10 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         }
 
         const uniqueHoldersCount = allHolders.size;
+        const holdersList = Array.from(allHolders);
         console.log(`✅ Total unique holders across all songs: ${uniqueHoldersCount}`);
         setHoldersCount(uniqueHoldersCount);
+        setHolderWallets(holdersList);
 
         // For holdings count, check what tokens this wallet holds
         // (tokens from other artists that this wallet address has bought)
@@ -279,8 +286,10 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
             }
           }
 
+          const holdingsList = Array.from(holdingsSet);
           console.log(`✅ Holdings count (artists whose tokens this wallet holds): ${holdingsSet.size}`);
           setHoldingsCount(holdingsSet.size);
+          setHoldingWallets(holdingsList);
         } catch (holdingsError) {
           console.error('Error fetching holdings:', holdingsError);
           setHoldingsCount(0);
@@ -502,14 +511,20 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
             </p>
             <p className="text-xs font-mono text-muted-foreground">PLAYS</p>
           </Card>
-          <Card className="console-bg tech-border p-4 text-center">
+          <Card 
+            className="console-bg tech-border p-4 text-center cursor-pointer hover:border-neon-green transition-colors"
+            onClick={() => setShowHoldersModal(true)}
+          >
             <Users className="h-6 w-6 mx-auto mb-2 text-neon-green" />
             <p className="text-2xl font-mono font-bold">
               {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : holdersCount}
             </p>
             <p className="text-xs font-mono text-muted-foreground">HOLDERS</p>
           </Card>
-          <Card className="console-bg tech-border p-4 text-center">
+          <Card 
+            className="console-bg tech-border p-4 text-center cursor-pointer hover:border-neon-green transition-colors"
+            onClick={() => setShowHoldingsModal(true)}
+          >
             <Wallet className="h-6 w-6 mx-auto mb-2 text-neon-green" />
             <p className="text-2xl font-mono font-bold">
               {loadingStats ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : holdingsCount}
@@ -820,6 +835,20 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modals */}
+      <HoldersModal
+        open={showHoldersModal}
+        onOpenChange={setShowHoldersModal}
+        walletAddresses={holderWallets}
+        title="Holders"
+      />
+      <HoldersModal
+        open={showHoldingsModal}
+        onOpenChange={setShowHoldingsModal}
+        walletAddresses={holdingWallets}
+        title="Holdings"
+      />
     </div>
   );
 };
