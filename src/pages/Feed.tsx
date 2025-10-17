@@ -351,7 +351,7 @@ export default function Feed() {
 
           {/* Post Creator */}
           {isConnected && <Card className="p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
-              <Textarea placeholder="What's on your mind?" value={contentText} onChange={e => setContentText(e.target.value)} className="min-h-[100px] resize-none" />
+              <Textarea placeholder="What's on your mind? Use $TICKER to tag artists and songs..." value={contentText} onChange={e => setContentText(e.target.value)} className="min-h-[100px] resize-none" />
 
               {mediaPreview && <div className="relative">
                   <img src={mediaPreview} alt="Preview" className="max-h-64 rounded-lg mx-auto" />
