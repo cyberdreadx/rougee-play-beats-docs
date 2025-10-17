@@ -120,18 +120,19 @@ Deno.serve(async (req) => {
     // Validate ticker if provided AND if it's different from existing ticker
     if (artistTicker) {
       const tickerRegex = /^[A-Z0-9]{3,10}$/;
-      if (!tickerRegex.test(artistTicker.toUpperCase())) {
+      const cleanedTicker = artistTicker.toUpperCase().trim();
+      if (!tickerRegex.test(cleanedTicker)) {
         throw new Error('Ticker must be 3-10 characters (A-Z, 0-9 only)');
       }
 
-      // Only check availability if ticker is being changed
-      const isTickerChanged = existingProfile?.artist_ticker !== artistTicker.toUpperCase();
+      // Only check availability if ticker is being changed (ignoring case/whitespace)
+      const isTickerChanged = (existingProfile?.artist_ticker || '').toUpperCase().trim() !== cleanedTicker;
       if (isTickerChanged) {
         // Check ticker availability
         const { data: existingTicker } = await supabase
           .from('profiles')
           .select('artist_ticker')
-          .eq('artist_ticker', artistTicker.toUpperCase())
+          .eq('artist_ticker', cleanedTicker)
           .neq('wallet_address', walletAddress)
           .maybeSingle();
 

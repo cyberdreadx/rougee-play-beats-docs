@@ -270,7 +270,10 @@ const ProfileEdit = () => {
     formData.append("display_name", isArtist ? artistName.trim() : displayName.trim());
     if (isArtist) {
       formData.append("artist_name", artistName.trim());
-      formData.append("artist_ticker", artistTicker.trim().toUpperCase());
+      // Only allow setting ticker once. Do NOT send ticker if it already exists.
+      if (!profile?.artist_ticker && artistTicker.trim()) {
+        formData.append("artist_ticker", artistTicker.trim().toUpperCase());
+      }
     }
     formData.append("bio", bio.trim());
     formData.append("email", email.trim());
@@ -483,6 +486,8 @@ const ProfileEdit = () => {
                       placeholder="ARTIST"
                       maxLength={10}
                       pattern="[A-Z0-9]{3,10}"
+                      disabled={!!profile?.artist_ticker}
+                      readOnly={!!profile?.artist_ticker}
                     />
                   </div>
                   {profile?.artist_ticker && (
