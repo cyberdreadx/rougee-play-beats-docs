@@ -1122,7 +1122,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     );
   }
 
-  const coverImageUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid, undefined, true) : '/og-image.png';
+  const coverImageUrl = song.cover_cid 
+    ? `https://gateway.lighthouse.storage/ipfs/${song.cover_cid}`
+    : 'https://rougee.app/og-image.png';
   const pageUrl = `https://rougee.app/song/${song.id}`;
 
   return (
