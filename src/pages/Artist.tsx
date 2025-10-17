@@ -661,7 +661,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                             )}
                           </p>
                           <p className="text-sm font-mono text-muted-foreground">
-                            {song.play_count} plays
+                            {song.play_count} plays • uploaded {formatTimeAgo(song.created_at)}
                           </p>
                         </div>
 
