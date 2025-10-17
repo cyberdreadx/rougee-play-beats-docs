@@ -493,7 +493,9 @@ export default function Feed() {
                                   <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
                                 )}
                               </p>
-                              <p className="text-sm text-muted-foreground">{comment.comment_text}</p>
+                              <div className="text-sm text-muted-foreground">
+                                <TaggedText text={comment.comment_text} />
+                              </div>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatTimeAgo(comment.created_at)}
                               </p>
