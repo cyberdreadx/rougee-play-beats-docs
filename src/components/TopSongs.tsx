@@ -82,7 +82,7 @@ const fetchSongs = async () => {
 
     // Fetch verified status for artists in the list
     if (data && data.length > 0) {
-      const wallets = Array.from(new Set(data.map((s) => s.wallet_address)));
+      const wallets = Array.from(new Set(data.map((s) => s.wallet_address?.toLowerCase())));
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('wallet_address, verified')
@@ -90,7 +90,7 @@ const fetchSongs = async () => {
       if (!profilesError && profiles) {
         const map: Record<string, boolean> = {};
         profiles.forEach((p: any) => {
-          if (p.wallet_address) map[p.wallet_address] = !!p.verified;
+          if (p.wallet_address) map[p.wallet_address.toLowerCase()] = !!p.verified;
         });
         setVerifiedMap(map);
       }
@@ -198,7 +198,7 @@ const fetchSongs = async () => {
                       className="font-mono text-xs md:text-sm text-muted-foreground hover:text-neon-green transition-colors truncate flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300 group-hover:!translate-x-1"
                     >
                       <span className="truncate">{song.artist}</span>
-                      {verifiedMap[song.wallet_address] && (
+                      {verifiedMap[song.wallet_address.toLowerCase()] && (
                         <CheckCircle className="h-3 w-3 text-neon-green group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110" aria-label="Verified artist" />
                       )}
                     </Link>
