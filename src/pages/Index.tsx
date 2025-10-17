@@ -95,11 +95,12 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
             The decentralized music platform where artists own their content and fans discover amazing beats
           </p>
         </div>
-        <div className="flex items-center justify-center py-3 md:py-4">
-          <MusicBars bars={6} className="h-6 md:h-8" />
-        </div>
-        <div className="px-4 md:px-6">
-          <SearchBar />
+        {/* Search bar with music bars inline */}
+        <div className="flex items-center justify-center gap-3 px-4 md:px-6 py-3 md:py-4">
+          <MusicBars bars={6} className="h-6 md:h-8 flex-shrink-0" />
+          <div className="max-w-2xl w-full">
+            <SearchBar />
+          </div>
         </div>
         <div className="px-2 md:px-0">
           <StoriesBar />
