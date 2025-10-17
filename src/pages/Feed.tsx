@@ -350,7 +350,7 @@ export default function Feed() {
           </div>
 
           {/* Post Creator */}
-          {isConnected && <Card className="p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
+          {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
               <TagAutocomplete
                 value={contentText}
                 onChange={setContentText}
