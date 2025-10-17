@@ -262,7 +262,7 @@ const AudioPlayer = ({
 
 
   return (
-    <Card className="fixed bottom-20 md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+    <Card className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
 
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />
