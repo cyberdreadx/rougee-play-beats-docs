@@ -30,6 +30,7 @@ export default function TagAutocomplete({
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [dropUp, setDropUp] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -109,6 +110,25 @@ export default function TagAutocomplete({
 
     fetchSuggestions();
   }, [value]);
+
+  useEffect(() => {
+    const update = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const needed = 256; // ~max dropdown height
+      setDropUp(spaceBelow < needed && spaceAbove > spaceBelow);
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [value, showDropdown, suggestions.length]);
 
   const insertTag = (suggestion: TagSuggestion) => {
     const cursorPos = textareaRef.current?.selectionStart || 0;
