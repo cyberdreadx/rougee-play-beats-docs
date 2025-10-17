@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useWallet } from '@/hooks/useWallet';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check } from 'lucide-react';
@@ -13,6 +12,7 @@ import StoriesBar from '@/components/StoriesBar';
 import LikeButton from '@/components/LikeButton';
 import { usePrivy } from '@privy-io/react-auth';
 import TaggedText from '@/components/TaggedText';
+import TagAutocomplete from '@/components/TagAutocomplete';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -351,7 +351,12 @@ export default function Feed() {
 
           {/* Post Creator */}
           {isConnected && <Card className="p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
-              <Textarea placeholder="What's on your mind? Use $TICKER to tag artists and songs..." value={contentText} onChange={e => setContentText(e.target.value)} className="min-h-[100px] resize-none" />
+              <TagAutocomplete
+                value={contentText}
+                onChange={setContentText}
+                placeholder="What's on your mind? Use $ to tag artists and songs..."
+                className="min-h-[100px] resize-none w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
 
               {mediaPreview && <div className="relative">
                   <img src={mediaPreview} alt="Preview" className="max-h-64 rounded-lg mx-auto" />
