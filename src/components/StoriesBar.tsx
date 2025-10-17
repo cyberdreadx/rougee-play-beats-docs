@@ -16,6 +16,8 @@ interface Story {
   caption: string | null;
   created_at: string;
   expires_at: string;
+  view_count?: number;
+  like_count?: number;
 }
 
 interface GroupedStories {
@@ -49,7 +51,7 @@ const StoriesBar = () => {
   const fetchStories = async () => {
     const { data, error } = await supabase
       .from("stories")
-      .select("*")
+      .select("id, wallet_address, media_path, media_type, caption, created_at, expires_at, view_count, like_count")
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
 

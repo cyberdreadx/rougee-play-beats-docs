@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWallet } from '@/hooks/useWallet';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ interface FeedPost {
   };
 }
 export default function Feed() {
+  const navigate = useNavigate();
   const {
     fullAddress,
     isConnected
