@@ -706,6 +706,11 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
               <div className="space-y-6">
                 {posts.map((post) => (
                   <Card key={post.id} className="console-bg tech-border p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="font-mono text-sm text-muted-foreground">
+                        {profile.artist_name || profile.display_name} posted {formatTimeAgo(post.created_at)}
+                      </span>
+                    </div>
                     {post.content_text && (
                       <p className="font-mono text-sm mb-4 whitespace-pre-wrap">
                         {post.content_text}
@@ -743,9 +748,6 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         <MessageSquare className="h-4 w-4" />
                         <span>{post.comment_count}</span>
                       </Button>
-                      <span className="ml-auto">
-                        {formatTimeAgo(post.created_at)}
-                      </span>
                     </div>
 
                     {/* Comments Section */}
