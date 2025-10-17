@@ -113,27 +113,31 @@ Deno.serve(async (req) => {
     // Fetch existing profile to preserve image CIDs if not uploading new ones
     const { data: existingProfile } = await supabase
       .from('profiles')
-      .select('avatar_cid, cover_cid')
+      .select('avatar_cid, cover_cid, artist_ticker')
       .eq('wallet_address', walletAddress)
       .maybeSingle();
 
-    // Validate ticker if provided
+    // Validate ticker if provided AND if it's different from existing ticker
     if (artistTicker) {
       const tickerRegex = /^[A-Z0-9]{3,10}$/;
       if (!tickerRegex.test(artistTicker.toUpperCase())) {
         throw new Error('Ticker must be 3-10 characters (A-Z, 0-9 only)');
       }
 
-      // Check ticker availability
-      const { data: existingTicker } = await supabase
-        .from('profiles')
-        .select('artist_ticker')
-        .eq('artist_ticker', artistTicker.toUpperCase())
-        .neq('wallet_address', walletAddress)
-        .maybeSingle();
+      // Only check availability if ticker is being changed
+      const isTickerChanged = existingProfile?.artist_ticker !== artistTicker.toUpperCase();
+      if (isTickerChanged) {
+        // Check ticker availability
+        const { data: existingTicker } = await supabase
+          .from('profiles')
+          .select('artist_ticker')
+          .eq('artist_ticker', artistTicker.toUpperCase())
+          .neq('wallet_address', walletAddress)
+          .maybeSingle();
 
-      if (existingTicker) {
-        throw new Error('Ticker already taken');
+        if (existingTicker) {
+          throw new Error('Ticker already taken');
+        }
       }
     }
 
