@@ -11,7 +11,9 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       <Header />
       <Navigation />
-      {children}
+      <div className="pb-20 md:pb-0">
+        {children}
+      </div>
     </div>
   );
 };
