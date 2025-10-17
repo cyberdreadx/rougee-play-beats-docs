@@ -1123,7 +1123,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   }
 
   const coverImageUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid, undefined, true) : '/og-image.png';
-  const pageUrl = `https://edbd29f5-fe8e-435d-b3d2-8111ac95287a.lovableproject.com/song/${song.id}`;
+  const pageUrl = `https://rougee.app/song/${song.id}`;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-8">
