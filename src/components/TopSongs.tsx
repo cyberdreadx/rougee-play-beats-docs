@@ -82,7 +82,7 @@ const fetchSongs = async () => {
 
     // Fetch verified status for artists in the list
     if (data && data.length > 0) {
-      const wallets = Array.from(new Set(data.map((s) => s.wallet_address?.toLowerCase())));
+      const wallets = Array.from(new Set(data.map((s) => s.wallet_address)));
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('wallet_address, verified')
@@ -90,7 +90,10 @@ const fetchSongs = async () => {
       if (!profilesError && profiles) {
         const map: Record<string, boolean> = {};
         profiles.forEach((p: any) => {
-          if (p.wallet_address) map[p.wallet_address.toLowerCase()] = !!p.verified;
+          if (p.wallet_address) {
+            // Store by lowercase key for case-insensitive lookup
+            map[p.wallet_address.toLowerCase()] = !!p.verified;
+          }
         });
         setVerifiedMap(map);
       }
