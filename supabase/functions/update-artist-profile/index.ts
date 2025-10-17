@@ -251,15 +251,33 @@ Deno.serve(async (req) => {
       profileData.ticker_created_at = new Date().toISOString();
     }
 
-    const { data: profile, error: upsertError } = await supabase
-      .from('profiles')
-      .upsert(profileData, { onConflict: 'wallet_address' })
-      .select()
-      .single();
+    let profile: any = null;
+    let dbError: any = null;
 
-    if (upsertError) {
-      console.error('Supabase upsert error:', upsertError);
-      throw new Error(`Failed to update profile: ${upsertError.message}`);
+    if (existingProfile) {
+      // Update existing row by exact match to avoid duplicate inserts
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('wallet_address', existingProfile.wallet_address)
+        .select()
+        .single();
+      profile = data;
+      dbError = error;
+    } else {
+      // Insert new row (will be normalized by trigger)
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profileData)
+        .select()
+        .single();
+      profile = data;
+      dbError = error;
+    }
+
+    if (dbError) {
+      console.error('Supabase profile save error:', dbError);
+      throw new Error(`Failed to update profile: ${dbError.message || dbError}`);
     }
 
     console.log('Profile updated successfully');
