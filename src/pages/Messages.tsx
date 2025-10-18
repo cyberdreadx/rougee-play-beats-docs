@@ -230,9 +230,16 @@ export default function Messages() {
                         {profile?.artist_name || formatAddress(convo.peerAddress)}
                       </p>
                       {profile?.artist_name && (
-                        <p className="font-mono text-xs text-muted-foreground truncate">
+                        <button
+                          className="font-mono text-xs text-muted-foreground hover:text-neon-green transition-colors truncate"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(convo.peerAddress);
+                            toast({ title: "Address copied!", description: convo.peerAddress });
+                          }}
+                        >
                           {formatAddress(convo.peerAddress)}
-                        </p>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -264,9 +271,18 @@ export default function Messages() {
                         <p className="font-mono font-semibold">
                           {profile?.artist_name || formatAddress(selectedConvo.peerAddress)}
                         </p>
-                        <p className="font-mono text-xs text-muted-foreground">
+                        <button
+                          className="font-mono text-xs text-muted-foreground hover:text-neon-green transition-colors flex items-center gap-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedConvo.peerAddress);
+                            toast({ title: "Address copied!", description: selectedConvo.peerAddress });
+                          }}
+                        >
                           {formatAddress(selectedConvo.peerAddress)}
-                        </p>
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   );

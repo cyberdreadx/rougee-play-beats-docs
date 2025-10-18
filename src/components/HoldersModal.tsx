@@ -5,6 +5,7 @@ import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Holder {
   wallet_address: string;
@@ -142,9 +143,16 @@ export function HoldersModal({ open, onOpenChange, walletAddresses, title }: Hol
                           <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified" />
                         )}
                       </p>
-                      <p className="text-xs font-mono text-muted-foreground truncate">
+                      <button
+                        className="text-xs font-mono text-muted-foreground hover:text-neon-green transition-colors truncate text-left"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(holder.wallet_address);
+                          toast({ title: "Address copied!", description: holder.wallet_address });
+                        }}
+                      >
                         {holder.wallet_address}
-                      </p>
+                      </button>
                     </div>
                   </div>
                 ))}
