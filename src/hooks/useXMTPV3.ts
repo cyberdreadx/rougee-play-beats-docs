@@ -68,7 +68,7 @@ export const useXMTPV3 = () => {
       
       let clientCreated = false;
       const clientPromise = Client.create(signer, {
-        env: 'production',
+        env: 'production', // Production network - matches your friend's setup
         appVersion: 'rougee-play-beats/1.0.0', // Required by docs
         disableAutoRegister: false, // Allow automatic registration
         loggingLevel: 'debug', // Better diagnostics
@@ -85,6 +85,15 @@ export const useXMTPV3 = () => {
 
       setXmtpClient(xmtp);
       console.log('✅ XMTP V3 client created successfully');
+      
+      // Force identity sync to ensure registration on network
+      try {
+        console.log('🔄 Syncing identity with network...');
+        await xmtp.conversations.syncAll(['allowed']);
+        console.log('✅ Identity synced with network');
+      } catch (syncError) {
+        console.warn('⚠️ Sync error (non-critical):', syncError);
+      }
     } catch (error: any) {
       console.error('❌ XMTP initialization failed:', error);
       console.error('❌ Error details:', {
@@ -133,12 +142,15 @@ export const useXMTPV3 = () => {
         identifierKind: 'Ethereum'
       }];
       
+      console.log('🔍 Checking if reachable:', address);
       // Use static Client.canMessage method as per docs
       const canMessage = await Client.canMessage(identifiers);
       // The response is a Map of string (identifier) => boolean (is reachable)
-      return canMessage.get(address.toLowerCase()) || false;
+      const isReachable = canMessage.get(address.toLowerCase()) || false;
+      console.log('✅ Reachability result:', { address: address.toLowerCase(), isReachable });
+      return isReachable;
     } catch (error) {
-      console.error('Error checking if identity is reachable:', error);
+      console.error('❌ Error checking if identity is reachable:', error);
       return false;
     }
   }, []);
@@ -157,9 +169,14 @@ export const useXMTPV3 = () => {
 
     // Get the peer's inbox ID first, then create DM
     const peerInboxId = await xmtpClient.getInboxIdByAddress(peerAddress.toLowerCase());
+    console.log('📮 Peer inbox ID:', peerInboxId);
+    
     const conversation = await xmtpClient.conversations.newDm(peerInboxId);
     
-    console.log('✅ DM conversation created:', conversation);
+    // Add peerAddress to conversation for UI display
+    (conversation as any).peerAddress = peerAddress;
+    
+    console.log('✅ DM conversation created:', { peerAddress, inboxId: peerInboxId, conversationId: (conversation as any).id });
     return conversation;
   }, [xmtpClient, isIdentityReachable]);
 

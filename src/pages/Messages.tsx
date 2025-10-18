@@ -224,6 +224,31 @@ export default function Messages() {
             >
               Start New Chat
             </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  console.log('🔄 Manual sync triggered...');
+                  await xmtpClient?.conversations.syncAll(['allowed']);
+                  console.log('✅ Manual sync complete - identity registered');
+                  toast({
+                    title: 'Identity synced',
+                    description: 'You should now be reachable for messaging',
+                  });
+                } catch (error: any) {
+                  console.error('Sync error:', error);
+                  toast({
+                    title: 'Sync failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              disabled={!xmtpClient}
+              className="w-full"
+              variant="outline"
+            >
+              🔄 Register Identity
+            </Button>
           </div>
 
           {/* Conversation List */}
