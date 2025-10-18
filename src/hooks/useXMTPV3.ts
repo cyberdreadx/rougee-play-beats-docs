@@ -53,6 +53,11 @@ export const useXMTPV3 = () => {
 
       console.log('📍 Wallet address:', walletClient.account.address);
 
+      // Check if IndexedDB is available
+      if (!window.indexedDB) {
+        throw new Error('IndexedDB is not available. Please use a modern browser or disable private/incognito mode.');
+      }
+
       // Create XMTP client with proper configuration and longer timeout
       const timeoutPromise = new Promise((_, reject) => {
         const timeoutId = setTimeout(() => {
@@ -72,9 +77,18 @@ export const useXMTPV3 = () => {
         appVersion: 'rougee-play-beats/1.0.0', // Required by docs
         disableAutoRegister: false, // Allow automatic registration
         loggingLevel: 'debug', // Better diagnostics
+        // Enable history sync for cross-device conversation persistence
+        historySyncUrl: 'https://message-history.production.ephemera.network',
+        // Add storage configuration to help with IndexedDB issues
+        storage: {
+          type: 'indexeddb',
+          // Add fallback options
+          fallback: true,
+        },
       }).then(client => {
         clientCreated = true;
-        console.log('✨ XMTP client created, finalizing...');
+        console.log('✨ XMTP client created with history sync enabled');
+        console.log('🔄 History sync will automatically sync conversations across devices');
         return client;
       });
       
@@ -212,13 +226,25 @@ export const useXMTPV3 = () => {
     try {
       console.log('🔄 Fetching conversations from XMTP...');
       
-      // Use the correct XMTP V3 API with consent states
+      // Use the correct XMTP V3 API with consent states as per documentation
       const conversations = await xmtpClient.conversations.list({
         consentStates: ['allowed']
       });
       
       console.log('📬 Raw conversations from XMTP:', conversations);
       console.log('📬 Number of conversations found:', conversations.length);
+      
+      // Log conversation details for debugging
+      conversations.forEach((convo, index) => {
+        console.log(`📬 Conversation ${index}:`, {
+          id: convo.id,
+          topic: convo.topic,
+          participants: convo.participants,
+          createdAt: convo.createdAt,
+          lastMessage: convo.lastMessage,
+          consentState: convo.consentState
+        });
+      });
       
       return conversations;
     } catch (error) {
@@ -261,6 +287,31 @@ export const useXMTPV3 = () => {
     }
   }, [xmtpClient]);
 
+  // Stream new conversations
+  const streamConversations = useCallback(async (onConversation: (conversation: any) => void) => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🔄 Setting up conversation streaming...');
+      
+      const stream = await xmtpClient.conversations.stream({
+        onValue: (conversation: any) => {
+          console.log('📬 New conversation received:', conversation);
+          onConversation(conversation);
+        },
+        onError: (error: any) => {
+          console.error('Conversation stream error:', error);
+        },
+        onFail: () => {
+          console.log('Conversation stream failed');
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error streaming conversations:', error);
+    }
+  }, [xmtpClient]);
+
   // Stream messages - Updated for XMTP V3 API
   const streamMessages = useCallback(async (conversation: any, onMessage: (message: any) => void) => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
@@ -269,9 +320,12 @@ export const useXMTPV3 = () => {
       console.log('🔄 Setting up message streaming for conversation:', conversation.id);
       
       // Set up streaming for new messages using the correct XMTP V3 API
-      // Use streamAllMessages and filter for this conversation
+      // Use streamAllMessages with proper consent states
       const stream = await xmtpClient.conversations.streamAllMessages({
         consentStates: ['allowed'],
+        retryAttempts: 6,
+        retryDelay: 10000,
+        retryOnFail: true,
         onValue: (message: any) => {
           // Check if this message belongs to our conversation
           if (message.conversationId === conversation.id || 
@@ -284,7 +338,13 @@ export const useXMTPV3 = () => {
           console.error('Stream error:', error);
         },
         onFail: () => {
-          console.log('Stream failed');
+          console.log('Stream failed after retries');
+        },
+        onRestart: () => {
+          console.log('Stream restarted');
+        },
+        onRetry: (attempt: number, maxAttempts: number) => {
+          console.log(`Stream retry attempt ${attempt} of ${maxAttempts}`);
         }
       });
       
@@ -292,6 +352,112 @@ export const useXMTPV3 = () => {
       console.error('Error streaming messages:', error);
     }
   }, [xmtpClient]);
+
+  // Sync a specific conversation
+  const syncConversation = useCallback(async (conversation: any) => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🔄 Syncing specific conversation:', conversation.id);
+      await conversation.sync();
+      console.log('✅ Conversation synced successfully');
+    } catch (error) {
+      console.error('❌ Error syncing conversation:', error);
+      throw error;
+    }
+  }, [xmtpClient]);
+
+  // Sync new conversations
+  const syncConversations = useCallback(async () => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🔄 Syncing new conversations...');
+      await xmtpClient.conversations.sync();
+      console.log('✅ Conversations synced successfully');
+    } catch (error) {
+      console.error('❌ Error syncing conversations:', error);
+      throw error;
+    }
+  }, [xmtpClient]);
+
+  // Sync all new welcomes, conversations, messages, and preferences
+  const syncAll = useCallback(async () => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🔄 Syncing all data (conversations, messages, preferences)...');
+      await xmtpClient.conversations.syncAll(['allowed']);
+      console.log('✅ All data synced successfully');
+    } catch (error) {
+      console.error('❌ Error syncing all data:', error);
+      throw error;
+    }
+  }, [xmtpClient]);
+
+  // Trigger history sync to get conversations from other devices
+  const triggerHistorySync = useCallback(async () => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🔄 Triggering history sync to get conversations from other devices...');
+      
+      // Force a sync to get conversations from other app installations
+      await xmtpClient.conversations.syncAll(['allowed']);
+      
+      // Also try to sync messages specifically
+      const conversations = await xmtpClient.conversations.list(['allowed']);
+      console.log('📬 Found conversations after history sync:', conversations.length);
+      
+      // Try to sync messages for each conversation
+      for (const conversation of conversations) {
+        try {
+          await conversation.sync();
+          console.log('📩 Synced messages for conversation:', conversation.id);
+        } catch (msgError) {
+          console.warn('⚠️ Could not sync messages for conversation:', conversation.id, msgError);
+        }
+      }
+      
+      console.log('✅ History sync completed');
+      return conversations;
+    } catch (error) {
+      console.error('❌ Error during history sync:', error);
+      throw error;
+    }
+  }, [xmtpClient]);
+
+  // Clear XMTP storage to fix IndexedDB issues
+  const clearXMTPStorage = useCallback(async () => {
+    try {
+      console.log('🗑️ Clearing XMTP storage...');
+      
+      // Clear IndexedDB for XMTP
+      if (window.indexedDB) {
+        const deleteRequest = indexedDB.deleteDatabase('xmtp');
+        deleteRequest.onsuccess = () => {
+          console.log('✅ XMTP IndexedDB cleared');
+        };
+        deleteRequest.onerror = () => {
+          console.warn('⚠️ Could not clear XMTP IndexedDB');
+        };
+      }
+      
+      // Clear localStorage XMTP data
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.includes('xmtp') || key.includes('XMTP')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      console.log('✅ XMTP storage cleared');
+      return true;
+    } catch (error) {
+      console.error('❌ Error clearing XMTP storage:', error);
+      return false;
+    }
+  }, []);
 
   // Revoke all other installations to free up space
   const revokeOtherInstallations = useCallback(async () => {
@@ -318,7 +484,13 @@ export const useXMTPV3 = () => {
     getConversations,
     getDMs,
     getGroups,
+    streamConversations,
     streamMessages,
+    syncConversation,
+    syncConversations,
+    syncAll,
+    triggerHistorySync,
+    clearXMTPStorage,
     revokeOtherInstallations,
   };
 };

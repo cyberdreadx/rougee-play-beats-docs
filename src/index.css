@@ -221,4 +221,67 @@
   .shadow-neon-green {
     box-shadow: var(--shadow-neon) !important;
   }
+  
+  /* Message bubble styling */
+  .message-bubble {
+    @apply rounded-lg px-3 py-2 max-w-xs;
+    word-wrap: break-word;
+  }
+  
+  .message-bubble.sent {
+    @apply bg-neon-green text-black ml-auto;
+  }
+  
+  .message-bubble.received {
+    @apply bg-gray-200 text-gray-900 mr-auto;
+  }
+  
+  .message-bubble.dark.sent {
+    @apply bg-neon-green text-black;
+  }
+  
+  .message-bubble.dark.received {
+    @apply bg-gray-700 text-gray-100;
+  }
+  
+  /* Custom scrollbar for messages */
+  .messages-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .messages-container::-webkit-scrollbar-track {
+    background: hsl(var(--console-bg));
+  }
+  
+  .messages-container::-webkit-scrollbar-thumb {
+    background: hsl(var(--neon-green));
+    border-radius: 3px;
+  }
+  
+  .messages-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--neon-green-dim));
+  }
+  
+  /* Input field styling */
+  .message-input {
+    @apply bg-console-bg border-tech-border text-foreground;
+    transition: border-color 0.3s ease;
+  }
+  
+  .message-input:focus {
+    @apply border-neon-green shadow-neon-green;
+  }
+  
+  /* Conversation list styling */
+  .conversation-item {
+    @apply transition-all duration-200;
+  }
+  
+  .conversation-item:hover {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+  
+  .conversation-item.selected {
+    @apply bg-neon-green/10 border-neon-green;
+  }
 }
