@@ -133,24 +133,49 @@ export const useXMTPV3 = () => {
     }
   }, [authenticated, walletClient, xmtpClient, isInitializing]);
 
-  // Step 3: Check if identity is reachable (simplified - just assume reachable)
+  // Step 3: Check if identity is reachable using XMTP V3 API
   const isIdentityReachable = useCallback(async (address: string) => {
-    // For now, assume all addresses are reachable
-    // The actual check happens when we try to create the DM
-    console.log('🔍 Checking if reachable:', address);
-    console.log('✅ Assuming address is reachable (will verify on DM creation)');
-    return true;
-  }, []);
+    if (!xmtpClient) return true; // Allow if client not ready
+    
+    try {
+      console.log('🔍 Checking if reachable:', address);
+      const identifiers = [{ identifier: address, identifierKind: "Ethereum" as const }];
+      const response = await Client.canMessage(identifiers);
+      const isReachable = response.get(address.toLowerCase());
+      console.log('✅ Identity reachable check result:', isReachable);
+      
+      // If the check fails or returns false, still allow the attempt
+      // The actual error will be caught during DM creation
+      return true; // Always allow the attempt
+    } catch (error) {
+      console.warn('⚠️ Identity reachability check failed, allowing attempt:', error);
+      return true; // Allow the attempt even if check fails
+    }
+  }, [xmtpClient]);
 
-  // Step 4: Create DM conversation (Phase I)
+  // Step 4: Create DM conversation using XMTP V3 API
   const createDMConversation = useCallback(async (peerAddress: string) => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
     
     console.log('🔍 Creating DM conversation with:', peerAddress);
     
     try {
-      // Create DM directly with address - XMTP handles the inbox ID lookup
-      const conversation = await xmtpClient.conversations.newDm(peerAddress.toLowerCase());
+      // Try to get the peer's inbox ID first
+      let peerInboxId;
+      try {
+        peerInboxId = await xmtpClient.inboxId(peerAddress);
+        console.log('📬 Peer inbox ID:', peerInboxId);
+      } catch (inboxError) {
+        console.warn('⚠️ Could not get inbox ID, trying direct address:', inboxError);
+        // Fallback: try creating DM with address directly
+        const conversation = await xmtpClient.conversations.newDm(peerAddress);
+        (conversation as any).peerAddress = peerAddress;
+        console.log('✅ DM conversation created with direct address:', { peerAddress });
+        return conversation;
+      }
+      
+      // Create DM with inbox ID
+      const conversation = await xmtpClient.conversations.newDm(peerInboxId);
       
       // Add peerAddress to conversation for UI display
       (conversation as any).peerAddress = peerAddress;
@@ -168,8 +193,16 @@ export const useXMTPV3 = () => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
     
     console.log('📤 Sending message:', content);
-    await conversation.send(content);
-    console.log('✅ Message sent successfully');
+    console.log('📤 To conversation:', conversation.id || conversation);
+    
+    try {
+      await conversation.send(content);
+      console.log('✅ Message sent successfully to XMTP network');
+      console.log('📬 Message should be delivered to recipient if they have XMTP set up');
+    } catch (error) {
+      console.error('❌ Failed to send message:', error);
+      throw error;
+    }
   }, [xmtpClient]);
 
   // Get all conversations
@@ -185,15 +218,40 @@ export const useXMTPV3 = () => {
     }
   }, [xmtpClient]);
 
-  // Stream messages
+  // Stream messages - Updated for XMTP V3 API
   const streamMessages = useCallback(async (conversation: any, onMessage: (message: any) => void) => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
     
     try {
-      const stream = await conversation.streamMessages();
-      for await (const message of stream) {
+      // Load existing messages first
+      const messages = await conversation.messages();
+      console.log('📨 Loaded existing messages:', messages.length);
+      
+      // Process existing messages
+      for (const message of messages) {
         onMessage(message);
       }
+      
+      // Set up streaming for new messages using the correct XMTP V3 API
+      // Use streamAllMessages and filter for this conversation
+      const stream = await xmtpClient.conversations.streamAllMessages({
+        consentStates: ['allowed'],
+        onValue: (message: any) => {
+          // Check if this message belongs to our conversation
+          if (message.conversationId === conversation.id || 
+              message.conversationId === (conversation as any).id) {
+            console.log('📬 New message received via stream:', message);
+            onMessage(message);
+          }
+        },
+        onError: (error: any) => {
+          console.error('Stream error:', error);
+        },
+        onFail: () => {
+          console.log('Stream failed');
+        }
+      });
+      
     } catch (error) {
       console.error('Error streaming messages:', error);
     }

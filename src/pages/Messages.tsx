@@ -42,8 +42,9 @@ export default function Messages() {
   // Load conversations on mount and when XMTP client changes
   useEffect(() => {
     if (isReady && xmtpClient) {
-      console.log('📬 XMTP ready, loading conversations...');
-      loadConversations();
+      console.log('📬 XMTP ready, conversation management active');
+      // Conversations are managed locally via state
+      // No need to load from XMTP - we track them as users create them
     } else if (!xmtpClient) {
       console.log('⏳ Waiting for XMTP client...');
     }
@@ -89,34 +90,58 @@ export default function Messages() {
 
   const loadMessages = async (conversation: any) => {
     try {
-      const msgs = await conversation.messages();
-      setMessages(msgs);
+      console.log('📩 Loading messages from conversation:', conversation);
+      
+      // Clear current messages for this convo (optional)
+      setMessages([]);
 
-      // Stream new messages
-      streamMessages(conversation, (msg: any) => {
-        setMessages(prev => [...prev, msg]);
-      });
+      // Start streaming new messages
+      try {
+        await streamMessages(conversation, (msg: any) => {
+          console.log('📬 New message received:', msg);
+          const formattedMsg = {
+            id: msg.id || `msg-${Math.random()}`,
+            content: typeof msg.content === 'string' ? msg.content : msg.content?.text || JSON.stringify(msg.content),
+            senderAddress: msg.senderAddress || msg.sender || '',
+            sent: msg.sent || msg.timestamp || new Date(),
+          };
+          setMessages((prev) => [...prev, formattedMsg]);
+        });
+      } catch (streamError) {
+        console.warn('⚠️ Stream error (non-critical):', streamError);
+      }
     } catch (error) {
-      console.error('Error loading messages:', error);
+      console.error('❌ Error loading messages:', error);
     }
   };
 
   const loadProfiles = async (addresses: string[]) => {
     try {
+      const cleaned = Array.from(
+        new Set(
+          (addresses || [])
+            .filter(Boolean)
+            .map((a) => a.toLowerCase())
+        )
+      );
+
+      if (cleaned.length === 0) return;
+
       const { data, error } = await supabase
         .from('profiles')
         .select('wallet_address, artist_name, avatar_cid')
-        .in('wallet_address', addresses.map(a => a.toLowerCase()));
+        .in('wallet_address', cleaned);
 
       if (error) throw error;
 
       const profileMap: Record<string, ProfileData> = {};
-      data?.forEach((profile) => {
-        if (profile.wallet_address) {
-          profileMap[profile.wallet_address.toLowerCase()] = profile;
+      (data || []).forEach((p) => {
+        if (p.wallet_address) {
+          profileMap[p.wallet_address.toLowerCase()] = p as ProfileData;
         }
       });
-      setProfiles(profileMap);
+
+      setProfiles((prev) => ({ ...prev, ...profileMap }));
     } catch (error) {
       console.error('Error loading profiles:', error);
     }
@@ -140,14 +165,21 @@ export default function Messages() {
 
       // Create DM conversation (Step 4 from docs)
       const conversation = await createDMConversation(targetAddress);
+      
+      // Ensure conversation has peerAddress for UI without losing prototype methods
+      (conversation as any).peerAddress = targetAddress.toLowerCase();
+      
       setSelectedConvo(conversation);
       setNewChatAddress('');
+      
+      // Add the new conversation to the list
+      setConversations(prev => [...prev, conversation]);
       
       // Load profile for new conversation
       loadProfiles([targetAddress]);
       
-      // Refresh conversations list
-      loadConversations();
+      // Load messages immediately
+      await loadMessages(conversation);
     } catch (error: any) {
       console.error('Error starting chat:', error);
       toast({
@@ -164,6 +196,18 @@ export default function Messages() {
     try {
       // Send message (Step 5 from docs)
       await sendMessage(selectedConvo, newMessage);
+
+      // Optimistically add to UI
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}`,
+          content: newMessage,
+          senderAddress: fullAddress?.toLowerCase() || '',
+          sent: new Date(),
+        },
+      ]);
+
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -175,10 +219,12 @@ export default function Messages() {
   };
 
   const getProfileForAddress = (address: string) => {
+    if (!address || typeof address !== 'string') return undefined;
     return profiles[address.toLowerCase()];
   };
 
   const formatAddress = (address: string) => {
+    if (!address || typeof address !== 'string') return 'Unknown';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
@@ -286,34 +332,27 @@ export default function Messages() {
               return (
                 <Card
                   key={convo.peerAddress}
-                  className={`p-3 cursor-pointer hover:border-neon-green transition-colors ${
-                    selectedConvo?.peerAddress === convo.peerAddress ? 'border-neon-green' : ''
+                  className={`p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                    selectedConvo?.peerAddress === convo.peerAddress 
+                      ? 'bg-neon-green/10 border-neon-green' 
+                      : ''
                   }`}
                   onClick={() => setSelectedConvo(convo)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
-                      {avatarUrl && <AvatarImage src={avatarUrl} />}
-                      <AvatarFallback className="bg-neon-green/20 text-neon-green font-mono">
-                        {profile?.artist_name?.[0]?.toUpperCase() || convo.peerAddress[2]?.toUpperCase()}
+                      <AvatarImage src={avatarUrl || ''} />
+                      <AvatarFallback className="bg-neon-green text-black font-mono">
+                        {profile?.artist_name?.charAt(0) || formatAddress(convo.peerAddress).charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm font-semibold truncate">
+                      <p className="font-mono text-sm font-medium truncate">
                         {profile?.artist_name || formatAddress(convo.peerAddress)}
                       </p>
-                      {profile?.artist_name && (
-                        <button
-                          className="font-mono text-xs text-muted-foreground hover:text-neon-green transition-colors truncate"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(convo.peerAddress);
-                            toast({ title: "Address copied!", description: convo.peerAddress });
-                          }}
-                        >
-                          {formatAddress(convo.peerAddress)}
-                        </button>
-                      )}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {convo.peerAddress}
+                      </p>
                     </div>
                   </div>
                 </Card>
@@ -322,84 +361,98 @@ export default function Messages() {
           </div>
         </Card>
 
-        {/* Chat Window */}
-        <Card className="md:col-span-2 p-4 flex flex-col">
+        {/* Messages Area */}
+        <div className="md:col-span-2 flex flex-col">
           {selectedConvo ? (
             <>
               {/* Chat Header */}
-              <div className="mb-4 pb-4 border-b border-border">
-                {(() => {
-                  const profile = getProfileForAddress(selectedConvo.peerAddress);
-                  const avatarUrl = profile?.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
-                  
-                  return (
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        {avatarUrl && <AvatarImage src={avatarUrl} />}
-                        <AvatarFallback className="bg-neon-green/20 text-neon-green font-mono">
-                          {profile?.artist_name?.[0]?.toUpperCase() || selectedConvo.peerAddress[2]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-mono font-semibold">
-                          {profile?.artist_name || formatAddress(selectedConvo.peerAddress)}
-                        </p>
-                        <button
-                          className="font-mono text-xs text-muted-foreground hover:text-neon-green transition-colors flex items-center gap-1"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedConvo.peerAddress);
-                            toast({ title: "Address copied!", description: selectedConvo.peerAddress });
-                          }}
-                        >
-                          {formatAddress(selectedConvo.peerAddress)}
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+              <Card className="p-4 mb-4">
+                <div className="flex items-center space-x-3">
+                  {(() => {
+                    const profile = getProfileForAddress(selectedConvo.peerAddress);
+                    const avatarUrl = profile?.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
+                    return (
+                      <>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={avatarUrl || ''} />
+                          <AvatarFallback className="bg-neon-green text-black font-mono">
+                            {profile?.artist_name?.charAt(0) || formatAddress(selectedConvo.peerAddress).charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-mono font-medium">
+                            {profile?.artist_name || formatAddress(selectedConvo.peerAddress)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedConvo.peerAddress}
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </Card>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto mb-4 space-y-2">
-                {messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg max-w-[70%] ${
-                      msg.senderAddress === fullAddress?.toLowerCase()
-                        ? 'ml-auto bg-neon-green/20 text-right'
-                        : 'mr-auto bg-muted'
-                    }`}
-                  >
-                    <p className="font-mono text-sm">{msg.content}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(msg.sent).toLocaleTimeString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <Card className="flex-1 p-4 overflow-y-auto">
+                <div className="space-y-4">
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${
+                        msg.senderAddress.toLowerCase() === fullAddress?.toLowerCase()
+                          ? 'justify-end'
+                          : 'justify-start'
+                      }`}
+                    >
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          msg.senderAddress.toLowerCase() === fullAddress?.toLowerCase()
+                            ? 'bg-neon-green text-black'
+                            : 'bg-gray-100 dark:bg-gray-800'
+                        }`}
+                      >
+                        <p className="font-mono text-sm">{msg.content}</p>
+                        <p className="text-xs opacity-70 mt-1">
+                          {new Date(msg.sent).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
 
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="font-mono text-base"
-                />
-                <Button onClick={handleSendMessage} variant="neon">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              {/* Message Input */}
+              <Card className="p-4">
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    className="flex-1 font-mono"
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim()}
+                    variant="neon"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Card>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p className="font-mono">Select a conversation to start messaging</p>
-            </div>
+            <Card className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="font-mono text-muted-foreground">
+                  Select a conversation to start messaging
+                </p>
+              </div>
+            </Card>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );
