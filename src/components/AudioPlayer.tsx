@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle, Music } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +64,17 @@ const AudioPlayer = ({
   const [artistTicker, setArtistTicker] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [currentAudioUrlIndex, setCurrentAudioUrlIndex] = useState(0);
+  const [coverImageError, setCoverImageError] = useState(false);
+  const [coverImageLoaded, setCoverImageLoaded] = useState(false);
+  const [currentCoverUrlIndex, setCurrentCoverUrlIndex] = useState(0);
   const { toast } = useToast();
+
+  // Reset cover image state when song changes
+  useEffect(() => {
+    setCoverImageError(false);
+    setCoverImageLoaded(false);
+    setCurrentCoverUrlIndex(0);
+  }, [currentSong?.id, currentAd?.id]);
 
   // Fetch artist ticker and verified status
   useEffect(() => {
@@ -87,6 +97,27 @@ const AudioPlayer = ({
 
     fetchArtistData();
   }, [currentSong?.wallet_address]);
+
+  // Handle cover image load success
+  const handleCoverImageLoad = () => {
+    setCoverImageLoaded(true);
+    setCoverImageError(false);
+  };
+
+  // Handle cover image load error - try next fallback URL
+  const handleCoverImageError = () => {
+    console.warn('Cover image failed to load, trying fallback...');
+    setCoverImageError(true);
+
+    // Try next fallback URL if available
+    if (coverFallbackUrls.length > 0 && currentCoverUrlIndex < coverFallbackUrls.length - 1) {
+      setCurrentCoverUrlIndex(prev => prev + 1);
+      setCoverImageError(false); // Reset error state to try next URL
+    }
+  };
+
+  // Get current cover URL to try
+  const currentCoverUrl = coverFallbackUrls[currentCoverUrlIndex] || displayCover;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -215,9 +246,11 @@ const AudioPlayer = ({
   const isAd = !!currentAd;
   const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
   const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
-  const displayCover = isAd 
-    ? (currentAd.image_cid ? getIPFSGatewayUrl(currentAd.image_cid) : "") 
-    : (currentSong?.cover_cid ? getIPFSGatewayUrl(currentSong.cover_cid) : "");
+  const coverCid = isAd ? currentAd.image_cid : currentSong?.cover_cid;
+  const displayCover = coverCid ? getIPFSGatewayUrl(coverCid) : "";
+
+  // Get multiple fallback URLs for the cover image
+  const coverFallbackUrls = coverCid ? getIPFSGatewayUrls(coverCid, 3, false) : [];
   const preferredGateway = 'https://gateway.lighthouse.storage/ipfs';
   const audioSource = isAd 
     ? getIPFSGatewayUrl(currentAd.audio_cid, preferredGateway, false) // Prefer direct Lighthouse
@@ -300,16 +333,37 @@ const AudioPlayer = ({
       {/* Mobile Compact Player */}
       <div className="md:hidden relative z-10">
         <div className="flex items-center gap-3 p-3 pb-2">
-          {displayCover && (
-            <div 
+          {coverCid && (
+            <div
               className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
               onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
-              <img 
-                src={displayCover}
-                alt={displayTitle}
-                className="w-full h-full object-cover"
-              />
+              {coverImageError && currentCoverUrlIndex >= coverFallbackUrls.length - 1 ? (
+                // Fallback: Show music icon when all URLs fail
+                <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                  <Music className="h-8 w-8 text-neon-green" />
+                </div>
+              ) : (
+                // Try to load image with fallback URLs
+                <>
+                  <img
+                    src={currentCoverUrl}
+                    alt={displayTitle}
+                    className="w-full h-full object-cover"
+                    onLoad={handleCoverImageLoad}
+                    onError={handleCoverImageError}
+                    style={{
+                      display: coverImageLoaded ? 'block' : 'none'
+                    }}
+                  />
+                  {/* Loading placeholder while image loads */}
+                  {!coverImageLoaded && !coverImageError && (
+                    <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                      <Music className="h-6 w-6 text-neon-green animate-pulse" />
+                    </div>
+                  )}
+                </>
+              )}
               {isPlaying && (
                 <div className="absolute inset-0 bg-neon-green/20 animate-pulse" />
               )}
