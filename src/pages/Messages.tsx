@@ -629,6 +629,42 @@ export default function Messages() {
       // Get the actual conversation object
       const actualConvo = selectedConvo._conversationObject || selectedConvo;
       
+      // Check if we have a valid XMTP conversation object with methods
+      if (!actualConvo.sendOptimistic || typeof actualConvo.sendOptimistic !== 'function') {
+        console.error('❌ No valid XMTP conversation object available');
+        console.log('📊 Selected conversation:', selectedConvo);
+        console.log('📊 Has _conversationObject:', !!selectedConvo._conversationObject);
+        
+        // Try to fetch the conversation from XMTP first
+        if (selectedConvo.peerAddress && selectedConvo.peerAddress !== 'Unknown') {
+          console.log('🔄 Attempting to create/fetch conversation for:', selectedConvo.peerAddress);
+          try {
+            const newConvo = await createDMConversation(selectedConvo.peerAddress);
+            console.log('✅ Created/fetched conversation:', newConvo);
+            
+            // Update the selected conversation with the actual object
+            setSelectedConvo({
+              ...selectedConvo,
+              _conversationObject: newConvo
+            });
+            
+            // Now send the message with the new conversation
+            await sendMessage(newConvo, messageText);
+            
+            toast({
+              title: 'Message sent',
+              description: 'Message delivered successfully',
+            });
+            return;
+          } catch (createError) {
+            console.error('❌ Failed to create conversation:', createError);
+            throw new Error('Could not establish conversation. Please try starting a new chat with this address.');
+          }
+        } else {
+          throw new Error('Invalid conversation. Please start a new chat with the user\'s address.');
+        }
+      }
+      
       // Send message with optimistic UI (Step 5 from docs)
       await sendMessage(actualConvo, messageText);
 
