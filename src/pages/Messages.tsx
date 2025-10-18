@@ -192,7 +192,7 @@ export default function Messages() {
               placeholder="0x... wallet address"
               value={newChatAddress}
               onChange={(e) => setNewChatAddress(e.target.value)}
-              className="font-mono text-sm"
+              className="font-mono text-base"
             />
             <Button 
               onClick={() => handleStartChat()} 
@@ -308,14 +308,13 @@ export default function Messages() {
                 ))}
               </div>
 
-              {/* Send Message */}
               <div className="flex gap-2">
                 <Input
                   placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="font-mono"
+                  className="font-mono text-base"
                 />
                 <Button onClick={handleSendMessage} variant="neon">
                   <Send className="h-4 w-4" />
