@@ -489,26 +489,32 @@ export default function Messages() {
   const handleSendMessage = async () => {
     if (!selectedConvo || !newMessage.trim()) return;
 
+    const messageText = newMessage.trim();
+    setNewMessage(''); // Clear input immediately for better UX
+
     try {
-      // Send message (Step 5 from docs)
-      await sendMessage(selectedConvo, newMessage);
+      console.log('📤 Sending message with optimistic UI...');
+      
+      // Send message with optimistic UI (Step 5 from docs)
+      await sendMessage(selectedConvo, messageText);
 
-      // Optimistically add to UI
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `local-${Date.now()}`,
-          content: newMessage,
-          senderAddress: fullAddress?.toLowerCase() || '',
-          sent: new Date(),
-        },
-      ]);
-
-      setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
+      // The message is already added optimistically by XMTP, so we don't need to add it manually
+      console.log('✅ Message sent successfully with optimistic UI');
+      
+      // Show success toast
+      toast({
+        title: 'Message sent',
+        description: 'Message delivered successfully',
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to send message:', error);
+      
+      // Restore message to input for retry
+      setNewMessage(messageText);
+      
       toast({
         title: 'Failed to send message',
+        description: error.message || 'Unknown error',
         variant: 'destructive',
       });
     }
@@ -643,6 +649,38 @@ export default function Messages() {
             <Button 
               onClick={async () => {
                 try {
+                  console.log('🔄 Force refreshing conversations...');
+                  
+                  // Clear corrupted localStorage
+                  localStorage.removeItem('xmtp-conversations');
+                  console.log('🗑️ Cleared corrupted localStorage');
+                  
+                  // Force sync and reload
+                  await syncAll();
+                  await loadConversations();
+                  
+                  toast({
+                    title: 'Conversations refreshed',
+                    description: 'Cleared corrupted data and reloaded conversations',
+                  });
+                } catch (error: any) {
+                  console.error('Refresh error:', error);
+                  toast({
+                    title: 'Refresh failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              disabled={!xmtpClient}
+              className="w-full"
+              variant="outline"
+            >
+              🔄 Force Refresh
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
                   console.log('🔄 Triggering history sync...');
                   
                   // Clear any corrupted localStorage data first
@@ -665,19 +703,22 @@ export default function Messages() {
                       // Try to extract peer address from the synced conversation
                       let peerAddress = 'Unknown';
                       
-                      // Method 1: Check participants array (most reliable for XMTP V3)
-                      if (convo.participants && Array.isArray(convo.participants)) {
-                        console.log('🔍 Checking participants array:', convo.participants);
-                        const otherParticipant = convo.participants.find((p: string) => 
-                          p && p.toLowerCase() !== fullAddress?.toLowerCase()
-                        );
-                        if (otherParticipant) {
-                          peerAddress = otherParticipant;
-                          console.log('✅ Found peerAddress from participants:', peerAddress);
-                        } else {
-                          console.log('⚠️ No other participant found in participants array');
-                        }
-                      }
+        // Method 1: Check participants array (most reliable for XMTP V3)
+        if (convo.participants && Array.isArray(convo.participants)) {
+          console.log('🔍 Checking participants array:', convo.participants);
+          const otherParticipant = convo.participants.find((p: string) => 
+            p && p.toLowerCase() !== fullAddress?.toLowerCase()
+          );
+          if (otherParticipant) {
+            peerAddress = otherParticipant;
+            console.log('✅ Found peerAddress from participants:', peerAddress);
+          } else {
+            console.log('⚠️ No other participant found in participants array');
+            // If no other participant found, it might be a group or the current user's address is wrong
+            console.log('🔍 Current user address:', fullAddress);
+            console.log('🔍 All participants:', convo.participants);
+          }
+        }
                       // Method 2: Check for peerAddress property
                       else if (convo.peerAddress && convo.peerAddress !== 'Unknown' && convo.peerAddress !== 'unknown') {
                         peerAddress = convo.peerAddress;

@@ -85,6 +85,12 @@ export const useXMTPV3 = () => {
           // Add fallback options
           fallback: true,
         },
+        // Add mobile-specific configurations
+        ...(window.innerWidth < 768 && {
+          // Mobile optimizations
+          maxRetries: 3,
+          retryDelay: 1000,
+        }),
       }).then(client => {
         clientCreated = true;
       console.log('✨ XMTP client created with history sync enabled');
@@ -208,20 +214,62 @@ export const useXMTPV3 = () => {
     }
   }, [xmtpClient]);
 
-  // Step 5: Send messages (Phase I)
+  // Step 5: Send messages with optimistic UI (Phase I)
   const sendMessage = useCallback(async (conversation: any, content: string) => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
     
-    console.log('📤 Sending message:', content);
+    console.log('📤 Sending message with optimistic UI:', content);
     console.log('📤 To conversation:', conversation.id || conversation);
+    console.log('📱 Device info:', {
+      isMobile: window.innerWidth < 768,
+      userAgent: navigator.userAgent,
+      connection: navigator.connection?.effectiveType || 'unknown'
+    });
     
     try {
-      await conversation.send(content);
-      console.log('✅ Message sent successfully to XMTP network');
-      console.log('📬 Message should be delivered to recipient if they have XMTP set up');
-    } catch (error) {
-      console.error('❌ Failed to send message:', error);
-      throw error;
+      // Step 1: Optimistically send the message to local database for immediate UI feedback
+      console.log('⚡ Optimistically sending message to local database...');
+      conversation.sendOptimistic(content);
+      console.log('✅ Message added to UI immediately (optimistic)');
+      
+      // Step 2: Publish the message to the XMTP network in the background
+      console.log('🌐 Publishing message to XMTP network...');
+      
+      // Add retry logic for mobile/production
+      let retries = 0;
+      const maxRetries = 3;
+      
+      while (retries < maxRetries) {
+        try {
+          await conversation.publishMessages();
+          console.log('✅ Message published successfully to XMTP network');
+          console.log('📬 Message should be delivered to recipient if they have XMTP set up');
+          return;
+        } catch (sendError: any) {
+          retries++;
+          console.warn(`⚠️ Publish attempt ${retries} failed:`, sendError);
+          
+          if (retries >= maxRetries) {
+            throw sendError;
+          }
+          
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to publish message after retries:', error);
+      
+      // Enhanced error messages for mobile/production
+      if (error.message?.includes('network') || error.message?.includes('timeout')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else if (error.message?.includes('signature')) {
+        throw new Error('Signature failed. Please try again.');
+      } else if (error.message?.includes('consent')) {
+        throw new Error('User consent required. Please ensure the recipient has allowed messages.');
+      } else {
+        throw new Error(`Failed to send message: ${error.message || 'Unknown error'}`);
+      }
     }
   }, [xmtpClient]);
 
