@@ -515,7 +515,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
             </p>
           </div>
 
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <Button variant="neon" onClick={() => {
                 console.log('Upload button clicked');
@@ -532,6 +532,15 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                 EDIT PROFILE
               </Button>
             </div>
+          ) : fullAddress && (
+            <Button 
+              variant="outline" 
+              className="font-mono"
+              onClick={() => navigate(`/messages?to=${walletAddress}`)}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              MESSAGE
+            </Button>
           )}
         </div>
 

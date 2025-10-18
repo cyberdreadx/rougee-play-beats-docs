@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music, MessageSquare } from "lucide-react";
 import MusicBars from "./MusicBars";
 import { useState, useEffect } from "react";
 
@@ -52,6 +52,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
     ),
     { name: "PLAYLISTS", path: "/playlists", icon: Music },
+    { name: "MESSAGES", path: "/messages", icon: MessageSquare },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "UPLOAD", path: "/upload", icon: Upload },
@@ -63,6 +64,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
     { name: "PLAYLISTS", path: "/playlists", icon: Music },
+    { name: "MESSAGES", path: "/messages", icon: MessageSquare },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     // Always include a profile entry for listeners/artists

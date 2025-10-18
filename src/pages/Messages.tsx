@@ -1,0 +1,318 @@
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useXMTP } from '@/hooks/useXMTP';
+import { Conversation } from '@xmtp/xmtp-js';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { MessageSquare, Send, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getIPFSGatewayUrl } from '@/lib/ipfs';
+import { toast } from '@/hooks/use-toast';
+
+interface ProfileData {
+  artist_name: string | null;
+  avatar_cid: string | null;
+  wallet_address: string;
+}
+
+export default function Messages() {
+  const [searchParams] = useSearchParams();
+  const { 
+    isReady, 
+    isInitializing, 
+    getConversations, 
+    startConversation,
+    sendMessage,
+    streamMessages,
+    canMessage 
+  } = useXMTP();
+
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [newChatAddress, setNewChatAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
+
+  // Load conversations on mount
+  useEffect(() => {
+    if (isReady) {
+      loadConversations();
+    }
+  }, [isReady]);
+
+  // Handle ?to= query parameter
+  useEffect(() => {
+    const toAddress = searchParams.get('to');
+    if (toAddress && isReady && conversations.length > 0) {
+      const existingConvo = conversations.find(
+        c => c.peerAddress.toLowerCase() === toAddress.toLowerCase()
+      );
+      if (existingConvo) {
+        setSelectedConvo(existingConvo);
+      } else {
+        setNewChatAddress(toAddress);
+        handleStartChat(toAddress);
+      }
+    }
+  }, [searchParams, isReady, conversations]);
+
+  // Load messages when conversation selected
+  useEffect(() => {
+    if (selectedConvo) {
+      loadMessages(selectedConvo);
+    }
+  }, [selectedConvo]);
+
+  const loadConversations = async () => {
+    const convos = await getConversations();
+    setConversations(convos);
+    
+    // Load profiles for all conversation participants
+    const addresses = convos.map(c => c.peerAddress);
+    if (addresses.length > 0) {
+      loadProfiles(addresses);
+    }
+  };
+
+  const loadProfiles = async (addresses: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('wallet_address, artist_name, avatar_cid')
+        .in('wallet_address', addresses.map(a => a.toLowerCase()));
+
+      if (error) throw error;
+
+      const profileMap: Record<string, ProfileData> = {};
+      data?.forEach((profile) => {
+        if (profile.wallet_address) {
+          profileMap[profile.wallet_address.toLowerCase()] = profile;
+        }
+      });
+      setProfiles(profileMap);
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+    }
+  };
+
+  const loadMessages = async (convo: Conversation) => {
+    const msgs = await convo.messages();
+    setMessages(msgs);
+
+    // Stream new messages
+    streamMessages(convo, (msg) => {
+      setMessages(prev => [...prev, msg]);
+    });
+  };
+
+  const handleStartChat = async (address?: string) => {
+    const targetAddress = address || newChatAddress;
+    if (!targetAddress) return;
+
+    setLoading(true);
+    try {
+      const canMsg = await canMessage(targetAddress);
+      if (!canMsg) {
+        toast({
+          title: 'Cannot message user',
+          description: 'This user has not enabled XMTP messaging yet',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const convo = await startConversation(targetAddress);
+      setConversations(prev => [...prev, convo]);
+      setSelectedConvo(convo);
+      setNewChatAddress('');
+      
+      // Load profile for new conversation
+      loadProfiles([targetAddress]);
+    } catch (error: any) {
+      console.error('Error starting chat:', error);
+      toast({
+        title: 'Failed to start chat',
+        description: error.message || 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedConvo || !newMessage.trim()) return;
+
+    try {
+      await sendMessage(selectedConvo, newMessage);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: 'Failed to send message',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getProfileForAddress = (address: string) => {
+    return profiles[address.toLowerCase()];
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  if (!isReady && isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
+        <p className="ml-4 font-mono">Initializing XMTP...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-4 pb-20 md:pb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+        {/* Conversations List */}
+        <Card className="p-4 overflow-y-auto">
+          <h2 className="text-xl font-mono font-bold mb-4 text-neon-green">
+            <MessageSquare className="inline mr-2" />
+            MESSAGES
+          </h2>
+
+          {/* New Chat */}
+          <div className="mb-4 space-y-2">
+            <Input
+              placeholder="0x... wallet address"
+              value={newChatAddress}
+              onChange={(e) => setNewChatAddress(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <Button 
+              onClick={() => handleStartChat()} 
+              disabled={loading || !newChatAddress}
+              className="w-full"
+              variant="neon"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start New Chat'}
+            </Button>
+          </div>
+
+          {/* Conversation List */}
+          <div className="space-y-2">
+            {conversations.map((convo) => {
+              const profile = getProfileForAddress(convo.peerAddress);
+              const avatarUrl = profile?.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
+              
+              return (
+                <Card
+                  key={convo.peerAddress}
+                  className={`p-3 cursor-pointer hover:border-neon-green transition-colors ${
+                    selectedConvo?.peerAddress === convo.peerAddress ? 'border-neon-green' : ''
+                  }`}
+                  onClick={() => setSelectedConvo(convo)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      {avatarUrl && <AvatarImage src={avatarUrl} />}
+                      <AvatarFallback className="bg-neon-green/20 text-neon-green font-mono">
+                        {profile?.artist_name?.[0]?.toUpperCase() || convo.peerAddress[2]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-sm font-semibold truncate">
+                        {profile?.artist_name || formatAddress(convo.peerAddress)}
+                      </p>
+                      {profile?.artist_name && (
+                        <p className="font-mono text-xs text-muted-foreground truncate">
+                          {formatAddress(convo.peerAddress)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Chat Window */}
+        <Card className="md:col-span-2 p-4 flex flex-col">
+          {selectedConvo ? (
+            <>
+              {/* Chat Header */}
+              <div className="mb-4 pb-4 border-b border-border">
+                {(() => {
+                  const profile = getProfileForAddress(selectedConvo.peerAddress);
+                  const avatarUrl = profile?.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
+                  
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        {avatarUrl && <AvatarImage src={avatarUrl} />}
+                        <AvatarFallback className="bg-neon-green/20 text-neon-green font-mono">
+                          {profile?.artist_name?.[0]?.toUpperCase() || selectedConvo.peerAddress[2]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-mono font-semibold">
+                          {profile?.artist_name || formatAddress(selectedConvo.peerAddress)}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {formatAddress(selectedConvo.peerAddress)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto mb-4 space-y-2">
+                {messages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg max-w-[70%] ${
+                      msg.senderAddress === selectedConvo.clientAddress
+                        ? 'ml-auto bg-neon-green/20 text-right'
+                        : 'mr-auto bg-muted'
+                    }`}
+                  >
+                    <p className="font-mono text-sm">{msg.content}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(msg.sent).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Send Message */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="font-mono"
+                />
+                <Button onClick={handleSendMessage} variant="neon">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p className="font-mono">Select a conversation to start messaging</p>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
