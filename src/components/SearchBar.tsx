@@ -63,6 +63,7 @@ const SearchBar = () => {
       }
 
       setIsSearching(true);
+      console.log('Searching...', { q: searchQuery, selectedGenre });
       const searchTerm = `%${searchQuery.trim()}%`;
 
       try {
@@ -77,7 +78,7 @@ const SearchBar = () => {
         let songQuery = supabase
           .from("songs")
           .select("id, title, artist, wallet_address, audio_cid, cover_cid, genre")
-          .or(`title.ilike.${searchTerm},artist.ilike.${searchTerm}`);
+          .or(`(title.ilike.${searchTerm},artist.ilike.${searchTerm})`);
 
         if (selectedGenre !== "all") {
           songQuery = songQuery.ilike("genre", `%${selectedGenre}%`);

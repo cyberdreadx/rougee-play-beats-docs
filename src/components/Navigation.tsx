@@ -155,7 +155,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       {/* Mobile Bottom Navigation - Essential tabs only (Upload from desktop/profile) */}
       <nav
         className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80 transition-transform duration-200 ${keyboardOpen ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', bottom: 'max(env(safe-area-inset-bottom), env(keyboard-inset, 0px))', willChange: 'transform', WebkitTransform: 'translateZ(0)' }}
       >
         <div className="flex justify-around items-center h-16 px-1">
           {mobileTabs.map((tab) => {
