@@ -38,12 +38,15 @@ export default function Messages() {
   const [newChatAddress, setNewChatAddress] = useState('');
   const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
 
-  // Load conversations on mount
+  // Load conversations on mount and when XMTP client changes
   useEffect(() => {
-    if (isReady) {
+    if (isReady && xmtpClient) {
+      console.log('📬 XMTP ready, loading conversations...');
       loadConversations();
+    } else if (!xmtpClient) {
+      console.log('⏳ Waiting for XMTP client...');
     }
-  }, [isReady]);
+  }, [isReady, xmtpClient]);
 
   // Handle ?to= query parameter
   useEffect(() => {

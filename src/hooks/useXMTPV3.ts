@@ -9,48 +9,40 @@ export const useXMTPV3 = () => {
   const { data: walletClient } = useWalletClient();
   const { authenticated } = usePrivy();
 
-  // Step 1: Create an EOA signer (Phase I)
+  // Step 1: Create an EOA signer following XMTP docs exactly
   const createEOASigner = useCallback(() => {
     if (!walletClient) return null;
 
     return {
-      type: 'EOA',
-      getAddress: async () => walletClient.account.address,
+      type: 'EOA' as const,
       getIdentifier: () => ({
         identifier: walletClient.account.address.toLowerCase(),
-        identifierKind: 'Ethereum'
+        identifierKind: 'Ethereum' as const
       }),
-      signMessage: async (message: string | Uint8Array) => {
-        let messageToSign: string;
+      signMessage: async (message: string): Promise<Uint8Array> => {
+        console.log('🔐 Signing message for XMTP...');
         
-        if (typeof message === 'string') {
-          messageToSign = message;
-        } else {
-          // Convert Uint8Array to hex string
-          messageToSign = Array.from(message)
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-          messageToSign = '0x' + messageToSign;
-        }
-        
+        // Sign the message using the wallet client
         const signature = await walletClient.signMessage({ 
-          message: messageToSign,
+          message: message,
           account: walletClient.account 
         });
         
-        // Convert hex signature to Uint8Array
-        const signatureBytes = signature.startsWith('0x') 
-          ? new Uint8Array(signature.slice(2).match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)))
-          : new Uint8Array(signature.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+        console.log('✅ Message signed');
         
-        return signatureBytes;
+        // Convert hex signature to Uint8Array (bytes)
+        const hex = signature.startsWith('0x') ? signature.slice(2) : signature;
+        const bytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+        
+        return bytes;
       },
     };
   }, [walletClient]);
 
   // Step 2: Create XMTP client with appVersion (Phase I)
   const initXMTP = useCallback(async () => {
-    if (!walletClient || !authenticated || isInitializing) return;
+    if (!walletClient || !authenticated) return;
+    if (isInitializing || xmtpClient) return; // Guard inside instead of deps
 
     try {
       setIsInitializing(true);
@@ -61,11 +53,35 @@ export const useXMTPV3 = () => {
 
       console.log('📍 Wallet address:', walletClient.account.address);
 
-      // Create XMTP client with proper configuration
-      const xmtp = await Client.create(signer, {
+      // Create XMTP client with proper configuration and longer timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          console.error('⏱️  XMTP taking too long (60+ seconds)');
+          reject(new Error('XMTP initialization timeout after 60 seconds - check browser storage'));
+        }, 60000);
+        return () => clearTimeout(timeoutId);
+      });
+
+      console.log('🔧 Creating XMTP V3 client with signer...');
+      console.log('⏳ This may take 10-30 seconds on first setup...');
+      console.log('📝 You may be asked to sign a message in your wallet - please approve it');
+      
+      let clientCreated = false;
+      const clientPromise = Client.create(signer, {
         env: 'production',
         appVersion: 'rougee-play-beats/1.0.0', // Required by docs
+        disableAutoRegister: false, // Allow automatic registration
+        loggingLevel: 'debug', // Better diagnostics
+      }).then(client => {
+        clientCreated = true;
+        console.log('✨ XMTP client created, finalizing...');
+        return client;
       });
+      
+      const xmtp = await Promise.race([
+        clientPromise,
+        timeoutPromise
+      ]);
 
       setXmtpClient(xmtp);
       console.log('✅ XMTP V3 client created successfully');
@@ -76,17 +92,37 @@ export const useXMTPV3 = () => {
         stack: error.stack,
         name: error.name
       });
+      
+      // Check for storage errors
+      if (error.message?.includes('NoModificationAllowedError') || 
+          error.message?.includes('storage') ||
+          error.message?.includes('IndexedDB') ||
+          error.message?.includes('vfs error')) {
+        console.error('💾 STORAGE ERROR DETECTED:');
+        console.error('XMTP needs IndexedDB to work. Try these fixes:');
+        console.error('');
+        console.error('1️⃣  Check if you\'re in private/incognito mode → Switch to normal mode');
+        console.error('2️⃣  Clear browser storage:');
+        console.error('   - Press F12 to open DevTools');
+        console.error('   - Go to "Application" tab');
+        console.error('   - Click "Storage" → "Clear site data"');
+        console.error('   - Refresh the page');
+        console.error('3️⃣  Try a different browser or fresh profile');
+        console.error('');
+        console.error('If none work, messaging won\'t work in this browser session.');
+      }
     } finally {
       setIsInitializing(false);
     }
-  }, [walletClient, authenticated, isInitializing, createEOASigner]);
+  }, [walletClient, authenticated, createEOASigner]);
 
   // Auto-initialize on wallet connection
   useEffect(() => {
-    if (authenticated && walletClient && !xmtpClient) {
+    if (authenticated && walletClient && !xmtpClient && !isInitializing) {
+      console.log('🚀 Starting XMTP initialization...');
       initXMTP();
     }
-  }, [authenticated, walletClient, xmtpClient, initXMTP]);
+  }, [authenticated, walletClient, xmtpClient, isInitializing]);
 
   // Step 3: Check if identity is reachable (Phase I)
   const isIdentityReachable = useCallback(async (address: string) => {
