@@ -163,6 +163,12 @@ export const useXMTPV3 = () => {
   const isIdentityReachable = useCallback(async (address: string) => {
     if (!xmtpClient) return true; // Allow if client not ready
     
+    // Validate address format first
+    if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      console.error('❌ Invalid wallet address format:', address);
+      throw new Error('Invalid wallet address format. Must be a valid Ethereum address.');
+    }
+    
     try {
       console.log('🔍 Checking if reachable:', address);
       const identifiers = [{ identifier: address, identifierKind: "Ethereum" as const }];
@@ -173,8 +179,18 @@ export const useXMTPV3 = () => {
       // If the check fails or returns false, still allow the attempt
       // The actual error will be caught during DM creation
       return true; // Always allow the attempt
-    } catch (error) {
+    } catch (error: any) {
       console.warn('⚠️ Identity reachability check failed, allowing attempt:', error);
+      
+      // Enhanced error handling for specific API errors
+      if (error.message?.includes('invalid hexadecimal digit')) {
+        throw new Error('Invalid wallet address format. Please check the address and try again.');
+      } else if (error.message?.includes('grpc error 500')) {
+        throw new Error('XMTP service temporarily unavailable. Please try again later.');
+      } else if (error.message?.includes('API error')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
       return true; // Allow the attempt even if check fails
     }
   }, [xmtpClient]);
@@ -210,7 +226,19 @@ export const useXMTPV3 = () => {
       return conversation;
     } catch (error: any) {
       console.error('❌ Failed to create DM:', error?.message);
-      throw new Error(`Cannot message this address: ${error?.message || 'Unknown error'}`);
+      
+      // Enhanced error handling for specific API errors
+      if (error.message?.includes('invalid hexadecimal digit')) {
+        throw new Error('Invalid wallet address format. Please check the address and try again.');
+      } else if (error.message?.includes('grpc error 500')) {
+        throw new Error('XMTP service temporarily unavailable. Please try again later.');
+      } else if (error.message?.includes('API error')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      } else if (error.message?.includes('client:')) {
+        throw new Error('XMTP client error. Please try refreshing the page and try again.');
+      } else {
+        throw new Error(`Cannot message this address: ${error?.message || 'Unknown error'}`);
+      }
     }
   }, [xmtpClient]);
 
@@ -280,27 +308,110 @@ export const useXMTPV3 = () => {
     try {
       console.log('🔄 Fetching conversations from XMTP...');
       
-      // Use the correct XMTP V3 API with consent states as per documentation
-      const conversations = await xmtpClient.conversations.list({
-        consentStates: ['allowed']
+      // Try to get conversations with all consent states first
+      let conversations = await xmtpClient.conversations.list({
+        consentStates: ['allowed', 'unknown']
       });
       
-      console.log('📬 Raw conversations from XMTP:', conversations);
+      console.log('📬 Raw conversations from XMTP (allowed + unknown):', conversations);
       console.log('📬 Number of conversations found:', conversations.length);
       
-      // Log conversation details for debugging
-      conversations.forEach((convo, index) => {
-        console.log(`📬 Conversation ${index}:`, {
-          id: convo.id,
-          topic: convo.topic,
-          participants: convo.participants,
-          createdAt: convo.createdAt,
-          lastMessage: convo.lastMessage,
-          consentState: convo.consentState
-        });
-      });
+      // If no conversations found, try without consent filter
+      if (conversations.length === 0) {
+        console.log('🔍 No conversations with consent filter, trying without filter...');
+        conversations = await xmtpClient.conversations.list();
+        console.log('📬 Conversations without filter:', conversations.length);
+      }
       
-      return conversations;
+      // Process conversations to extract participant data properly
+      const processedConversations = [];
+      
+      for (const convo of conversations) {
+        try {
+          // Extract public properties from the conversation object
+          const conversationData: any = {
+            id: convo.id,
+            createdAt: convo.createdAt,
+            topic: convo.topic,
+            isGroup: convo.isGroup,
+            isDm: convo.isDm,
+            consentState: convo.consentState,
+          };
+          
+          console.log(`📬 Processing conversation ${convo.id}:`, {
+            id: convo.id,
+            isGroup: convo.isGroup,
+            isDm: convo.isDm,
+            hasMembers: typeof convo.members === 'function',
+            hasParticipants: !!convo.participants,
+          });
+          
+          // Try to get members/participants using public API
+          if (convo.members && typeof convo.members === 'function') {
+            console.log('🔍 Getting members via members()...');
+            const members = await convo.members();
+            conversationData.members = members;
+            
+            // Extract wallet addresses from members
+            const addresses = [];
+            for (const member of members) {
+              // Each member might have an inboxId or address
+              const memberInboxId = member.inboxId || member.accountAddresses?.[0];
+              const memberAddress = member.address || member.accountAddresses?.[0];
+              
+              if (memberAddress && memberAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+                addresses.push(memberAddress);
+              } else if (memberInboxId) {
+                // Try to resolve inbox ID to address using official XMTP API
+                try {
+                  if (xmtpClient.preferences && typeof xmtpClient.preferences.inboxStateFromInboxIds === 'function') {
+                    const inboxStates = await xmtpClient.preferences.inboxStateFromInboxIds([memberInboxId], true);
+                    if (inboxStates && inboxStates.length > 0) {
+                      const ethereumIdentity = inboxStates[0].identities?.find(
+                        (identity: any) => identity.kind === 'ETHEREUM' || identity.identifierKind === 'Ethereum'
+                      );
+                      if (ethereumIdentity && ethereumIdentity.identifier) {
+                        addresses.push(ethereumIdentity.identifier);
+                        console.log('✅ Resolved inbox ID to address:', ethereumIdentity.identifier);
+                      } else {
+                        addresses.push(memberInboxId); // Fallback to inbox ID
+                      }
+                    } else {
+                      addresses.push(memberInboxId); // Fallback to inbox ID
+                    }
+                  } else {
+                    addresses.push(memberInboxId); // Fallback to inbox ID
+                  }
+                } catch (resolveError) {
+                  console.warn('⚠️ Could not resolve inbox ID to address:', memberInboxId);
+                  addresses.push(memberInboxId); // Fallback to inbox ID
+                }
+              }
+            }
+            
+            conversationData.participants = addresses;
+            console.log('✅ Found member addresses:', conversationData.participants);
+          } else if (convo.participants) {
+            conversationData.participants = convo.participants;
+            console.log('✅ Found participants:', conversationData.participants);
+          }
+          
+          // Store the actual conversation object (not serialized) for methods
+          conversationData._conversationObject = convo;
+          
+          processedConversations.push(conversationData);
+        } catch (processError) {
+          console.warn('⚠️ Error processing conversation:', convo.id, processError);
+          // Still add the conversation but with limited data
+          processedConversations.push({
+            id: convo.id,
+            _conversationObject: convo,
+          });
+        }
+      }
+      
+      console.log('📊 Processed conversations:', processedConversations);
+      return processedConversations;
     } catch (error) {
       console.error('❌ Error fetching conversations:', error);
       return [];
@@ -463,18 +574,85 @@ export const useXMTPV3 = () => {
       const conversations = await xmtpClient.conversations.list(['allowed']);
       console.log('📬 Found conversations after history sync:', conversations.length);
       
-      // Try to sync messages for each conversation
+      // Process each conversation to extract participant data properly
+      const processedConversations = [];
+      
       for (const conversation of conversations) {
         try {
           await conversation.sync();
           console.log('📩 Synced messages for conversation:', conversation.id);
+          
+          // Extract public properties from the conversation object
+          const conversationData: any = {
+            id: conversation.id,
+            createdAt: conversation.createdAt,
+            topic: conversation.topic,
+            isGroup: conversation.isGroup,
+            isDm: conversation.isDm,
+            consentState: conversation.consentState,
+          };
+          
+          // Try to get members/participants using public API
+          if (conversation.members && typeof conversation.members === 'function') {
+            console.log('🔍 Getting members via members()...');
+            const members = await conversation.members();
+            conversationData.members = members;
+            
+            // Extract wallet addresses from members using official XMTP API
+            const addresses = [];
+            for (const member of members) {
+              const memberInboxId = member.inboxId || member.accountAddresses?.[0];
+              const memberAddress = member.address || member.accountAddresses?.[0];
+              
+              if (memberAddress && memberAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+                addresses.push(memberAddress);
+              } else if (memberInboxId) {
+                // Try to resolve inbox ID to address using official XMTP API
+                try {
+                  if (xmtpClient.preferences && typeof xmtpClient.preferences.inboxStateFromInboxIds === 'function') {
+                    const inboxStates = await xmtpClient.preferences.inboxStateFromInboxIds([memberInboxId], true);
+                    if (inboxStates && inboxStates.length > 0) {
+                      const ethereumIdentity = inboxStates[0].identities?.find(
+                        (identity: any) => identity.kind === 'ETHEREUM' || identity.identifierKind === 'Ethereum'
+                      );
+                      if (ethereumIdentity && ethereumIdentity.identifier) {
+                        addresses.push(ethereumIdentity.identifier);
+                        console.log('✅ Resolved inbox ID to address:', ethereumIdentity.identifier);
+                      } else {
+                        addresses.push(memberInboxId); // Fallback to inbox ID
+                      }
+                    } else {
+                      addresses.push(memberInboxId); // Fallback to inbox ID
+                    }
+                  } else {
+                    addresses.push(memberInboxId); // Fallback to inbox ID
+                  }
+                } catch (resolveError) {
+                  console.warn('⚠️ Could not resolve inbox ID to address:', memberInboxId);
+                  addresses.push(memberInboxId); // Fallback to inbox ID
+                }
+              }
+            }
+            
+            conversationData.participants = addresses;
+            console.log('✅ Found member addresses:', conversationData.participants);
+          } else if (conversation.participants) {
+            conversationData.participants = conversation.participants;
+            console.log('✅ Found participants:', conversationData.participants);
+          }
+          
+          // Store the actual conversation object (not serialized) for methods
+          conversationData._conversationObject = conversation;
+          
+          processedConversations.push(conversationData);
         } catch (msgError) {
-          console.warn('⚠️ Could not sync messages for conversation:', conversation.id, msgError);
+          console.warn('⚠️ Could not sync conversation:', conversation.id, msgError);
         }
       }
       
       console.log('✅ History sync completed');
-      return conversations;
+      console.log('📊 Processed conversations:', processedConversations);
+      return processedConversations;
     } catch (error) {
       console.error('❌ Error during history sync:', error);
       throw error;

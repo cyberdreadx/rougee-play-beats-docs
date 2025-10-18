@@ -102,6 +102,75 @@ export default function Messages() {
     }
   }, [selectedConvo]);
 
+  // Helper function to resolve inbox ID to wallet address
+  // Using the official XMTP API: client.preferences.inboxStateFromInboxIds()
+  // Reference: https://docs.xmtp.org/chat-apps/core-messaging/manage-inboxes
+  const resolveInboxIdToAddress = async (inboxId: string): Promise<string> => {
+    if (!xmtpClient) {
+      console.warn('⚠️ XMTP client not available for resolution');
+      return inboxId;
+    }
+    
+    // Check if it's already a wallet address
+    if (inboxId.match(/^0x[a-fA-F0-9]{40}$/)) {
+      console.log('✅ Already a wallet address:', inboxId);
+      return inboxId;
+    }
+    
+    // Resolve inbox ID to wallet address using official XMTP API
+    try {
+      console.log('🔍 Resolving inbox ID to wallet address:', inboxId);
+      
+      // Fetch the state of the inbox using the official XMTP method
+      if (xmtpClient.preferences && typeof xmtpClient.preferences.inboxStateFromInboxIds === 'function') {
+        console.log('🔍 Calling client.preferences.inboxStateFromInboxIds()...');
+        
+        const inboxStates = await xmtpClient.preferences.inboxStateFromInboxIds([inboxId], true);
+        console.log('📊 Inbox states received:', inboxStates);
+        
+        if (inboxStates && inboxStates.length > 0) {
+          const inboxState = inboxStates[0];
+          console.log('📊 Inbox state:', inboxState);
+          
+          // Extract the Ethereum wallet address from the identities
+          if (inboxState.identities && Array.isArray(inboxState.identities)) {
+            const ethereumIdentity = inboxState.identities.find(
+              (identity: any) => identity.kind === 'ETHEREUM' || identity.identifierKind === 'Ethereum'
+            );
+            
+            if (ethereumIdentity && ethereumIdentity.identifier) {
+              const walletAddress = ethereumIdentity.identifier;
+              console.log('✅ Successfully resolved inbox ID to wallet address:', walletAddress);
+              return walletAddress;
+            } else {
+              console.warn('⚠️ No Ethereum identity found in inbox state');
+            }
+          } else {
+            console.warn('⚠️ No identities array in inbox state');
+          }
+        } else {
+          console.warn('⚠️ No inbox states returned');
+        }
+      } else {
+        console.warn('⚠️ client.preferences.inboxStateFromInboxIds method not available');
+        console.log('📊 Available client properties:', Object.keys(xmtpClient));
+        if (xmtpClient.preferences) {
+          console.log('📊 Available preferences methods:', Object.keys(xmtpClient.preferences));
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Error resolving inbox ID:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+    }
+    
+    console.log('⚠️ Resolution failed, returning original inbox ID');
+    return inboxId; // Return original if resolution fails
+  };
+
   const loadConversations = async () => {
     try {
       console.log('🔄 Loading conversations from XMTP...');
@@ -142,85 +211,97 @@ export default function Messages() {
       console.log('📬 Final conversations to process:', convos.length);
       
       // Add peerAddress to each conversation for UI display
-      const conversationsWithPeerAddress = convos.map((convo: any) => {
+      const conversationsWithPeerAddress = await Promise.all(convos.map(async (convo: any) => {
         console.log('🔍 Processing conversation:', convo);
-        console.log('🔍 Conversation keys:', Object.keys(convo));
-        console.log('🔍 Full conversation object:', JSON.stringify(convo, null, 2));
+        console.log('🔍 Conversation type:', convo.isDm ? 'DM' : convo.isGroup ? 'Group' : 'Unknown');
         
         // Try multiple ways to extract peer address
         let peerAddress = convo.peerAddress;
         
-        // Method 1: Check if peerAddress is already set
-        if (peerAddress && peerAddress !== 'Unknown') {
-          console.log('✅ Found peerAddress:', peerAddress);
+        // First, check if the existing peerAddress is valid or needs resolution
+        if (peerAddress && peerAddress !== 'Unknown' && peerAddress !== 'unknown') {
+          // Check if it's a valid wallet address (42 chars with 0x)
+          if (peerAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+            console.log('✅ Found valid wallet address:', peerAddress);
+          }
+          // Check if it's an inbox ID (64 chars, no 0x prefix)
+          else if (peerAddress.length === 64 && peerAddress.match(/^[a-f0-9]{64}$/)) {
+            console.log('🔍 Found inbox ID in peerAddress, resolving:', peerAddress);
+            peerAddress = await resolveInboxIdToAddress(peerAddress);
+            console.log('✅ Resolved peerAddress to wallet address:', peerAddress);
+          } else {
+            console.log('⚠️ peerAddress has unexpected format:', peerAddress);
+          }
         }
-        // Method 2: Check participants array (most reliable for XMTP V3)
-        else if (convo.participants && Array.isArray(convo.participants)) {
+        // If peerAddress is unknown but we have participants array, try to resolve from there
+        if ((peerAddress === 'Unknown' || peerAddress === 'unknown' || !peerAddress) && 
+            convo.participants && Array.isArray(convo.participants) && convo.participants.length > 0) {
           console.log('🔍 Checking participants array:', convo.participants);
           const otherParticipant = convo.participants.find((p: string) => 
             p && p.toLowerCase() !== fullAddress?.toLowerCase()
           );
           if (otherParticipant) {
-            peerAddress = otherParticipant;
-            console.log('✅ Found peerAddress from participants:', peerAddress);
+            // Check if it's a wallet address (42 chars with 0x)
+            if (otherParticipant.match(/^0x[a-fA-F0-9]{40}$/)) {
+              peerAddress = otherParticipant;
+              console.log('✅ Found wallet address from participants:', peerAddress);
+            }
+            // Check if it's an inbox ID (64 chars, no 0x prefix)
+            else if (otherParticipant.length === 64 && otherParticipant.match(/^[a-f0-9]{64}$/)) {
+              console.log('🔍 Found inbox ID in participants, resolving:', otherParticipant);
+              peerAddress = await resolveInboxIdToAddress(otherParticipant);
+              console.log('✅ Resolved participant to wallet address:', peerAddress);
+            } else {
+              peerAddress = otherParticipant;
+              console.log('✅ Found peerAddress from participants:', peerAddress);
+            }
           } else {
             console.log('⚠️ No other participant found in participants array');
+            console.log('🔍 Your address:', fullAddress);
+            console.log('🔍 All participants:', convo.participants);
           }
         }
-        // Method 3: Check for peerAddress in different properties
-        else if (convo.peerAddress) {
-          peerAddress = convo.peerAddress;
-          console.log('✅ Found peerAddress property:', peerAddress);
-        }
-        // Method 4: Check for address in other properties
-        else if (convo.address) {
-          peerAddress = convo.address;
-          console.log('✅ Found address property:', peerAddress);
-        }
-        // Method 5: Check for peer in properties
-        else if (convo.peer) {
-          peerAddress = convo.peer;
-          console.log('✅ Found peer property:', peerAddress);
-        }
-        // Method 6: Try to extract from conversation ID
-        else if (convo.id && typeof convo.id === 'string') {
-          const addressMatch = convo.id.match(/0x[a-fA-F0-9]{40}/);
-          if (addressMatch) {
-            peerAddress = addressMatch[0];
-            console.log('✅ Found address in ID:', peerAddress);
-          }
-        }
-        // Method 7: Check for topic or other string properties
-        else if (convo.topic && typeof convo.topic === 'string') {
-          const addressMatch = convo.topic.match(/0x[a-fA-F0-9]{40}/);
-          if (addressMatch) {
-            peerAddress = addressMatch[0];
-            console.log('✅ Found address in topic:', peerAddress);
-          }
-        }
-        // Method 8: Check all string properties for wallet addresses
-        else {
-          for (const [key, value] of Object.entries(convo)) {
-            if (typeof value === 'string' && value.match(/0x[a-fA-F0-9]{40}/)) {
-              const addressMatch = value.match(/0x[a-fA-F0-9]{40}/);
-              if (addressMatch && addressMatch[0].toLowerCase() !== fullAddress?.toLowerCase()) {
-                peerAddress = addressMatch[0];
-                console.log(`✅ Found address in ${key}:`, peerAddress);
-                break;
-              }
+        // Method 3: If this is a group conversation, use the first participant that's not us
+        else if (convo.isGroup && convo.members && Array.isArray(convo.members) && convo.members.length > 0) {
+          console.log('🔍 This is a group, checking members:', convo.members);
+          const otherMember = convo.members.find((m: any) => {
+            const memberAddress = m.address || m.inboxId;
+            return memberAddress && memberAddress.toLowerCase() !== fullAddress?.toLowerCase();
+          });
+          if (otherMember) {
+            const memberIdentifier = otherMember.address || otherMember.inboxId;
+            if (memberIdentifier.match(/^0x[a-fA-F0-9]{40}$/)) {
+              peerAddress = memberIdentifier;
+            } else {
+              peerAddress = await resolveInboxIdToAddress(memberIdentifier);
             }
+            console.log('✅ Found peerAddress from group members:', peerAddress);
           }
+        }
+        
+        // If still no peer address found, mark as unknown
+        if (!peerAddress || peerAddress === 'Unknown' || peerAddress === 'unknown') {
+          console.log('⚠️ Could not determine peer address for conversation:', convo.id);
+          peerAddress = 'Unknown';
         }
         
         const result = {
           ...convo,
-          peerAddress: peerAddress || 'Unknown',
-          id: convo.id || convo.conversationId || `convo-${Math.random()}`
+          peerAddress: peerAddress,
+          id: convo.id || convo.conversationId || `convo-${Math.random()}`,
+          // Keep the original conversation object for methods
+          _conversationObject: convo._conversationObject || convo,
         };
         
-        console.log('📝 Final conversation:', result);
+        console.log('📝 Final conversation:', {
+          id: result.id,
+          peerAddress: result.peerAddress,
+          isGroup: result.isGroup,
+          isDm: result.isDm,
+          hasConversationObject: !!result._conversationObject
+        });
         return result;
-      });
+      }));
       
       setConversations(conversationsWithPeerAddress);
       console.log('✅ Conversations loaded:', conversationsWithPeerAddress.length);
@@ -241,7 +322,16 @@ export default function Messages() {
 
   const loadMessages = async (conversation: any) => {
     try {
-      console.log('📩 Loading messages from conversation:', conversation);
+      console.log('📩 Loading messages from conversation:', conversation.id);
+      
+      // Get the actual conversation object
+      const actualConvo = conversation._conversationObject || conversation;
+      console.log('📩 Using conversation object:', {
+        id: actualConvo.id,
+        hasMessages: typeof actualConvo.messages === 'function',
+        isGroup: actualConvo.isGroup,
+        isDm: actualConvo.isDm
+      });
       
       // Clear current messages for this convo
       setMessages([]);
@@ -252,21 +342,25 @@ export default function Messages() {
         let messages = [];
         
         // Method 1: Try conversation.messages() if it exists
-        if (typeof conversation.messages === 'function') {
-          messages = await conversation.messages();
+        if (typeof actualConvo.messages === 'function') {
+          console.log('🔍 Getting messages via messages()...');
+          messages = await actualConvo.messages();
         }
         // Method 2: Try conversation.getMessages() if it exists
-        else if (typeof conversation.getMessages === 'function') {
-          messages = await conversation.getMessages();
+        else if (typeof actualConvo.getMessages === 'function') {
+          console.log('🔍 Getting messages via getMessages()...');
+          messages = await actualConvo.getMessages();
         }
         // Method 3: Try accessing messages property directly
-        else if (conversation.messages && Array.isArray(conversation.messages)) {
-          messages = conversation.messages;
+        else if (actualConvo.messages && Array.isArray(actualConvo.messages)) {
+          console.log('🔍 Getting messages from messages property...');
+          messages = actualConvo.messages;
         }
         // Method 4: Try using the client to get messages
-        else if (xmtpClient && conversation.id) {
+        else if (xmtpClient && actualConvo.id) {
           try {
-            messages = await xmtpClient.conversations.getMessages(conversation.id);
+            console.log('🔍 Getting messages via client...');
+            messages = await xmtpClient.conversations.getMessages(actualConvo.id);
           } catch (clientError) {
             console.warn('⚠️ Could not load messages via client:', clientError);
           }
@@ -308,23 +402,50 @@ export default function Messages() {
             }
           }
           
-          console.log('📍 Processed message sender:', {
+          // Better content extraction
+          let content = '';
+          if (typeof msg.content === 'string') {
+            content = msg.content;
+          } else if (msg.content?.text) {
+            content = msg.content.text;
+          } else if (msg.content && typeof msg.content === 'object') {
+            // Skip metadata messages (group updates, etc.)
+            if (msg.content.initiatedByInboxId || msg.content.addedInboxes || msg.content.removedInboxes) {
+              console.log('⚠️ Skipping metadata message:', msg.content);
+              return null; // Skip this message
+            }
+            content = JSON.stringify(msg.content);
+          } else {
+            content = 'Unknown message type';
+          }
+          
+          console.log('📍 Processed message:', {
             original: msg.senderAddress || msg.sender || msg.from,
             processed: senderAddress,
+            content: content,
             myAddress: fullAddress,
             isMyMessage: senderAddress.toLowerCase() === fullAddress?.toLowerCase()
           });
           
           return {
             id: msg.id || `msg-${Math.random()}`,
-            content: typeof msg.content === 'string' ? msg.content : msg.content?.text || JSON.stringify(msg.content),
+            content: content,
             senderAddress: senderAddress,
             sent: msg.sent || msg.timestamp || new Date(),
           };
-        });
+        }).filter(Boolean); // Remove null messages
         
-        setMessages(formattedMessages);
-        console.log('✅ Messages loaded and displayed:', formattedMessages.length);
+        // Remove duplicate messages based on content and timestamp
+        const uniqueMessages = formattedMessages.filter((msg, index, self) => 
+          index === self.findIndex(m => 
+            m.content === msg.content && 
+            Math.abs(new Date(m.sent).getTime() - new Date(msg.sent).getTime()) < 1000
+          )
+        );
+        
+        setMessages(uniqueMessages);
+        console.log('✅ Messages loaded and displayed:', uniqueMessages.length);
+        console.log('🗑️ Removed duplicates:', formattedMessages.length - uniqueMessages.length);
         
       } catch (messageError) {
         console.error('❌ Error loading existing messages:', messageError);
@@ -334,7 +455,7 @@ export default function Messages() {
 
       // Set up streaming for new messages (optional - can be done separately)
       try {
-        await streamMessages(conversation, (msg: any) => {
+        await streamMessages(actualConvo, (msg: any) => {
           console.log('📬 New message received via stream:', msg);
           const formattedMsg = {
             id: msg.id || `msg-${Math.random()}`,
@@ -434,6 +555,16 @@ export default function Messages() {
     const targetAddress = address || newChatAddress;
     if (!targetAddress) return;
 
+    // Validate address format first
+    if (!targetAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      toast({
+        title: 'Invalid address',
+        description: 'Please enter a valid Ethereum wallet address (0x...)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       // Check if identity is reachable (Step 3 from docs)
       const isReachable = await isIdentityReachable(targetAddress);
@@ -495,8 +626,11 @@ export default function Messages() {
     try {
       console.log('📤 Sending message with optimistic UI...');
       
+      // Get the actual conversation object
+      const actualConvo = selectedConvo._conversationObject || selectedConvo;
+      
       // Send message with optimistic UI (Step 5 from docs)
-      await sendMessage(selectedConvo, messageText);
+      await sendMessage(actualConvo, messageText);
 
       // The message is already added optimistically by XMTP, so we don't need to add it manually
       console.log('✅ Message sent successfully with optimistic UI');
@@ -689,89 +823,58 @@ export default function Messages() {
                   
                   const syncedConversations = await triggerHistorySync();
                   console.log('✅ History sync completed');
+                  console.log('📊 Synced conversations:', syncedConversations.length);
                   
-                  // Save the synced conversations to localStorage
+                  // The conversations are already processed in the hook with participants resolved
+                  // Just save them to localStorage for persistence (but don't serialize the _conversationObject)
                   if (syncedConversations.length > 0) {
-                    console.log('🔍 Synced conversations structure:', syncedConversations);
-                    
-                    // Process the synced conversations to extract proper peer addresses
-                    const processedConvos = syncedConversations.map((convo: any) => {
-                      console.log('🔍 Processing synced conversation:', convo);
-                      console.log('🔍 Synced conversation keys:', Object.keys(convo));
-                      console.log('🔍 Full synced conversation object:', JSON.stringify(convo, null, 2));
-                      
-                      // Try to extract peer address from the synced conversation
+                    // Process each conversation to extract and resolve peer addresses
+                    const serializableConvos = await Promise.all(syncedConversations.map(async (convo: any) => {
                       let peerAddress = 'Unknown';
                       
-        // Method 1: Check participants array (most reliable for XMTP V3)
-        if (convo.participants && Array.isArray(convo.participants)) {
-          console.log('🔍 Checking participants array:', convo.participants);
-          const otherParticipant = convo.participants.find((p: string) => 
-            p && p.toLowerCase() !== fullAddress?.toLowerCase()
-          );
-          if (otherParticipant) {
-            peerAddress = otherParticipant;
-            console.log('✅ Found peerAddress from participants:', peerAddress);
-          } else {
-            console.log('⚠️ No other participant found in participants array');
-            // If no other participant found, it might be a group or the current user's address is wrong
-            console.log('🔍 Current user address:', fullAddress);
-            console.log('🔍 All participants:', convo.participants);
-          }
-        }
-                      // Method 2: Check for peerAddress property
-                      else if (convo.peerAddress && convo.peerAddress !== 'Unknown' && convo.peerAddress !== 'unknown') {
-                        peerAddress = convo.peerAddress;
-                        console.log('✅ Found peerAddress property:', peerAddress);
-                      }
-                      // Method 3: Check for address property
-                      else if (convo.address) {
-                        peerAddress = convo.address;
-                        console.log('✅ Found address property:', peerAddress);
-                      }
-                      // Method 4: Check for peer property
-                      else if (convo.peer) {
-                        peerAddress = convo.peer;
-                        console.log('✅ Found peer property:', peerAddress);
-                      }
-                      // Method 5: Try to extract from conversation ID
-                      else if (convo.id && typeof convo.id === 'string') {
-                        const addressMatch = convo.id.match(/0x[a-fA-F0-9]{40}/);
-                        if (addressMatch) {
-                          peerAddress = addressMatch[0];
-                          console.log('✅ Found address in ID:', peerAddress);
-                        }
-                      }
-                      // Method 6: Check all string properties for wallet addresses
-                      else {
-                        for (const [key, value] of Object.entries(convo)) {
-                          if (typeof value === 'string' && value.match(/0x[a-fA-F0-9]{40}/)) {
-                            const addressMatch = value.match(/0x[a-fA-F0-9]{40}/);
-                            if (addressMatch && addressMatch[0].toLowerCase() !== fullAddress?.toLowerCase()) {
-                              peerAddress = addressMatch[0];
-                              console.log(`✅ Found address in ${key}:`, peerAddress);
-                              break;
-                            }
+                      // Check if participants array exists and has addresses
+                      if (convo.participants && Array.isArray(convo.participants) && convo.participants.length > 0) {
+                        console.log('🔍 Synced conversation participants:', convo.participants);
+                        
+                        // Find the participant that's not the current user
+                        const otherParticipant = convo.participants.find((p: string) => 
+                          p && p.toLowerCase() !== fullAddress?.toLowerCase()
+                        );
+                        
+                        if (otherParticipant) {
+                          // Check if it's a wallet address or inbox ID
+                          if (otherParticipant.match(/^0x[a-fA-F0-9]{40}$/)) {
+                            peerAddress = otherParticipant;
+                            console.log('✅ Using wallet address from participants:', peerAddress);
+                          } else if (otherParticipant.length === 64 && otherParticipant.match(/^[a-f0-9]{64}$/)) {
+                            console.log('🔍 Resolving inbox ID from synced conversation:', otherParticipant);
+                            peerAddress = await resolveInboxIdToAddress(otherParticipant);
+                            console.log('✅ Resolved to wallet address:', peerAddress);
+                          } else {
+                            peerAddress = otherParticipant;
                           }
                         }
                       }
                       
-                      console.log('📍 Extracted peer address from synced conversation:', peerAddress);
-                      
                       return {
-                        ...convo,
-                        peerAddress: peerAddress.toLowerCase(),
-                        id: convo.id || convo.conversationId || `convo-${Math.random()}`
+                        id: convo.id,
+                        peerAddress: peerAddress,
+                        createdAt: convo.createdAt,
+                        topic: convo.topic,
+                        isGroup: convo.isGroup,
+                        isDm: convo.isDm,
+                        participants: convo.participants,
                       };
-                    });
+                    }));
                     
                     const existingConvos = JSON.parse(localStorage.getItem('xmtp-conversations') || '[]');
-                    const combinedConvos = [...existingConvos, ...processedConvos];
+                    const combinedConvos = [...existingConvos, ...serializableConvos];
                     const uniqueConvos = combinedConvos.filter((convo, index, self) => 
-                      index === self.findIndex(c => c.id === convo.id || c.peerAddress === convo.peerAddress)
+                      index === self.findIndex(c => c.id === convo.id)
                     );
                     localStorage.setItem('xmtp-conversations', JSON.stringify(uniqueConvos));
-                    console.log('💾 Saved processed synced conversations to localStorage');
+                    console.log('💾 Saved synced conversations with resolved addresses to localStorage');
+                    console.log('📊 Saved conversations:', uniqueConvos);
                   }
                   
                   // Reload conversations after history sync
@@ -854,6 +957,77 @@ export default function Messages() {
             >
               🗑️ Clear Storage
             </Button>
+            <Button 
+              onClick={() => {
+                try {
+                  console.log('🗑️ Clearing current messages...');
+                  setMessages([]);
+                  setSelectedConvo(null);
+                  console.log('✅ Messages cleared');
+                  toast({
+                    title: 'Messages cleared',
+                    description: 'Current conversation messages cleared',
+                  });
+                } catch (error: any) {
+                  console.error('Clear messages error:', error);
+                  toast({
+                    title: 'Clear failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              🗑️ Clear Messages
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  console.log('🔄 Cleaning corrupted conversations...');
+                  
+                  // Get current conversations
+                  const currentConvos = JSON.parse(localStorage.getItem('xmtp-conversations') || '[]');
+                  console.log('📬 Current saved conversations:', currentConvos.length);
+                  
+                  // Filter out conversations with "unknown" peerAddress
+                  const cleanConvos = currentConvos.filter((convo: any) => 
+                    convo.peerAddress && 
+                    convo.peerAddress !== 'unknown' && 
+                    convo.peerAddress !== 'Unknown' &&
+                    convo.participants && 
+                    Array.isArray(convo.participants) &&
+                    convo.participants.length > 0
+                  );
+                  
+                  console.log('🧹 Cleaned conversations:', cleanConvos.length);
+                  console.log('🗑️ Removed corrupted conversations:', currentConvos.length - cleanConvos.length);
+                  
+                  // Save cleaned conversations
+                  localStorage.setItem('xmtp-conversations', JSON.stringify(cleanConvos));
+                  
+                  // Reload conversations
+                  await loadConversations();
+                  
+                  toast({
+                    title: 'Corrupted conversations cleaned',
+                    description: `Removed ${currentConvos.length - cleanConvos.length} corrupted conversations`,
+                  });
+                } catch (error: any) {
+                  console.error('Clean conversations error:', error);
+                  toast({
+                    title: 'Clean failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              🧹 Clean Corrupted
+            </Button>
           </div>
 
           {/* Conversation List */}
@@ -873,47 +1047,54 @@ export default function Messages() {
                       : ''
                   }`}
                   onClick={async () => {
-                    console.log('💬 Selected conversation:', convo);
+                    console.log('💬 Selected conversation:', convo.id);
                     
                     try {
-                      // If this is a saved conversation without XMTP methods, we need to recreate it
-                      if (!convo.send || !convo.messages) {
-                        console.log('🔄 Recreating XMTP conversation from saved data...');
+                      // Check if we have the actual conversation object
+                      const actualConvo = convo._conversationObject;
+                      
+                      if (!actualConvo || !actualConvo.messages) {
+                        console.log('🔄 Need to fetch conversation from XMTP...');
                         
-                        // Try to get the conversation from XMTP using the peer address
-                        if (convo.peerAddress && convo.peerAddress !== 'unknown' && convo.peerAddress !== 'Unknown') {
-                          console.log('🔍 Looking for XMTP conversation with peer:', convo.peerAddress);
-                          
-                          // Get all conversations from XMTP
-                          const xmtpConversations = await getConversations();
-                          console.log('📬 Available XMTP conversations:', xmtpConversations.length);
-                          
-                          // Find the matching conversation
-                          const matchingConvo = xmtpConversations.find((xmtpConvo: any) => {
+                        // Get all conversations from XMTP to find the actual conversation object
+                        const xmtpConversations = await getConversations();
+                        console.log('📬 Available XMTP conversations:', xmtpConversations.length);
+                        
+                        // Find the matching conversation by ID
+                        const matchingConvo = xmtpConversations.find((xmtpConvo: any) => 
+                          xmtpConvo.id === convo.id
+                        );
+                        
+                        if (matchingConvo) {
+                          console.log('✅ Found matching XMTP conversation');
+                          setSelectedConvo(matchingConvo);
+                          return;
+                        }
+                        
+                        // If no match by ID and we have a peer address, try to find by participant
+                        if (convo.peerAddress && convo.peerAddress !== 'Unknown' && convo.peerAddress !== 'unknown') {
+                          const peerMatch = xmtpConversations.find((xmtpConvo: any) => {
                             if (xmtpConvo.participants && Array.isArray(xmtpConvo.participants)) {
-                              return xmtpConvo.participants.includes(convo.peerAddress);
+                              return xmtpConvo.participants.some((p: string) => 
+                                p.toLowerCase() === convo.peerAddress.toLowerCase()
+                              );
                             }
                             return false;
                           });
                           
-                          if (matchingConvo) {
-                            console.log('✅ Found matching XMTP conversation:', matchingConvo);
-                            setSelectedConvo(matchingConvo);
+                          if (peerMatch) {
+                            console.log('✅ Found conversation by peer address');
+                            setSelectedConvo(peerMatch);
                             return;
-                          } else {
-                            console.log('⚠️ No matching XMTP conversation found, trying to create new one...');
-                            
-                            // Try to create a new conversation with this peer
-                            try {
-                              const newConvo = await createDMConversation(convo.peerAddress);
-                              console.log('✅ Created new XMTP conversation:', newConvo);
-                              setSelectedConvo(newConvo);
-                              return;
-                            } catch (createError) {
-                              console.error('❌ Failed to create new conversation:', createError);
-                            }
                           }
                         }
+                        
+                        toast({
+                          title: 'Conversation not found',
+                          description: 'This conversation may have been removed. Try refreshing.',
+                          variant: 'destructive',
+                        });
+                        return;
                       }
                       
                       // If we have a proper XMTP conversation, use it directly
