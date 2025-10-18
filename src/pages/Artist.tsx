@@ -248,21 +248,27 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         setHolderWallets(holdersList);
 
         // For holdings count, check what tokens this wallet holds
-        // (tokens from other artists that this wallet address has bought)
+        // (both artists and songs that this wallet address has bought, including their own songs)
         try {
           const { data: allSongs, error: allSongsError } = await supabase
             .from("songs")
-            .select("token_address, wallet_address")
-            .not('token_address', 'is', null)
-            .neq('wallet_address', walletAddress); // Songs NOT by this artist
+            .select("id, title, artist, token_address, wallet_address")
+            .not('token_address', 'is', null);
+            // REMOVED: .neq('wallet_address', walletAddress)
+            // Artists can hold their own songs too!
 
           if (allSongsError) throw allSongsError;
 
+          console.log(`🔍 Checking holdings for wallet: ${walletAddress}`);
+          console.log(`🔍 Found ${allSongs?.length || 0} songs with token addresses to check`);
+
           const holdingsSet = new Set<string>();
+          const holdingsData: Array<{type: 'artist' | 'song', id: string, name: string, wallet_address: string}> = [];
 
           for (const song of (allSongs || [])) {
             if (!song.token_address) continue;
 
+            console.log(`🔍 Checking song: ${song.title} by ${song.artist} (Token: ${song.token_address})`);
             try {
               // Check balance of this wallet for this token
               const balance = await publicClient.readContract({
@@ -279,7 +285,29 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
               } as any);
 
               if (balance && BigInt(balance as any) > BigInt(0)) {
+                console.log(`🎵 Found tokens for song: ${song.title} by ${song.artist} (${song.token_address})`);
+                
+                // Add artist to holdings
                 holdingsSet.add(song.wallet_address.toLowerCase());
+                holdingsData.push({
+                  type: 'artist',
+                  id: song.wallet_address,
+                  name: song.artist,
+                  wallet_address: song.wallet_address
+                });
+                
+                // Add song to holdings
+                holdingsSet.add(`song_${song.id}`);
+                holdingsData.push({
+                  type: 'song',
+                  id: song.id,
+                  name: song.title,
+                  wallet_address: song.wallet_address
+                });
+                
+                console.log(`🎵 Added to holdings: Artist ${song.artist} and Song ${song.title}`);
+              } else {
+                console.log(`🎵 No tokens found for song: ${song.title} by ${song.artist}`);
               }
             } catch (balanceError) {
               console.error(`Error checking balance for ${song.token_address}:`, balanceError);
@@ -287,7 +315,11 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
           }
 
           const holdingsList = Array.from(holdingsSet);
-          console.log(`✅ Holdings count (artists whose tokens this wallet holds): ${holdingsSet.size}`);
+          console.log(`✅ Holdings count (artists and songs this wallet holds): ${holdingsSet.size}`);
+          console.log(`✅ Holdings data:`, holdingsData);
+          console.log(`✅ Holdings list:`, holdingsList);
+          console.log(`✅ Artists in holdings: ${holdingsData.filter(h => h.type === 'artist').length}`);
+          console.log(`✅ Songs in holdings: ${holdingsData.filter(h => h.type === 'song').length}`);
           setHoldingsCount(holdingsSet.size);
           setHoldingWallets(holdingsList);
         } catch (holdingsError) {
@@ -695,7 +727,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
-                          <LikeButton songId={song.id} size="sm" showCount={false} />
+                          <LikeButton songId={song.id} size="sm" showCount={true} />
                           <ReportButton songId={song.id} />
                         </div>
                       </div>
