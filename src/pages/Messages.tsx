@@ -47,15 +47,15 @@ export default function Messages() {
   // Handle ?to= query parameter
   useEffect(() => {
     const toAddress = searchParams.get('to');
-    if (toAddress && isReady && conversations.length > 0) {
+    if (toAddress && isReady) {
       const existingConvo = conversations.find(
         c => c.peerAddress.toLowerCase() === toAddress.toLowerCase()
       );
       if (existingConvo) {
         setSelectedConvo(existingConvo);
       } else {
+        // Just populate the field, don't auto-start
         setNewChatAddress(toAddress);
-        handleStartChat(toAddress);
       }
     }
   }, [searchParams, isReady, conversations]);
