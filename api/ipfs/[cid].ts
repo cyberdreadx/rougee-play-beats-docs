@@ -3,11 +3,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const IPFS_GATEWAYS = [
-  'https://cloudflare-ipfs.com/ipfs',
-  'https://ipfs.io/ipfs',
-  'https://gateway.pinata.cloud/ipfs',
-  'https://dweb.link/ipfs',
-  'https://nftstorage.link/ipfs',
+  'https://gateway.lighthouse.storage/ipfs', // Lighthouse (PRIMARY - your gateway)
+  'https://cloudflare-ipfs.com/ipfs',        // Cloudflare IPFS gateway
+  'https://ipfs.io/ipfs',                    // Public IPFS gateway
+  'https://gateway.pinata.cloud/ipfs',       // Pinata gateway
+  'https://dweb.link/ipfs',                  // Protocol Labs gateway
+  'https://ipfs.fleek.co/ipfs',              // Fleek gateway
+  'https://gateway.ipfs.io/ipfs',            // Alternative IPFS.io
+  // NOTE: nftstorage.link REMOVED - causing failures on mobile
 ];
 
 export async function GET(

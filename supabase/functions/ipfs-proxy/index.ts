@@ -7,15 +7,15 @@ const corsHeaders = {
 };
 
 const IPFS_GATEWAYS = [
-  'https://cloudflare-ipfs.com/ipfs',
-  'https://ipfs.io/ipfs',
-  'https://gateway.pinata.cloud/ipfs',
-  'https://dweb.link/ipfs',
-  'https://nftstorage.link/ipfs',
-  'https://ipfs.fleek.co/ipfs',
-  'https://gateway.ipfs.io/ipfs',
-  'https://ipfs.infura.io/ipfs',
-  'https://gateway.lighthouse.storage/ipfs',
+  'https://gateway.lighthouse.storage/ipfs', // Lighthouse (PRIMARY - your gateway)
+  'https://cloudflare-ipfs.com/ipfs',        // Cloudflare IPFS gateway (fast and reliable)
+  'https://ipfs.io/ipfs',                    // Public IPFS gateway
+  'https://gateway.pinata.cloud/ipfs',       // Pinata gateway
+  'https://dweb.link/ipfs',                  // Protocol Labs gateway
+  'https://ipfs.fleek.co/ipfs',              // Fleek gateway
+  'https://gateway.ipfs.io/ipfs',            // Alternative IPFS.io
+  'https://ipfs.infura.io/ipfs',             // Infura gateway
+  // NOTE: nftstorage.link REMOVED - causing failures on mobile
 ];
 
 serve(async (req) => {

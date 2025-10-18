@@ -1,16 +1,17 @@
 // IPFS utilities for fetching and validating data
 
 // Multiple IPFS gateways for redundancy and to avoid security blocks
+// Lighthouse is FIRST and PRIMARY - most reliable for this app
 const IPFS_GATEWAYS = [
-  'https://gateway.lighthouse.storage/ipfs', // Lighthouse (primary - was working)
-  'https://cloudflare-ipfs.com/ipfs',  // Cloudflare IPFS gateway
-  'https://ipfs.io/ipfs',           // Public IPFS gateway
-  'https://gateway.pinata.cloud/ipfs', // Pinata gateway
-  'https://dweb.link/ipfs',         // Protocol Labs gateway
-  'https://nftstorage.link/ipfs',   // NFT.Storage gateway
-  'https://ipfs.fleek.co/ipfs',     // Fleek gateway
-  'https://gateway.ipfs.io/ipfs',   // Alternative IPFS.io
-  'https://ipfs.infura.io/ipfs',    // Infura gateway
+  'https://gateway.lighthouse.storage/ipfs', // Lighthouse (PRIMARY - your gateway)
+  'https://cloudflare-ipfs.com/ipfs',        // Cloudflare IPFS gateway (fast and reliable)
+  'https://ipfs.io/ipfs',                    // Public IPFS gateway
+  'https://gateway.pinata.cloud/ipfs',       // Pinata gateway
+  'https://dweb.link/ipfs',                  // Protocol Labs gateway
+  'https://ipfs.fleek.co/ipfs',              // Fleek gateway
+  'https://gateway.ipfs.io/ipfs',            // Alternative IPFS.io
+  'https://ipfs.infura.io/ipfs',             // Infura gateway
+  // NOTE: nftstorage.link REMOVED - causing failures on mobile
 ];
 
 // Cache for working gateways to avoid repeated failures
