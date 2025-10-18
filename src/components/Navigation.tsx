@@ -2,9 +2,8 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, ListMusic } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle } from "lucide-react";
 import MusicBars from "./MusicBars";
-import { useEffect, useState } from "react";
 
 interface NavigationProps {
   activeTab?: string;
@@ -22,7 +21,6 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
-    { name: "PLAYLISTS", path: "/playlists", icon: ListMusic },
     ...(isArtist 
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
@@ -37,7 +35,6 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
-    { name: "PLAYLISTS", path: "/playlists", icon: ListMusic },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     // Always include a profile entry for listeners/artists
@@ -46,41 +43,6 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       : [{ name: "PROFILE", path: "/profile/edit", icon: User }]
     ),
   ];
-
-  // Detect mobile keyboard via VisualViewport and hide bottom nav to prevent layout jump
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    const vv = (window as any).visualViewport as VisualViewport | undefined;
-    let focusListener: any;
-    let blurListener: any;
-
-    const update = () => {
-      if (!vv) return;
-      const heightDiff = window.innerHeight - vv.height;
-      setKeyboardOpen(heightDiff > 150);
-    };
-
-    if (vv) {
-      vv.addEventListener('resize', update);
-      vv.addEventListener('scroll', update);
-      update();
-    } else {
-      focusListener = () => setKeyboardOpen(true);
-      blurListener = () => setKeyboardOpen(false);
-      window.addEventListener('focusin', focusListener);
-      window.addEventListener('focusout', blurListener);
-    }
-
-    return () => {
-      if (vv) {
-        vv.removeEventListener('resize', update);
-        vv.removeEventListener('scroll', update);
-      }
-      if (focusListener) window.removeEventListener('focusin', focusListener);
-      if (blurListener) window.removeEventListener('focusout', blurListener);
-    };
-  }, []);
 
   const handleTabClick = (tab: typeof desktopTabs[0]) => {
     if (tab.path !== "/" || location.pathname !== "/") {
@@ -110,9 +72,6 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     }
     if (tab.path === "/swap") {
       return location.pathname === "/swap";
-    }
-    if (tab.path === "/playlists") {
-      return location.pathname.startsWith("/playlist");
     }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
@@ -153,10 +112,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       </nav>
 
       {/* Mobile Bottom Navigation - Essential tabs only (Upload from desktop/profile) */}
-      <nav
-        className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80 transition-transform duration-200 ${keyboardOpen ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', bottom: 'max(env(safe-area-inset-bottom), env(keyboard-inset, 0px))', willChange: 'transform', WebkitTransform: 'translateZ(0)' }}
-      >
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="flex justify-around items-center h-16 px-1">
           {mobileTabs.map((tab) => {
             const Icon = tab.icon;

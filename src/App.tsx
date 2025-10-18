@@ -26,8 +26,6 @@ import Feed from "./pages/Feed";
 import Swap from "./pages/Swap";
 import HowItWorks from "./pages/HowItWorks";
 import TermsOfService from "./pages/TermsOfService";
-import Playlists from "./pages/Playlists";
-import PlaylistDetail from "./pages/PlaylistDetail";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -88,8 +86,6 @@ const AppContent = () => {
           <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
-          <Route path="/playlists" element={<Playlists />} />
-          <Route path="/playlist/:playlistId" element={<PlaylistDetail playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,25 +22,10 @@ interface SearchResult {
 const SearchBar = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState<string>("all");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const genres = [
-    "All Genres",
-    "Hip Hop",
-    "Electronic",
-    "Rock",
-    "Pop",
-    "R&B",
-    "Jazz",
-    "Classical",
-    "Country",
-    "Reggae",
-    "Blues"
-  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,7 +47,6 @@ const SearchBar = () => {
       }
 
       setIsSearching(true);
-      console.log('Searching...', { q: searchQuery, selectedGenre });
       const searchTerm = `%${searchQuery.trim()}%`;
 
       try {
@@ -74,17 +57,12 @@ const SearchBar = () => {
           .ilike("artist_name", searchTerm)
           .limit(5);
 
-      // Search songs with genre filter
-        let songQuery = supabase
+        // Search songs
+        const { data: songs } = await supabase
           .from("songs")
-          .select("id, title, artist, wallet_address, audio_cid, cover_cid, genre")
-          .or(`(title.ilike.${searchTerm},artist.ilike.${searchTerm})`);
-
-        if (selectedGenre !== "all") {
-          songQuery = songQuery.ilike("genre", `%${selectedGenre}%`);
-        }
-
-        const { data: songs } = await songQuery.limit(5);
+          .select("id, title, artist, wallet_address, audio_cid, cover_cid")
+          .or(`title.ilike.${searchTerm},artist.ilike.${searchTerm}`)
+          .limit(5);
 
         const artistResults: SearchResult[] = (artists || []).map((a) => ({
           type: "artist" as const,
@@ -117,7 +95,7 @@ const SearchBar = () => {
 
     const debounce = setTimeout(searchDatabase, 300);
     return () => clearTimeout(debounce);
-  }, [searchQuery, selectedGenre]);
+  }, [searchQuery]);
 
   const handleResultClick = (result: SearchResult) => {
     if (result.type === "artist") {
@@ -137,7 +115,7 @@ const SearchBar = () => {
   return (
     <div className="w-full px-2 md:px-6 py-4" ref={dropdownRef}>
       <div className="relative max-w-4xl">
-        <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+        <div className="flex space-x-2 md:space-x-4">
           <Input
             type="text"
             placeholder="Search artists, songs, albums..."
@@ -145,19 +123,6 @@ const SearchBar = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 glass text-foreground placeholder:text-muted-foreground font-mono border-neon-green/30"
           />
-          <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-            <SelectTrigger className="w-full md:w-48 glass border-neon-green/30 font-mono">
-              <SelectValue placeholder="Genre" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Genres</SelectItem>
-              {genres.slice(1).map((genre) => (
-                <SelectItem key={genre.toLowerCase()} value={genre}>
-                  {genre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button variant="neon" className="px-4 md:px-6">
             {isSearching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
