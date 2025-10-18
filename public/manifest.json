@@ -96,6 +96,13 @@
       "description": "View your balances",
       "url": "/wallet",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "description": "Chat with artists and fans",
+      "url": "/messages",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ],
   "related_applications": [],

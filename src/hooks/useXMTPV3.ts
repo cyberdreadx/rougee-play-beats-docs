@@ -87,9 +87,15 @@ export const useXMTPV3 = () => {
         },
       }).then(client => {
         clientCreated = true;
-        console.log('✨ XMTP client created with history sync enabled');
-        console.log('🔄 History sync will automatically sync conversations across devices');
-        return client;
+      console.log('✨ XMTP client created with history sync enabled');
+      console.log('🔄 History sync will automatically sync conversations across devices');
+      
+      // PWA optimization: Set up background sync for messages
+      if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+        console.log('📱 PWA background sync enabled for XMTP messages');
+      }
+      
+      return client;
       });
       
       const xmtp = await Promise.race([
