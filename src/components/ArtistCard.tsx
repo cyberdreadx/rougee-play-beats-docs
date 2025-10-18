@@ -49,7 +49,10 @@ const ArtistCard = ({
   return (
     <Card 
       className={`${sizeClasses[size]} relative overflow-hidden cursor-pointer group tech-border hover:border-neon-green transition-all duration-300`}
-      onClick={() => navigate(`/artist/${walletAddress}`)}
+      onClick={() => {
+        console.log('ArtistCard clicked, navigating to:', `/artist/${walletAddress}`);
+        navigate(`/artist/${walletAddress}`);
+      }}
     >
       {/* Cover Photo Background */}
       <div className="absolute inset-0">

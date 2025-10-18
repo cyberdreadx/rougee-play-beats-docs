@@ -47,21 +47,21 @@ const SearchBar = () => {
       }
 
       setIsSearching(true);
-      const searchTerm = `%${searchQuery.trim()}%`;
+      const searchTerm = searchQuery.trim();
 
       try {
         // Search artists
         const { data: artists } = await supabase
           .from("public_profiles")
           .select("wallet_address, artist_name, avatar_cid, artist_ticker, verified")
-          .ilike("artist_name", searchTerm)
+          .ilike("artist_name", `%${searchTerm}%`)
           .limit(5);
 
         // Search songs
         const { data: songs } = await supabase
           .from("songs")
           .select("id, title, artist, wallet_address, audio_cid, cover_cid")
-          .or(`title.ilike.${searchTerm},artist.ilike.${searchTerm}`)
+          .or(`title.ilike.%${searchTerm}%,artist.ilike.%${searchTerm}%`)
           .limit(5);
 
         const artistResults: SearchResult[] = (artists || []).map((a) => ({
@@ -99,10 +99,11 @@ const SearchBar = () => {
 
   const handleResultClick = (result: SearchResult) => {
     if (result.type === "artist") {
+      console.log('SearchBar: Navigating to artist page:', `/artist/${result.wallet_address}`);
       navigate(`/artist/${result.wallet_address}`);
     } else {
-      // TODO: Implement song playback
-      console.log("Play song:", result.name);
+      console.log('SearchBar: Navigating to song page:', `/song/${result.id}`);
+      navigate(`/song/${result.id}`);
     }
     setShowDropdown(false);
     setSearchQuery("");

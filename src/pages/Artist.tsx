@@ -485,11 +485,17 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
           {isOwnProfile && (
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <Button variant="neon" onClick={() => navigate("/upload")}>
+              <Button variant="neon" onClick={() => {
+                console.log('Upload button clicked');
+                navigate("/upload");
+              }}>
                 <Upload className="h-4 w-4 mr-2" />
                 UPLOAD MUSIC
               </Button>
-              <Button variant="outline" onClick={() => navigate("/profile/edit")}>
+              <Button variant="outline" onClick={() => {
+                console.log('Edit profile button clicked');
+                navigate("/profile/edit");
+              }}>
                 <Edit className="h-4 w-4 mr-2" />
                 EDIT PROFILE
               </Button>
@@ -656,7 +662,11 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                           {/* Play Button Overlay */}
                           <button
                             className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => { e.stopPropagation(); playSong(song); }}
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              console.log('Play button clicked for song:', song.title);
+                              playSong(song); 
+                            }}
                             aria-label="Play"
                           >
                             {currentSong?.id === song.id && isPlaying ? (
@@ -668,7 +678,10 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         </div>
                         
                         {/* Song Info (click to details) */}
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/song/${song.id}`)}>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+                          console.log('Song info clicked, navigating to:', `/song/${song.id}`);
+                          navigate(`/song/${song.id}`);
+                        }}>
                           <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
                             <span className="truncate">{song.title}</span>
                             {song.ticker && (

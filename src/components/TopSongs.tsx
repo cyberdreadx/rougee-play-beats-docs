@@ -226,6 +226,7 @@ const fetchSongs = async () => {
                   size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
+                    console.log('TopSongs play button clicked for song:', song.title);
                     handlePlayClick(song);
                   }}
                   className={`h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}

@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { useSongPrice } from "@/hooks/useSongBondingCurve";
 import { useReadContract, usePublicClient } from "wagmi";
@@ -348,6 +348,8 @@ const Trending = () => {
   const [loading, setLoading] = useState(true);
   const [songStats, setSongStats] = useState<Map<string, { volume: number; change: number }>>(new Map());
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('search');
   
   // Calculate aggregated stats from individual song stats
   const totalVolume = Array.from(songStats.values()).reduce((sum, stat) => sum + stat.volume, 0);
@@ -364,27 +366,58 @@ const Trending = () => {
   useEffect(() => {
     const fetchTrendingData = async () => {
       try {
-        const [artistsResponse, songsResponse] = await Promise.all([
-          supabase
-            .from("public_profiles")
-            .select("wallet_address, artist_name, artist_ticker, avatar_cid, total_songs, total_plays, verified")
-            .not("artist_name", "is", null)
-            .gt("total_songs", 0)
-            .order("total_plays", { ascending: false })
-            .limit(50),
-          supabase
-            .from("songs")
-            .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address")
-            .not("token_address", "is", null) // Only show deployed songs
-            .order("play_count", { ascending: false })
-            .limit(50)
-        ]);
-
-        if (artistsResponse.error) throw artistsResponse.error;
-        if (songsResponse.error) throw songsResponse.error;
+        setLoading(true);
         
-        setArtists(artistsResponse.data || []);
-        setSongs(songsResponse.data || []);
+        if (searchQuery) {
+          // Perform search when search query is provided
+          const searchTerm = `%${searchQuery}%`;
+          
+          const [artistsResponse, songsResponse] = await Promise.all([
+            supabase
+              .from("public_profiles")
+              .select("wallet_address, artist_name, artist_ticker, avatar_cid, total_songs, total_plays, verified")
+              .not("artist_name", "is", null)
+              .ilike("artist_name", searchTerm)
+              .order("total_plays", { ascending: false })
+              .limit(50),
+            supabase
+              .from("songs")
+              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address")
+              .not("token_address", "is", null) // Only show deployed songs
+              .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%`)
+              .order("play_count", { ascending: false })
+              .limit(50)
+          ]);
+
+          if (artistsResponse.error) throw artistsResponse.error;
+          if (songsResponse.error) throw songsResponse.error;
+          
+          setArtists(artistsResponse.data || []);
+          setSongs(songsResponse.data || []);
+        } else {
+          // Show trending data when no search query
+          const [artistsResponse, songsResponse] = await Promise.all([
+            supabase
+              .from("public_profiles")
+              .select("wallet_address, artist_name, artist_ticker, avatar_cid, total_songs, total_plays, verified")
+              .not("artist_name", "is", null)
+              .gt("total_songs", 0)
+              .order("total_plays", { ascending: false })
+              .limit(50),
+            supabase
+              .from("songs")
+              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address")
+              .not("token_address", "is", null) // Only show deployed songs
+              .order("play_count", { ascending: false })
+              .limit(50)
+          ]);
+
+          if (artistsResponse.error) throw artistsResponse.error;
+          if (songsResponse.error) throw songsResponse.error;
+          
+          setArtists(artistsResponse.data || []);
+          setSongs(songsResponse.data || []);
+        }
       } catch (error) {
         console.error("Error fetching trending data:", error);
       } finally {
@@ -393,7 +426,7 @@ const Trending = () => {
     };
 
     fetchTrendingData();
-  }, []);
+  }, [searchQuery]);
 
   if (loading) {
     return (
@@ -443,10 +476,13 @@ const Trending = () => {
         <div className="mb-6 px-4 md:px-0">
           <h1 className="text-3xl md:text-4xl font-bold font-mono mb-2 neon-text flex items-center gap-3">
             <Flame className="w-8 h-8 text-orange-500 animate-pulse" />
-            TRENDING
+            {searchQuery ? `SEARCH RESULTS` : `TRENDING`}
           </h1>
           <p className="text-muted-foreground font-mono text-sm">
-            Top artists and songs ranked by trading activity & plays
+            {searchQuery 
+              ? `Search results for "${searchQuery}"` 
+              : `Top artists and songs ranked by trading activity & plays`
+            }
           </p>
         </div>
 
