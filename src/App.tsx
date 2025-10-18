@@ -24,6 +24,7 @@ import SongTrade from "./pages/SongTrade";
 import Admin from "./pages/Admin";
 import Feed from "./pages/Feed";
 import Swap from "./pages/Swap";
+import Playlists from "./pages/Playlists";
 import HowItWorks from "./pages/HowItWorks";
 import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
@@ -86,6 +87,7 @@ const AppContent = () => {
           <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
+          <Route path="/playlists" element={<Playlists />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

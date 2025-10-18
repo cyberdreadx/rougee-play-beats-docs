@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music } from "lucide-react";
 import MusicBars from "./MusicBars";
+import { useState, useEffect } from "react";
 
 interface NavigationProps {
   activeTab?: string;
@@ -16,6 +17,31 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const { fullAddress } = useWallet();
   const { isArtist } = useCurrentUserProfile();
   
+  // Mobile navigation scroll behavior
+  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Only apply scroll behavior on mobile
+      if (window.innerWidth >= 768) return;
+      
+      // Show nav when scrolling up, hide when scrolling down
+      if (currentScrollY < lastScrollY) {
+        setIsMobileNavVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsMobileNavVisible(false);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+  
   // Desktop tabs - show all (How It Works moved to header)
   const desktopTabs = [
     { name: "DISCOVER", path: "/", icon: Compass },
@@ -25,6 +51,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
     ),
+    { name: "PLAYLISTS", path: "/playlists", icon: Music },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "UPLOAD", path: "/upload", icon: Upload },
@@ -35,6 +62,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "DISCOVER", path: "/", icon: Compass },
     { name: "GLTCH FEED", path: "/feed", icon: Radio },
     { name: "TRENDING", path: "/trending", icon: TrendingUp },
+    { name: "PLAYLISTS", path: "/playlists", icon: Music },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     // Always include a profile entry for listeners/artists
@@ -112,7 +140,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       </nav>
 
       {/* Mobile Bottom Navigation - Essential tabs only (Upload from desktop/profile) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80 transition-transform duration-300 ${
+        isMobileNavVisible ? 'translate-y-0' : 'translate-y-full'
+      }`} style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
         <div className="flex justify-around items-center h-16 px-1">
           {mobileTabs.map((tab) => {
             const Icon = tab.icon;
