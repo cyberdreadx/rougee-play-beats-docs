@@ -77,27 +77,64 @@ export default function Messages() {
       console.log('🔄 Loading conversations from XMTP...');
       const convos = await getConversations();
       console.log('📬 Found conversations:', convos.length);
+      console.log('📬 Raw conversations data:', convos);
       
       // Add peerAddress to each conversation for UI display
       const conversationsWithPeerAddress = convos.map((convo: any) => {
-        // Try to extract peer address from conversation
+        console.log('🔍 Processing conversation:', convo);
+        
+        // Try multiple ways to extract peer address
         let peerAddress = convo.peerAddress;
-        if (!peerAddress && convo.participants) {
-          // For DMs, find the other participant
-          const otherParticipant = convo.participants.find((p: string) => p !== fullAddress?.toLowerCase());
-          peerAddress = otherParticipant;
+        
+        // Method 1: Check if peerAddress is already set
+        if (peerAddress && peerAddress !== 'Unknown') {
+          console.log('✅ Found peerAddress:', peerAddress);
+        }
+        // Method 2: Check participants array
+        else if (convo.participants && Array.isArray(convo.participants)) {
+          const otherParticipant = convo.participants.find((p: string) => 
+            p && p.toLowerCase() !== fullAddress?.toLowerCase()
+          );
+          if (otherParticipant) {
+            peerAddress = otherParticipant;
+            console.log('✅ Found peerAddress from participants:', peerAddress);
+          }
+        }
+        // Method 3: Check for peerAddress in different properties
+        else if (convo.peerAddress) {
+          peerAddress = convo.peerAddress;
+          console.log('✅ Found peerAddress property:', peerAddress);
+        }
+        // Method 4: Check for address in other properties
+        else if (convo.address) {
+          peerAddress = convo.address;
+          console.log('✅ Found address property:', peerAddress);
+        }
+        // Method 5: Check for peer in properties
+        else if (convo.peer) {
+          peerAddress = convo.peer;
+          console.log('✅ Found peer property:', peerAddress);
         }
         
-        return {
+        const result = {
           ...convo,
-          peerAddress: peerAddress || 'Unknown'
+          peerAddress: peerAddress || 'Unknown',
+          id: convo.id || convo.conversationId || `convo-${Math.random()}`
         };
+        
+        console.log('📝 Final conversation:', result);
+        return result;
       });
       
       setConversations(conversationsWithPeerAddress);
+      console.log('✅ Conversations loaded:', conversationsWithPeerAddress.length);
       
       // Load profiles for all conversation participants
-      const addresses = conversationsWithPeerAddress.map((c: any) => c.peerAddress).filter(Boolean);
+      const addresses = conversationsWithPeerAddress
+        .map((c: any) => c.peerAddress)
+        .filter(addr => addr && addr !== 'Unknown');
+      
+      console.log('👥 Loading profiles for addresses:', addresses);
       if (addresses.length > 0) {
         loadProfiles(addresses);
       }
@@ -402,15 +439,17 @@ export default function Messages() {
 
           {/* Conversation List */}
           <div className="space-y-2">
-            {conversations.map((convo) => {
+            {conversations.map((convo, index) => {
               const profile = getProfileForAddress(convo.peerAddress);
               const avatarUrl = profile?.avatar_cid ? getIPFSGatewayUrl(profile.avatar_cid) : null;
+              const displayName = profile?.artist_name || formatAddress(convo.peerAddress);
+              const displayAddress = convo.peerAddress === 'Unknown' ? 'Unknown User' : convo.peerAddress;
               
               return (
                 <Card
-                  key={convo.peerAddress}
+                  key={convo.id || convo.peerAddress || `convo-${index}`}
                   className={`p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                    selectedConvo?.peerAddress === convo.peerAddress 
+                    selectedConvo?.id === convo.id || selectedConvo?.peerAddress === convo.peerAddress
                       ? 'bg-neon-green/10 border-neon-green' 
                       : ''
                   }`}
@@ -420,15 +459,15 @@ export default function Messages() {
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={avatarUrl || ''} />
                       <AvatarFallback className="bg-neon-green text-black font-mono">
-                        {profile?.artist_name?.charAt(0) || formatAddress(convo.peerAddress).charAt(0)}
+                        {displayName.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-mono text-sm font-medium truncate">
-                        {profile?.artist_name || formatAddress(convo.peerAddress)}
+                        {displayName}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {convo.peerAddress}
+                        {displayAddress}
                       </p>
                     </div>
                   </div>

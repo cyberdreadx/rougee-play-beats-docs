@@ -205,15 +205,58 @@ export const useXMTPV3 = () => {
     }
   }, [xmtpClient]);
 
-  // Get all conversations
+  // Get all conversations using XMTP V3 API
   const getConversations = useCallback(async () => {
     if (!xmtpClient) return [];
     
     try {
-      const conversations = await xmtpClient.conversations.list();
+      console.log('🔄 Fetching conversations from XMTP...');
+      
+      // Use the correct XMTP V3 API with consent states
+      const conversations = await xmtpClient.conversations.list({
+        consentStates: ['allowed']
+      });
+      
+      console.log('📬 Raw conversations from XMTP:', conversations);
+      console.log('📬 Number of conversations found:', conversations.length);
+      
       return conversations;
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('❌ Error fetching conversations:', error);
+      return [];
+    }
+  }, [xmtpClient]);
+
+  // Get DMs specifically
+  const getDMs = useCallback(async () => {
+    if (!xmtpClient) return [];
+    
+    try {
+      console.log('🔄 Fetching DMs from XMTP...');
+      const dms = await xmtpClient.conversations.listDms({
+        consentStates: ['allowed']
+      });
+      console.log('📬 DMs found:', dms.length);
+      return dms;
+    } catch (error) {
+      console.error('❌ Error fetching DMs:', error);
+      return [];
+    }
+  }, [xmtpClient]);
+
+  // Get groups specifically
+  const getGroups = useCallback(async () => {
+    if (!xmtpClient) return [];
+    
+    try {
+      console.log('🔄 Fetching groups from XMTP...');
+      const groups = await xmtpClient.conversations.listGroups({
+        consentStates: ['allowed']
+      });
+      console.log('📬 Groups found:', groups.length);
+      return groups;
+    } catch (error) {
+      console.error('❌ Error fetching groups:', error);
       return [];
     }
   }, [xmtpClient]);
@@ -273,6 +316,8 @@ export const useXMTPV3 = () => {
     createDMConversation,
     sendMessage,
     getConversations,
+    getDMs,
+    getGroups,
     streamMessages,
     revokeOtherInstallations,
   };
