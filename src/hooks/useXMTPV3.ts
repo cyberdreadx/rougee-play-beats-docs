@@ -133,26 +133,13 @@ export const useXMTPV3 = () => {
     }
   }, [authenticated, walletClient, xmtpClient, isInitializing]);
 
-  // Step 3: Check if identity is reachable (Phase I)
+  // Step 3: Check if identity is reachable (simplified - just assume reachable)
   const isIdentityReachable = useCallback(async (address: string) => {
-    try {
-      // Create Identifier array as per XMTP docs
-      const identifiers = [{
-        identifier: address.toLowerCase(),
-        identifierKind: 'Ethereum'
-      }];
-      
-      console.log('🔍 Checking if reachable:', address);
-      // Use static Client.canMessage method as per docs
-      const canMessage = await Client.canMessage(identifiers);
-      // The response is a Map of string (identifier) => boolean (is reachable)
-      const isReachable = canMessage.get(address.toLowerCase()) || false;
-      console.log('✅ Reachability result:', { address: address.toLowerCase(), isReachable });
-      return isReachable;
-    } catch (error) {
-      console.error('❌ Error checking if identity is reachable:', error);
-      return false;
-    }
+    // For now, assume all addresses are reachable
+    // The actual check happens when we try to create the DM
+    console.log('🔍 Checking if reachable:', address);
+    console.log('✅ Assuming address is reachable (will verify on DM creation)');
+    return true;
   }, []);
 
   // Step 4: Create DM conversation (Phase I)
@@ -161,24 +148,20 @@ export const useXMTPV3 = () => {
     
     console.log('🔍 Creating DM conversation with:', peerAddress);
     
-    // Check if peer is reachable first
-    const isReachable = await isIdentityReachable(peerAddress);
-    if (!isReachable) {
-      throw new Error('This user is not reachable on XMTP');
+    try {
+      // Create DM directly with address - XMTP handles the inbox ID lookup
+      const conversation = await xmtpClient.conversations.newDm(peerAddress.toLowerCase());
+      
+      // Add peerAddress to conversation for UI display
+      (conversation as any).peerAddress = peerAddress;
+      
+      console.log('✅ DM conversation created:', { peerAddress, conversationId: (conversation as any).id });
+      return conversation;
+    } catch (error: any) {
+      console.error('❌ Failed to create DM:', error?.message);
+      throw new Error(`Cannot message this address: ${error?.message || 'Unknown error'}`);
     }
-
-    // Get the peer's inbox ID first, then create DM
-    const peerInboxId = await xmtpClient.getInboxIdByAddress(peerAddress.toLowerCase());
-    console.log('📮 Peer inbox ID:', peerInboxId);
-    
-    const conversation = await xmtpClient.conversations.newDm(peerInboxId);
-    
-    // Add peerAddress to conversation for UI display
-    (conversation as any).peerAddress = peerAddress;
-    
-    console.log('✅ DM conversation created:', { peerAddress, inboxId: peerInboxId, conversationId: (conversation as any).id });
-    return conversation;
-  }, [xmtpClient, isIdentityReachable]);
+  }, [xmtpClient]);
 
   // Step 5: Send messages (Phase I)
   const sendMessage = useCallback(async (conversation: any, content: string) => {
