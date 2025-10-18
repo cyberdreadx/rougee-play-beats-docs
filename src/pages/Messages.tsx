@@ -128,7 +128,7 @@ export default function Messages() {
       if (!isReachable) {
         toast({
           title: 'Cannot message user',
-          description: 'This user is not reachable on XMTP',
+          description: 'This user is not receiving messages yet',
           variant: 'destructive',
         });
         return;
