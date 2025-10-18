@@ -216,6 +216,20 @@ export const useXMTPV3 = () => {
     }
   }, [xmtpClient]);
 
+  // Revoke all other installations to free up space
+  const revokeOtherInstallations = useCallback(async () => {
+    if (!xmtpClient) throw new Error('XMTP client not initialized');
+    
+    try {
+      console.log('🗑️ Revoking other installations...');
+      await xmtpClient.revokeAllOtherInstallations();
+      console.log('✅ Other installations revoked successfully');
+    } catch (error) {
+      console.error('❌ Error revoking installations:', error);
+      throw error;
+    }
+  }, [xmtpClient]);
+
   return {
     xmtpClient,
     isInitializing,
@@ -226,5 +240,6 @@ export const useXMTPV3 = () => {
     sendMessage,
     getConversations,
     streamMessages,
+    revokeOtherInstallations,
   };
 };

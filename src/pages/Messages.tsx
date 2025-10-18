@@ -28,7 +28,8 @@ export default function Messages() {
     createDMConversation,
     sendMessage,
     getConversations,
-    streamMessages
+    streamMessages,
+    revokeOtherInstallations
   } = useXMTPV3();
 
   const [conversations, setConversations] = useState<any[]>([]);
@@ -248,6 +249,31 @@ export default function Messages() {
               variant="outline"
             >
               🔄 Register Identity
+            </Button>
+            <Button 
+              onClick={async () => {
+                try {
+                  console.log('🔄 Revoking other installations...');
+                  await revokeOtherInstallations();
+                  console.log('✅ Revoke complete');
+                  toast({
+                    title: 'Installations revoked',
+                    description: 'Your identity has been revoked from other installations.',
+                  });
+                } catch (error: any) {
+                  console.error('Revoke error:', error);
+                  toast({
+                    title: 'Revoke failed',
+                    description: error.message,
+                    variant: 'destructive',
+                  });
+                }
+              }}
+              disabled={!xmtpClient}
+              className="w-full"
+              variant="outline"
+            >
+              🚫 Revoke Installations
             </Button>
           </div>
 
