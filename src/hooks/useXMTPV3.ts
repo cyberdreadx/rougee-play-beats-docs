@@ -223,14 +223,7 @@ export const useXMTPV3 = () => {
     if (!xmtpClient) throw new Error('XMTP client not initialized');
     
     try {
-      // Load existing messages first
-      const messages = await conversation.messages();
-      console.log('📨 Loaded existing messages:', messages.length);
-      
-      // Process existing messages
-      for (const message of messages) {
-        onMessage(message);
-      }
+      console.log('🔄 Setting up message streaming for conversation:', conversation.id);
       
       // Set up streaming for new messages using the correct XMTP V3 API
       // Use streamAllMessages and filter for this conversation

@@ -42,9 +42,8 @@ export default function Messages() {
   // Load conversations on mount and when XMTP client changes
   useEffect(() => {
     if (isReady && xmtpClient) {
-      console.log('📬 XMTP ready, conversation management active');
-      // Conversations are managed locally via state
-      // No need to load from XMTP - we track them as users create them
+      console.log('📬 XMTP ready, loading existing conversations...');
+      loadConversations();
     } else if (!xmtpClient) {
       console.log('⏳ Waiting for XMTP client...');
     }
@@ -75,11 +74,30 @@ export default function Messages() {
 
   const loadConversations = async () => {
     try {
+      console.log('🔄 Loading conversations from XMTP...');
       const convos = await getConversations();
-      setConversations(convos);
+      console.log('📬 Found conversations:', convos.length);
+      
+      // Add peerAddress to each conversation for UI display
+      const conversationsWithPeerAddress = convos.map((convo: any) => {
+        // Try to extract peer address from conversation
+        let peerAddress = convo.peerAddress;
+        if (!peerAddress && convo.participants) {
+          // For DMs, find the other participant
+          const otherParticipant = convo.participants.find((p: string) => p !== fullAddress?.toLowerCase());
+          peerAddress = otherParticipant;
+        }
+        
+        return {
+          ...convo,
+          peerAddress: peerAddress || 'Unknown'
+        };
+      });
+      
+      setConversations(conversationsWithPeerAddress);
       
       // Load profiles for all conversation participants
-      const addresses = convos.map((c: any) => c.peerAddress);
+      const addresses = conversationsWithPeerAddress.map((c: any) => c.peerAddress).filter(Boolean);
       if (addresses.length > 0) {
         loadProfiles(addresses);
       }
@@ -92,13 +110,64 @@ export default function Messages() {
     try {
       console.log('📩 Loading messages from conversation:', conversation);
       
-      // Clear current messages for this convo (optional)
+      // Clear current messages for this convo
       setMessages([]);
 
-      // Start streaming new messages
+      // Load existing messages first using XMTP V3 API
+      try {
+        // Try different methods to get messages from conversation
+        let messages = [];
+        
+        // Method 1: Try conversation.messages() if it exists
+        if (typeof conversation.messages === 'function') {
+          messages = await conversation.messages();
+        }
+        // Method 2: Try conversation.getMessages() if it exists
+        else if (typeof conversation.getMessages === 'function') {
+          messages = await conversation.getMessages();
+        }
+        // Method 3: Try accessing messages property directly
+        else if (conversation.messages && Array.isArray(conversation.messages)) {
+          messages = conversation.messages;
+        }
+        // Method 4: Try using the client to get messages
+        else if (xmtpClient && conversation.id) {
+          try {
+            messages = await xmtpClient.conversations.getMessages(conversation.id);
+          } catch (clientError) {
+            console.warn('⚠️ Could not load messages via client:', clientError);
+          }
+        }
+        
+        // Method 5: If all else fails, just show empty messages for now
+        if (!messages || messages.length === 0) {
+          console.log('📭 No messages found or could not load messages');
+          messages = [];
+        }
+        
+        console.log('📨 Loaded existing messages:', messages.length);
+        
+        // Process existing messages
+        const formattedMessages = messages.map((msg: any) => ({
+          id: msg.id || `msg-${Math.random()}`,
+          content: typeof msg.content === 'string' ? msg.content : msg.content?.text || JSON.stringify(msg.content),
+          senderAddress: msg.senderAddress || msg.sender || '',
+          sent: msg.sent || msg.timestamp || new Date(),
+        }));
+        
+        setMessages(formattedMessages);
+        console.log('✅ Messages loaded and displayed:', formattedMessages.length);
+        
+      } catch (messageError) {
+        console.error('❌ Error loading existing messages:', messageError);
+        // Set empty messages array if loading fails
+        setMessages([]);
+      }
+
+      // Set up streaming for new messages (optional - can be done separately)
       try {
         await streamMessages(conversation, (msg: any) => {
-          console.log('📬 New message received:', msg);
+          console.log('📬 New message received via stream:', msg);
           const formattedMsg = {
             id: msg.id || `msg-${Math.random()}`,
             content: typeof msg.content === 'string' ? msg.content : msg.content?.text || JSON.stringify(msg.content),
@@ -295,6 +364,14 @@ export default function Messages() {
               variant="outline"
             >
               🔄 Register Identity
+            </Button>
+            <Button 
+              onClick={loadConversations}
+              disabled={!xmtpClient}
+              className="w-full"
+              variant="outline"
+            >
+              📬 Load Conversations
             </Button>
             <Button 
               onClick={async () => {
