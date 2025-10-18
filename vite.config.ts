@@ -13,6 +13,21 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      'protobufjs/minimal': 'protobufjs/minimal.js',
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@xmtp/browser-sdk'],
+    include: ['protobufjs/minimal'],
+    esbuildOptions: {
+      target: 'esnext',
+    },
+  },
+  build: {
+    target: 'esnext',
+    commonjsOptions: {
+      transformMixedEsModules: true,
+      include: [/protobufjs/, /node_modules/],
     },
   },
 }));

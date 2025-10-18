@@ -103,6 +103,12 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     if (tab.path === "/swap") {
       return location.pathname === "/swap";
     }
+    if (tab.path === "/playlists") {
+      return location.pathname === "/playlists";
+    }
+    if (tab.path === "/messages") {
+      return location.pathname === "/messages";
+    }
     if (tab.path?.startsWith("/artist/")) {
       return location.pathname === tab.path;
     }

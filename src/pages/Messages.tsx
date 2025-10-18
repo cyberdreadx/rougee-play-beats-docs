@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useXMTP } from '@/hooks/useXMTP';
-import { Conversation } from '@xmtp/xmtp-js';
+import { useXMTPV3 } from '@/hooks/useXMTPV3';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import { toast } from '@/hooks/use-toast';
+import { useWallet } from '@/hooks/useWallet';
 
 interface ProfileData {
   artist_name: string | null;
@@ -19,22 +19,23 @@ interface ProfileData {
 
 export default function Messages() {
   const [searchParams] = useSearchParams();
+  const { fullAddress } = useWallet();
   const { 
-    isReady, 
-    isInitializing, 
-    getConversations, 
-    startConversation,
+    xmtpClient,
+    isInitializing,
+    isReady,
+    isIdentityReachable,
+    createDMConversation,
     sendMessage,
-    streamMessages,
-    canMessage 
-  } = useXMTP();
+    getConversations,
+    streamMessages
+  } = useXMTPV3();
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConvo, setSelectedConvo] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConvo, setSelectedConvo] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [newChatAddress, setNewChatAddress] = useState('');
-  const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, ProfileData>>({});
 
   // Load conversations on mount
@@ -68,13 +69,31 @@ export default function Messages() {
   }, [selectedConvo]);
 
   const loadConversations = async () => {
-    const convos = await getConversations();
-    setConversations(convos);
-    
-    // Load profiles for all conversation participants
-    const addresses = convos.map(c => c.peerAddress);
-    if (addresses.length > 0) {
-      loadProfiles(addresses);
+    try {
+      const convos = await getConversations();
+      setConversations(convos);
+      
+      // Load profiles for all conversation participants
+      const addresses = convos.map((c: any) => c.peerAddress);
+      if (addresses.length > 0) {
+        loadProfiles(addresses);
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+  };
+
+  const loadMessages = async (conversation: any) => {
+    try {
+      const msgs = await conversation.messages();
+      setMessages(msgs);
+
+      // Stream new messages
+      streamMessages(conversation, (msg: any) => {
+        setMessages(prev => [...prev, msg]);
+      });
+    } catch (error) {
+      console.error('Error loading messages:', error);
     }
   };
 
@@ -99,39 +118,32 @@ export default function Messages() {
     }
   };
 
-  const loadMessages = async (convo: Conversation) => {
-    const msgs = await convo.messages();
-    setMessages(msgs);
-
-    // Stream new messages
-    streamMessages(convo, (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
-  };
-
   const handleStartChat = async (address?: string) => {
     const targetAddress = address || newChatAddress;
     if (!targetAddress) return;
 
-    setLoading(true);
     try {
-      const canMsg = await canMessage(targetAddress);
-      if (!canMsg) {
+      // Check if identity is reachable (Step 3 from docs)
+      const isReachable = await isIdentityReachable(targetAddress);
+      if (!isReachable) {
         toast({
           title: 'Cannot message user',
-          description: 'This user has not enabled XMTP messaging yet',
+          description: 'This user is not reachable on XMTP',
           variant: 'destructive',
         });
         return;
       }
 
-      const convo = await startConversation(targetAddress);
-      setConversations(prev => [...prev, convo]);
-      setSelectedConvo(convo);
+      // Create DM conversation (Step 4 from docs)
+      const conversation = await createDMConversation(targetAddress);
+      setSelectedConvo(conversation);
       setNewChatAddress('');
       
       // Load profile for new conversation
       loadProfiles([targetAddress]);
+      
+      // Refresh conversations list
+      loadConversations();
     } catch (error: any) {
       console.error('Error starting chat:', error);
       toast({
@@ -139,8 +151,6 @@ export default function Messages() {
         description: error.message || 'Unknown error',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -148,6 +158,7 @@ export default function Messages() {
     if (!selectedConvo || !newMessage.trim()) return;
 
     try {
+      // Send message (Step 5 from docs)
       await sendMessage(selectedConvo, newMessage);
       setNewMessage('');
     } catch (error) {
@@ -167,11 +178,19 @@ export default function Messages() {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  if (!fullAddress) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="font-mono text-muted-foreground">Please connect your wallet to use messaging</p>
+      </div>
+    );
+  }
+
   if (!isReady && isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
-        <p className="ml-4 font-mono">Initializing XMTP...</p>
+        <p className="ml-4 font-mono">Initializing XMTP V3...</p>
       </div>
     );
   }
@@ -196,11 +215,11 @@ export default function Messages() {
             />
             <Button 
               onClick={() => handleStartChat()} 
-              disabled={loading || !newChatAddress}
+              disabled={!newChatAddress}
               className="w-full"
               variant="neon"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Start New Chat'}
+              Start New Chat
             </Button>
           </div>
 
@@ -295,7 +314,7 @@ export default function Messages() {
                   <div
                     key={idx}
                     className={`p-3 rounded-lg max-w-[70%] ${
-                      msg.senderAddress === selectedConvo.clientAddress
+                      msg.senderAddress === fullAddress?.toLowerCase()
                         ? 'ml-auto bg-neon-green/20 text-right'
                         : 'mr-auto bg-muted'
                     }`}
