@@ -74,32 +74,49 @@ serve(async (req) => {
 
     // Upload media to Lighthouse if provided
     if (mediaFile) {
-      console.log('Uploading media to Lighthouse:', mediaFile.name);
+      console.log('Uploading media to Lighthouse:', mediaFile.name, 'Size:', mediaFile.size);
       
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', mediaFile);
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', mediaFile);
 
-      const uploadResponse = await fetch(
-        'https://node.lighthouse.storage/api/v0/add',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${lighthouseApiKey}`,
-          },
-          body: uploadFormData,
+        // Add timeout to Lighthouse upload (30 seconds)
+        const uploadController = new AbortController();
+        const uploadTimeout = setTimeout(() => uploadController.abort(), 30000);
+
+        const uploadResponse = await fetch(
+          'https://node.lighthouse.storage/api/v0/add',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${lighthouseApiKey}`,
+            },
+            body: uploadFormData,
+            signal: uploadController.signal,
+          }
+        );
+
+        clearTimeout(uploadTimeout);
+
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          console.error('Lighthouse upload failed:', uploadResponse.status, errorText);
+          throw new Error(`Lighthouse upload failed: ${uploadResponse.statusText}`);
         }
-      );
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Lighthouse upload failed: ${uploadResponse.statusText}`);
+        const uploadData = await uploadResponse.json();
+        mediaCid = uploadData.Hash;
+        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 
+                    mediaFile.type.startsWith('video/') ? 'video' : 'other';
+        
+        console.log('Media uploaded to IPFS:', mediaCid);
+      } catch (uploadError) {
+        console.error('Upload error:', uploadError);
+        if (uploadError.name === 'AbortError') {
+          throw new Error('Media upload timed out. Please try again with a smaller file.');
+        }
+        throw new Error(`Failed to upload media: ${uploadError.message}`);
       }
-
-      const uploadData = await uploadResponse.json();
-      mediaCid = uploadData.Hash;
-      mediaType = mediaFile.type.startsWith('image/') ? 'image' : 
-                  mediaFile.type.startsWith('video/') ? 'video' : 'other';
-      
-      console.log('Media uploaded to IPFS:', mediaCid);
     }
 
     // Insert post into database
