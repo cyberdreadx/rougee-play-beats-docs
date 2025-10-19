@@ -107,20 +107,26 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
       console.log(`Detected bonding curve address: ${bondingCurveAddress} (${maxCount} transfers)`);
 
       // Build a map of XRGE transfers by transaction hash
+      // Only include transfers involving the bonding curve
       const xrgeByTx = new Map<string, { amount: number; to: Address; from: Address }[]>();
       for (const xrgeLog of xrgeTransferLogs) {
         const { args } = xrgeLog as any;
         const txHash = xrgeLog.transactionHash;
         const xrgeAmount = Number(args.value as bigint) / 1e18;
+        const xrgeFrom = (args.from as Address).toLowerCase();
+        const xrgeTo = (args.to as Address).toLowerCase();
         
-        if (!xrgeByTx.has(txHash)) {
-          xrgeByTx.set(txHash, []);
+        // Only include XRGE transfers that involve the bonding curve
+        if (xrgeFrom === bondingCurveAddress || xrgeTo === bondingCurveAddress) {
+          if (!xrgeByTx.has(txHash)) {
+            xrgeByTx.set(txHash, []);
+          }
+          xrgeByTx.get(txHash)!.push({
+            amount: xrgeAmount,
+            to: args.to as Address,
+            from: args.from as Address
+          });
         }
-        xrgeByTx.get(txHash)!.push({
-          amount: xrgeAmount,
-          to: args.to as Address,
-          from: args.from as Address
-        });
       }
 
       // Process transfers into trades
