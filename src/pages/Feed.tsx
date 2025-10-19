@@ -154,10 +154,10 @@ export default function Feed() {
       if (mediaFile) formData.append('media', mediaFile);
       if (fullAddress) formData.append('walletAddress', fullAddress);
       
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-feed-post`, {
+      const response = await fetch('https://phybdsfwycygroebrsdx.supabase.co/functions/v1/create-feed-post', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'x-privy-token': token || '',
         },
         body: formData
