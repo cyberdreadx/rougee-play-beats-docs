@@ -18,6 +18,7 @@ import { useSongPrice } from "@/hooks/useSongBondingCurve";
 import { useReadContract, usePublicClient } from "wagmi";
 import { Address } from "viem";
 import { AiBadge } from "@/components/AiBadge";
+import { SongPriceSparkline } from "@/components/SongPriceSparkline";
 
 interface Artist {
   wallet_address: string;
@@ -74,6 +75,15 @@ const FeaturedSong = ({ song }: { song: Song }) => {
     functionName: 'totalXRGERaised',
     query: { enabled: !!song.token_address }
   });
+  
+  const { data: bondingSupply } = useReadContract({
+    address: song.token_address as Address,
+    abi: SONG_TOKEN_ABI,
+    functionName: 'bondingCurveSupply',
+    query: { enabled: !!song.token_address }
+  });
+  
+  const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : null;
   
   // Fetch 24h volume from blockchain
   useEffect(() => {
@@ -185,13 +195,14 @@ const FeaturedSong = ({ song }: { song: Song }) => {
           )}
         </div>
         <div className="flex-1">
-          <h3 className="text-2xl md:text-3xl font-bold font-mono neon-text mb-2">
-            {song.title}
+          <h3 className="text-2xl md:text-3xl font-bold font-mono neon-text mb-2 flex items-center gap-2">
+            <span>{song.title}</span>
+            <AiBadge aiUsage={song.ai_usage} size="md" />
           </h3>
           <p className="text-muted-foreground font-mono mb-3">
             By {song.artist || 'Unknown'} • {song.ticker && `$${song.ticker}`}
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 mb-4">
             <div className="bg-black/40 rounded-lg px-3 py-2">
               <div className="text-xs text-muted-foreground font-mono">PRICE</div>
               <div className="text-sm font-bold font-mono neon-text">
@@ -211,6 +222,20 @@ const FeaturedSong = ({ song }: { song: Song }) => {
                 {song.play_count}
               </div>
             </div>
+          </div>
+          
+          {/* Big Sparkline */}
+          <div className="bg-black/40 rounded-lg px-4 py-3 border border-neon-green/20">
+            <div className="text-xs text-muted-foreground font-mono mb-2">24H PRICE CHART</div>
+            <SongPriceSparkline 
+              tokenAddress={song.token_address || undefined}
+              bondingSupply={bondingSupplyStr || undefined}
+              priceInXRGE={parseFloat(priceInXRGE) || undefined}
+              height={60}
+              showPercentChange={true}
+              timeframeHours={24}
+              className="w-full"
+            />
           </div>
         </div>
         <button 
@@ -456,6 +481,19 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
             <div className="text-sm text-muted-foreground">{song.artist || 'Unknown'}</div>
           </div>
         </div>
+      </TableCell>
+      
+      {/* Sparkline Chart */}
+      <TableCell className="hidden md:table-cell">
+        <SongPriceSparkline 
+          tokenAddress={song.token_address || undefined}
+          bondingSupply={bondingSupplyStr || undefined}
+          priceInXRGE={priceInXRGE || undefined}
+          height={30}
+          showPercentChange={true}
+          timeframeHours={24}
+          percentChange={priceChange24h !== null ? priceChange24h : undefined}
+        />
       </TableCell>
       
       <TableCell className="font-mono text-right">
@@ -790,6 +828,7 @@ const Trending = () => {
                   <TableRow className="border-b border-border hover:bg-transparent">
                     <TableHead className="font-mono text-muted-foreground w-12">#</TableHead>
                     <TableHead className="font-mono text-muted-foreground">NAME</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-center w-32 hidden md:table-cell">CHART</TableHead>
                     <TableHead 
                       className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
                       onClick={() => handleSort('price')}
@@ -850,7 +889,7 @@ const Trending = () => {
                 <TableBody>
                   {sortedSongs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         No deployed songs yet
                       </TableCell>
                     </TableRow>

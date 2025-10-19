@@ -21,6 +21,7 @@ import { usePublicClient } from "wagmi";
 import type { Address } from "viem";
 import { HoldersModal } from "@/components/HoldersModal";
 import { XRGETierBadge } from "@/components/XRGETierBadge";
+import { AiBadge } from "@/components/AiBadge";
 
 interface Song {
   id: string;
@@ -33,6 +34,7 @@ interface Song {
   play_count: number;
   created_at: string;
   ticker?: string | null;
+  ai_usage?: 'none' | 'partial' | 'full' | null;
 }
 
 interface FeedPost {
@@ -73,6 +75,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const [loadingSongs, setLoadingSongs] = useState(true);
   const [songsPage, setSongsPage] = useState(1);
   const [hasMoreSongs, setHasMoreSongs] = useState(true);
+  const [totalSongsCount, setTotalSongsCount] = useState(0);
   const SONGS_PER_PAGE = 12;
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -101,12 +104,15 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
       const { data, error, count } = await supabase
         .from("songs")
-        .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at", { count: 'exact' })
+        .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at, ai_usage", { count: 'exact' })
         .ilike("wallet_address", walletAddress)
         .order("created_at", { ascending: false })
         .range(from, to);
 
       if (error) throw error;
+      
+      // Set total count from the database
+      setTotalSongsCount(count || 0);
       
       if (loadMore) {
         setSongs(prev => [...prev, ...(data || [])]);
@@ -579,13 +585,13 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <Card className="console-bg tech-border p-4 text-center">
             <Music className="h-6 w-6 mx-auto mb-2 text-neon-green" />
-            <p className="text-2xl font-mono font-bold">{songs.length}</p>
+            <p className="text-2xl font-mono font-bold">{totalSongsCount}</p>
             <p className="text-xs font-mono text-muted-foreground">SONGS</p>
           </Card>
           <Card className="console-bg tech-border p-4 text-center">
             <Play className="h-6 w-6 mx-auto mb-2 text-neon-green" />
             <p className="text-2xl font-mono font-bold">
-              {songs.reduce((total, song) => total + (song.play_count || 0), 0)}
+              {profile.total_plays || 0}
             </p>
             <p className="text-xs font-mono text-muted-foreground">PLAYS</p>
           </Card>
@@ -759,6 +765,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                             {song.ticker && (
                               <span className="text-neon-green text-sm flex-shrink-0">${song.ticker}</span>
                             )}
+                            <AiBadge aiUsage={song.ai_usage} size="sm" />
                           </p>
                           <p className="text-sm font-mono text-muted-foreground">
                             {song.play_count} plays • uploaded {formatTimeAgo(song.created_at)}

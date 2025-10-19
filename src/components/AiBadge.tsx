@@ -1,5 +1,11 @@
-import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
+import { useState } from "react";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AiBadgeProps {
   aiUsage: 'none' | 'partial' | 'full' | null;
@@ -7,30 +13,50 @@ interface AiBadgeProps {
 }
 
 export const AiBadge = ({ aiUsage, size = 'sm' }: AiBadgeProps) => {
+  const [open, setOpen] = useState(false);
+
   if (!aiUsage || aiUsage === 'none') return null;
 
   const config = {
     partial: {
-      label: 'AI+',
-      className: 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 text-cyan-400 border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.15)]'
+      label: 'AI-Assisted',
+      description: 'Created with AI tools',
+      color: 'text-cyan-400/60 hover:text-cyan-400'
     },
     full: {
-      label: 'AI',
-      className: 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-400 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.15)]'
+      label: 'AI-Generated',
+      description: 'Fully AI-generated',
+      color: 'text-purple-400/60 hover:text-purple-400'
     }
   };
 
-  const { label, className } = config[aiUsage as 'partial' | 'full'];
-  const iconSize = size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3';
-  const textSize = size === 'sm' ? 'text-[9px]' : 'text-[10px]';
+  const { label, description, color } = config[aiUsage as 'partial' | 'full'];
+  const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5';
 
   return (
-    <Badge 
-      variant="outline" 
-      className={`${className} ${textSize} font-mono font-semibold uppercase tracking-wider flex items-center gap-0.5 px-1.5 py-0.5 hover:shadow-[0_0_15px_rgba(168,85,247,0.25)] transition-all duration-300`}
-    >
-      <Sparkles className={`${iconSize} opacity-80`} />
-      {label}
-    </Badge>
+    <TooltipProvider>
+      <Tooltip open={open} onOpenChange={setOpen}>
+        <TooltipTrigger asChild>
+          <span 
+            className="cursor-help inline-flex"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(!open);
+            }}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+          >
+            <Sparkles 
+              className={`${iconSize} ${color} transition-colors duration-200`} 
+              aria-label={label}
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          <p className="font-semibold">{label}</p>
+          <p className="text-muted-foreground text-[10px]">{description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };

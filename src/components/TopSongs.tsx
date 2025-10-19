@@ -9,6 +9,45 @@ import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { AiBadge } from "@/components/AiBadge";
+import { SongPriceSparkline } from "@/components/SongPriceSparkline";
+import { useReadContract } from "wagmi";
+import { Address } from "viem";
+
+const SONG_TOKEN_ABI = [
+  {
+    inputs: [],
+    name: 'bondingCurveSupply',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  }
+] as const;
+
+// Mini component to display sparkline for a song card
+const SongCardSparkline = ({ tokenAddress }: { tokenAddress: string }) => {
+  const { data: bondingSupply } = useReadContract({
+    address: tokenAddress as Address,
+    abi: SONG_TOKEN_ABI,
+    functionName: 'bondingCurveSupply',
+    query: { 
+      enabled: !!tokenAddress,
+      staleTime: 30000 // Cache for 30 seconds
+    }
+  });
+
+  const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : undefined;
+
+  return (
+    <SongPriceSparkline 
+      tokenAddress={tokenAddress}
+      bondingSupply={bondingSupplyStr}
+      height={20}
+      showPercentChange={true}
+      timeframeHours={24}
+      className="w-full max-w-[120px]"
+    />
+  );
+};
 
 interface Song {
   id: string;
@@ -75,7 +114,7 @@ const fetchSongs = async () => {
   try {
     const { data, error } = await supabase
       .from('songs')
-      .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, ai_usage')
+      .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, ai_usage, token_address')
       .order('play_count', { ascending: false })
       .limit(10);
 
@@ -212,6 +251,12 @@ const fetchSongs = async () => {
                   <div className="font-mono text-xs text-muted-foreground group-hover:text-white/80 transition-colors duration-300 group-hover:!text-white/80">
                     {song.play_count} plays
                   </div>
+                  {/* Sparkline Chart */}
+                  {song.token_address && (
+                    <div className="mt-1">
+                      <SongCardSparkline tokenAddress={song.token_address} />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">

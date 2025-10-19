@@ -1,8 +1,9 @@
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, Activity } from "lucide-react";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface SongTradingChartProps {
   songTokenAddress?: `0x${string}`;
@@ -13,6 +14,7 @@ interface SongTradingChartProps {
 
 export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply: bondingSupplyProp }: SongTradingChartProps) => {
   const { prices } = useTokenPrices();
+  const [timeFilter, setTimeFilter] = useState<'1H' | '24H' | '7D' | '30D' | 'ALL'>('ALL');
   
   // Generate complete price history using ONLY the bonding curve formula
   // No API calls needed - just math!
@@ -58,6 +60,25 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
     return points;
   }, [bondingSupplyProp, prices.xrge, priceInXRGE]);
   
+  // Filter data based on time range
+  const filteredHistory = useMemo(() => {
+    if (timeFilter === 'ALL' || priceHistory.length === 0) {
+      return priceHistory;
+    }
+    
+    // Calculate what percentage of data to show based on time filter
+    // This is a simplified version - ideally you'd use timestamps
+    const percentageToShow = {
+      '1H': 5,   // Show last 5% of data
+      '24H': 20,  // Show last 20%
+      '7D': 50,   // Show last 50%
+      '30D': 75   // Show last 75%
+    }[timeFilter];
+    
+    const startIndex = Math.floor(priceHistory.length * (1 - percentageToShow / 100));
+    return priceHistory.slice(startIndex);
+  }, [priceHistory, timeFilter]);
+  
   const BONDING_CURVE_TOTAL = 990_000_000;
   const currentSupplyFromData = bondingSupplyProp && parseFloat(bondingSupplyProp) > 0 
     ? BONDING_CURVE_TOTAL - parseFloat(bondingSupplyProp) 
@@ -82,11 +103,32 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
   return (
     <Card className="console-bg tech-border p-3 sm:p-4 md:p-6">
       <div className="mb-3 md:mb-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
           <h3 className="text-base sm:text-lg font-mono font-bold neon-text flex items-center gap-2">
             <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
             PRICE HISTORY
           </h3>
+          
+          {/* Time Filter Buttons */}
+          <div className="flex gap-1 flex-wrap">
+            {(['1H', '24H', '7D', '30D', 'ALL'] as const).map((filter) => (
+              <Button
+                key={filter}
+                onClick={() => setTimeFilter(filter)}
+                variant={timeFilter === filter ? "default" : "outline"}
+                size="sm"
+                className={`
+                  h-6 px-2 text-[10px] sm:text-xs font-mono
+                  ${timeFilter === filter 
+                    ? 'bg-neon-green text-black hover:bg-neon-green/90' 
+                    : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-white/5'
+                  }
+                `}
+              >
+                {filter}
+              </Button>
+            ))}
+          </div>
         </div>
         
         <p className="text-[10px] sm:text-xs text-muted-foreground font-mono mb-2">
@@ -96,9 +138,9 @@ export const SongTradingChart = ({ songTokenAddress, priceInXRGE, bondingSupply:
 
       {/* Chart */}
       <div className="h-[200px] sm:h-[250px] md:h-[300px] mb-4">
-        {priceHistory.length > 0 ? (
+        {filteredHistory.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={priceHistory} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+            <AreaChart data={filteredHistory} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
               <defs>
                 <linearGradient id="priceGradientUSD" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#00ff9f" stopOpacity={0.4}/>

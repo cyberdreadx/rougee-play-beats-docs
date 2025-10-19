@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TradeData {
   timestamp: number;
@@ -34,6 +36,7 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
   const [trades, setTrades] = useState<TradeData[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeFilter, setTimeFilter] = useState<'1H' | '24H' | '7D' | '30D' | 'ALL'>('ALL');
   const publicClient = usePublicClient();
 
   // Calculate 24h volume whenever trades change
@@ -207,6 +210,26 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
     }
   };
 
+  // Filter chart data based on time range
+  const filteredChartData = useMemo(() => {
+    if (timeFilter === 'ALL' || chartData.length === 0) {
+      return chartData;
+    }
+    
+    // Calculate how many data points to show based on time filter
+    const pointsToShow = {
+      '1H': 12,   // 12 * 5min = 1 hour
+      '24H': 288,  // 288 * 5min = 24 hours
+      '7D': 2016,  // 7 days of 5-min intervals
+      '30D': 8640  // 30 days of 5-min intervals
+    }[timeFilter];
+    
+    return chartData.slice(-pointsToShow);
+  }, [chartData, timeFilter]);
+  
+  // Check if there's enough data to make filtering meaningful
+  const hasEnoughDataForFiltering = chartData.length > 12;
+
   if (loading) {
     return (
       <Card className="p-6 console-bg tech-border">
@@ -220,18 +243,57 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
 
   return (
     <div className="space-y-4">
-      <Card className="p-4 md:p-6 console-bg tech-border">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-mono font-bold text-lg neon-text">PRICE HISTORY (5m)</h3>
+      <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
+        <div className="mb-3 sm:mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
+            <h3 className="font-mono font-bold text-base sm:text-lg neon-text">PRICE HISTORY (5m)</h3>
+            
+            {/* Time Filter Buttons */}
+            <div className="flex gap-1 flex-wrap">
+              {(['1H', '24H', '7D', '30D', 'ALL'] as const).map((filter) => {
+                const isDisabled = !hasEnoughDataForFiltering && filter !== 'ALL';
+                
+                return (
+                  <Button
+                    key={filter}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (isDisabled) {
+                        toast.info('⏳ Not enough data yet', {
+                          description: `Need at least 12 data points (1 hour of trading activity). Currently have ${chartData.length} points.`
+                        });
+                      } else {
+                        setTimeFilter(filter);
+                      }
+                    }}
+                    variant={timeFilter === filter ? "default" : "outline"}
+                    size="sm"
+                    className={`
+                      h-6 px-2 text-[10px] sm:text-xs font-mono
+                      ${timeFilter === filter 
+                        ? 'bg-neon-green text-black hover:bg-neon-green/90' 
+                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-white/5'
+                      }
+                      ${isDisabled ? 'opacity-50' : ''}
+                    `}
+                  >
+                    {filter}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          
           {currentPriceInXRGE && (
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="w-3 h-3 rounded-full bg-yellow-400 border-2 border-neon-green"></div>
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-mono">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-400 border-2 border-neon-green"></div>
               <span className="text-muted-foreground">Current Price</span>
             </div>
           )}
         </div>
         <ResponsiveContainer width="100%" height={350}>
-          <AreaChart data={chartData}>
+          <AreaChart data={filteredChartData}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#00ff00" stopOpacity={0.4}/>
@@ -242,12 +304,16 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
             <XAxis 
               dataKey="time" 
               stroke="#666"
-              style={{ fontSize: '12px', fontFamily: 'monospace' }}
+              style={{ fontSize: '10px', fontFamily: 'monospace' }}
+              tick={{ fill: '#666' }}
+              interval="preserveStartEnd"
             />
             <YAxis 
               stroke="#666"
-              style={{ fontSize: '12px', fontFamily: 'monospace' }}
+              style={{ fontSize: '10px', fontFamily: 'monospace' }}
               tickFormatter={(value) => value < 0.000001 ? `$${value.toFixed(10)}` : `$${value.toFixed(8)}`}
+              tick={{ fill: '#666' }}
+              width={65}
             />
             <Tooltip
               contentStyle={{
@@ -255,8 +321,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
                 border: '1px solid #00ff00',
                 borderRadius: '4px',
                 fontFamily: 'monospace',
-                fontSize: '12px'
+                fontSize: '10px',
+                padding: '4px 6px'
               }}
+              labelStyle={{ fontSize: '9px', color: '#00ff9f' }}
               formatter={(value: any) => {
                 const num = Number(value);
                 return num < 0.000001 ? [`$${num.toFixed(10)}`, 'Price'] : [`$${num.toFixed(8)}`, 'Price'];
@@ -285,10 +353,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
         </ResponsiveContainer>
       </Card>
 
-      <Card className="p-4 md:p-6 console-bg tech-border">
-        <h3 className="font-mono font-bold text-lg mb-4 text-purple-400">VOLUME</h3>
+      <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
+        <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-purple-400">VOLUME</h3>
         <ResponsiveContainer width="100%" height={150}>
-          <AreaChart data={chartData}>
+          <AreaChart data={filteredChartData}>
             <defs>
               <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
@@ -299,12 +367,16 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
             <XAxis 
               dataKey="time" 
               stroke="#666"
-              style={{ fontSize: '12px', fontFamily: 'monospace' }}
+              style={{ fontSize: '10px', fontFamily: 'monospace' }}
+              tick={{ fill: '#666' }}
+              interval="preserveStartEnd"
             />
             <YAxis 
               stroke="#666"
-              style={{ fontSize: '12px', fontFamily: 'monospace' }}
+              style={{ fontSize: '10px', fontFamily: 'monospace' }}
               tickFormatter={(value) => value.toLocaleString()}
+              tick={{ fill: '#666' }}
+              width={55}
             />
             <Tooltip
               contentStyle={{
@@ -312,8 +384,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
                 border: '1px solid #a855f7',
                 borderRadius: '4px',
                 fontFamily: 'monospace',
-                fontSize: '12px'
+                fontSize: '10px',
+                padding: '4px 6px'
               }}
+              labelStyle={{ fontSize: '9px', color: '#a855f7' }}
               formatter={(value: any) => [Number(value).toLocaleString(undefined, {maximumFractionDigits: 0}), 'Tokens']}
             />
             <Area 
@@ -328,11 +402,11 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
       </Card>
 
       {/* Recent Trades */}
-      <Card className="p-4 md:p-6 console-bg tech-border">
-        <h3 className="font-mono font-bold text-lg mb-4 text-cyan-400">RECENT TRADES</h3>
+      <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
+        <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {trades.length === 0 ? (
-            <p className="text-muted-foreground font-mono text-sm text-center py-4">No trades yet</p>
+            <p className="text-muted-foreground font-mono text-xs sm:text-sm text-center py-4">No trades yet</p>
           ) : (
             trades.slice(-10).reverse().map((trade, i) => {
               const coverUrl = coverCid ? `https://ipfs.io/ipfs/${coverCid}` : '/placeholder-cover.png';
@@ -340,16 +414,16 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
                 ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
                 : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
               const shortAddress = trade.trader 
-                ? `${trade.trader.slice(0, 6)}...${trade.trader.slice(-4)}`
+                ? `${trade.trader.slice(0, 4)}...${trade.trader.slice(-4)}`
                 : 'Unknown';
               
               return (
                 <div 
                   key={i}
-                  className="flex items-center justify-between p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`px-2 py-1 rounded font-mono text-xs font-bold ${
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold flex-shrink-0 ${
                       trade.type === 'buy' 
                         ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
                         : 'bg-red-500/20 text-red-500 border border-red-500/30'
@@ -359,26 +433,27 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
                     <img 
                       src={coverUrl} 
                       alt={songTicker || 'Song'} 
-                      className="w-8 h-8 rounded object-cover"
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover flex-shrink-0"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder-cover.png';
                       }}
                     />
-                    <div>
-                      <div className="font-mono text-sm font-bold">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-mono text-xs sm:text-sm font-bold truncate">
                         {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${songTicker?.toUpperCase() || 'SONG'}
                       </div>
-                      <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
-                        <span>{new Date(trade.timestamp).toLocaleString()}</span>
-                        <span className="text-cyan-400">by {shortAddress}</span>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-mono flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 truncate">
+                        <span className="hidden sm:inline">{new Date(trade.timestamp).toLocaleString()}</span>
+                        <span className="sm:hidden">{new Date(trade.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-cyan-400 truncate">by {shortAddress}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-mono text-sm font-bold text-neon-green">
+                  <div className="text-right flex-shrink-0 self-end sm:self-auto">
+                    <div className="font-mono text-xs sm:text-sm font-bold text-neon-green">
                       ${trade.priceUSD < 0.000001 ? trade.priceUSD.toFixed(10) : trade.priceUSD.toFixed(8)}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
                       {xrgeAmount} XRGE
                     </div>
                   </div>

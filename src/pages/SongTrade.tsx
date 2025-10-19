@@ -22,6 +22,7 @@ import { ReportButton } from "@/components/ReportButton";
 import { SongTradingChart } from "@/components/SongTradingChart";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
+import { AiBadge } from "@/components/AiBadge";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance, BONDING_CURVE_ADDRESS } from "@/hooks/useSongBondingCurve";
 import { useBalance, useConnect, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
@@ -1244,8 +1245,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               </Button>
 
               <div className="flex-1 w-full min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold neon-text mb-1 md:mb-2 truncate">
-                  {song.title}
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold neon-text mb-1 md:mb-2 truncate flex items-center gap-2">
+                  <span className="truncate">{song.title}</span>
+                  <AiBadge aiUsage={song.ai_usage} size="md" />
                 </h1>
                 <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-mono mb-3 md:mb-4 truncate">
                   By {song.artist || "Unknown Artist"}

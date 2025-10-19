@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseEther, formatEther, Address } from "viem";
 import xrgeLogo from "@/assets/tokens/xrge.png";
+import { AiBadge } from "@/components/AiBadge";
 import ktaLogo from "@/assets/tokens/kta.png";
 import ethLogo from "@/assets/tokens/ethereum-eth.svg";
 import usdcLogo from "@/assets/tokens/usdc.jpg";
@@ -45,6 +46,7 @@ interface SongTokenItemProps {
     ticker?: string;
     token_address: string;
     cover_cid?: string;
+    ai_usage?: 'none' | 'partial' | 'full' | null;
   };
   userAddress: string;
   xrgeUsdPrice: number;
@@ -131,7 +133,10 @@ interface SongTokenItemProps {
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold font-mono truncate group-hover:text-neon-green transition-colors">{song.title}</p>
+          <p className="text-sm font-bold font-mono truncate group-hover:text-neon-green transition-colors flex items-center gap-1.5">
+            <span className="truncate">{song.title}</span>
+            <AiBadge aiUsage={song.ai_usage} size="sm" />
+          </p>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">{song.ticker || 'Unknown'}</p>
         </div>
       </div>

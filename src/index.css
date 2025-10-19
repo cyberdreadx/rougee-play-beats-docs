@@ -41,6 +41,24 @@
 /* ROUGEE PLAY - Blockchain Music DApp Design System */
 
 @layer base {
+  /* Prevent mobile zoom on input focus - Ensure minimum 16px font size on mobile */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select,
+  [contenteditable] {
+    font-size: max(16px, 1rem);
+  }
+  
+  /* Desktop can use smaller fonts */
+  @media (min-width: 768px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select,
+    [contenteditable] {
+      font-size: 0.875rem; /* 14px */
+    }
+  }
+  
   :root {
     /* Core backgrounds - deep space black */
     --background: 0 0% 0%;
