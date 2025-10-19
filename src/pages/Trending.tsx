@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NetworkInfo from "@/components/NetworkInfo";
@@ -543,24 +543,24 @@ const Trending = () => {
     });
   };
   
-  // Calculate trending score for a song
-  const calculateTrendingScore = (song: Song): number => {
+  // Calculate trending score for a song (memoized to prevent recalculation)
+  const calculateTrendingScore = useCallback((song: Song): number => {
     const stats = songStats.get(song.id);
     if (!stats) return song.play_count; // Fallback to play count if no stats yet
     
-    // Weighted scoring algorithm:
+    // Weighted scoring algorithm (all values normalized to USD for fair comparison):
     // - Volume (40%): Recent trading activity
-    // - Price Change (25%): Momentum
+    // - Price Change (25%): Momentum (scaled by market cap)
     // - Market Cap (20%): Overall value
-    // - Plays (15%): Popularity
+    // - Plays (15%): Popularity (scaled to USD equivalent: $0.01 per play)
     
     const volumeScore = stats.volume * 0.4;
-    const changeScore = Math.max(0, stats.change) * 0.25; // Only positive changes
+    const changeScore = Math.max(0, stats.change / 100) * stats.marketCap * 0.25; // % change scaled by market cap
     const marketCapScore = stats.marketCap * 0.2;
-    const playsScore = song.play_count * 0.15;
+    const playsScore = (song.play_count * 0.01) * 0.15; // $0.01 per play
     
     return volumeScore + changeScore + marketCapScore + playsScore;
-  };
+  }, [songStats]);
   
   // Handle column header click for sorting
   const handleSort = (field: SortField) => {
@@ -639,48 +639,60 @@ const Trending = () => {
     fetchTrendingData();
   }, [searchQuery]);
 
-  // Sort songs based on selected field
-  const sortedSongs = [...songs].sort((a, b) => {
-    let aValue: number;
-    let bValue: number;
-    
-    switch (sortField) {
-      case 'trending':
-        aValue = calculateTrendingScore(a);
-        bValue = calculateTrendingScore(b);
-        break;
-      case 'price':
-        aValue = songStats.get(a.id)?.price || 0;
-        bValue = songStats.get(b.id)?.price || 0;
-        break;
-      case 'change':
-        aValue = songStats.get(a.id)?.change || 0;
-        bValue = songStats.get(b.id)?.change || 0;
-        break;
-      case 'volume':
-        aValue = songStats.get(a.id)?.volume || 0;
-        bValue = songStats.get(b.id)?.volume || 0;
-        break;
-      case 'marketCap':
-        aValue = songStats.get(a.id)?.marketCap || 0;
-        bValue = songStats.get(b.id)?.marketCap || 0;
-        break;
-      case 'plays':
-        aValue = a.play_count;
-        bValue = b.play_count;
-        break;
-      default:
-        aValue = calculateTrendingScore(a);
-        bValue = calculateTrendingScore(b);
-    }
-    
-    return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
-  });
+  // Sort songs based on selected field (reactive to songStats changes)
+  const sortedSongs = useMemo(() => {
+    return [...songs].sort((a, b) => {
+      let aValue: number;
+      let bValue: number;
+      
+      switch (sortField) {
+        case 'trending':
+          aValue = calculateTrendingScore(a);
+          bValue = calculateTrendingScore(b);
+          break;
+        case 'price':
+          aValue = songStats.get(a.id)?.price || 0;
+          bValue = songStats.get(b.id)?.price || 0;
+          break;
+        case 'change':
+          aValue = songStats.get(a.id)?.change || 0;
+          bValue = songStats.get(b.id)?.change || 0;
+          break;
+        case 'volume':
+          aValue = songStats.get(a.id)?.volume || 0;
+          bValue = songStats.get(b.id)?.volume || 0;
+          break;
+        case 'marketCap':
+          aValue = songStats.get(a.id)?.marketCap || 0;
+          bValue = songStats.get(b.id)?.marketCap || 0;
+          break;
+        case 'plays':
+          aValue = a.play_count;
+          bValue = b.play_count;
+          break;
+        default:
+          aValue = calculateTrendingScore(a);
+          bValue = calculateTrendingScore(b);
+      }
+      
+      return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+    });
+  }, [songs, sortField, sortDirection, songStats, calculateTrendingScore]);
   
   // Featured song is always the top trending song (by trending score)
-  const featuredSong = songs.length > 0 
-    ? [...songs].sort((a, b) => calculateTrendingScore(b) - calculateTrendingScore(a))[0]
-    : null;
+  const featuredSong = useMemo(() => {
+    if (songs.length === 0) return null;
+    
+    // Debug: Log trending scores
+    const songsWithScores = songs.map(song => ({
+      title: song.title,
+      score: calculateTrendingScore(song),
+      stats: songStats.get(song.id)
+    }));
+    console.log('🔥 Trending Scores:', songsWithScores);
+    
+    return [...songs].sort((a, b) => calculateTrendingScore(b) - calculateTrendingScore(a))[0];
+  }, [songs, songStats, calculateTrendingScore]);
 
   if (loading) {
     return (
