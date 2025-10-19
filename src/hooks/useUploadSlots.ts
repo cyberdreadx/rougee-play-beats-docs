@@ -23,7 +23,7 @@ export const useUploadSlots = () => {
   const { fullAddress } = useWallet();
   const queryClient = useQueryClient();
 
-  // Check XRGE balance on-chain
+  // Check XRGE balance on-chain with caching
   const { data: xrgeBalance, isLoading: isLoadingBalance } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
     abi: ERC20_ABI,
@@ -31,8 +31,11 @@ export const useUploadSlots = () => {
     args: fullAddress ? [fullAddress as Address] : undefined,
     query: {
       enabled: !!fullAddress,
-      staleTime: 60000, // Consider data fresh for 60 seconds
-      refetchInterval: 120000, // Refetch every 2 minutes
+      staleTime: 180000, // 3 minutes - balance rarely changes
+      cacheTime: 600000, // 10 minutes cache
+      refetchInterval: false, // Manual refetch only
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     }
   });
 

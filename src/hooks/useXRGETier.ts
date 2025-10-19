@@ -81,7 +81,7 @@ export const XRGE_TIERS: XRGETier[] = [
 ];
 
 export const useXRGETier = (walletAddress: string | null) => {
-  // Check XRGE balance on-chain
+  // Check XRGE balance on-chain with aggressive caching
   const { data: xrgeBalance, isLoading } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
     abi: ERC20_ABI,
@@ -89,8 +89,11 @@ export const useXRGETier = (walletAddress: string | null) => {
     args: walletAddress ? [walletAddress as Address] : undefined,
     query: {
       enabled: !!walletAddress,
-      staleTime: 60000,
-      refetchInterval: 120000,
+      staleTime: 300000, // 5 minutes - data stays fresh longer
+      cacheTime: 600000, // 10 minutes - keep in cache longer
+      refetchInterval: false, // Don't auto-refetch
+      refetchOnWindowFocus: false, // Don't refetch on tab focus
+      refetchOnMount: false, // Don't refetch on component mount if cached
     }
   });
 
