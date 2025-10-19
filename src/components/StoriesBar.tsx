@@ -128,16 +128,17 @@ const StoriesBar = () => {
                               src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
                               className="w-full h-full object-cover"
                               playsInline
+                              muted
                               preload="metadata"
                               crossOrigin="anonymous"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const video = e.currentTarget;
-                              video.muted = !video.muted;
-                              if (!video.muted) {
-                                video.play().catch(console.error);
-                              }
-                            }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const video = e.currentTarget;
+                                video.muted = !video.muted;
+                                if (!video.muted) {
+                                  video.play().catch(console.error);
+                                }
+                              }}
                             />
                             {/* Audio indicator */}
                             <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1">
@@ -213,6 +214,7 @@ const StoriesBar = () => {
                             src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
                             className="w-full h-full object-cover"
                             playsInline
+                            muted
                             preload="metadata"
                             crossOrigin="anonymous"
                             onClick={(e) => {
