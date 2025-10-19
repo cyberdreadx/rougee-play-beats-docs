@@ -96,6 +96,27 @@ export default function Feed() {
       loadLikedPosts();
     }
   }, [isConnected, fullAddress]);
+
+  // Prefetch next page in background when user scrolls near bottom
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const pageHeight = document.documentElement.scrollHeight;
+      
+      // When user is 80% down the page, prefetch next batch
+      if (scrollPosition >= pageHeight * 0.8) {
+        if (hasMorePosts && !loadingMorePosts && !loading) {
+          loadPosts(true);
+        }
+        if (hasMoreSongs && !loadingMoreSongs && !loadingSongs) {
+          loadSongs(true);
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [hasMorePosts, hasMoreSongs, loadingMorePosts, loadingMoreSongs, loading, loadingSongs]);
   const loadPosts = async (loadMore = false) => {
     try {
       if (loadMore) {
@@ -543,7 +564,7 @@ export default function Feed() {
                       className="cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => navigate(`/artist/${post.wallet_address}`)}
                     >
-                      {post.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(post.profiles.avatar_cid)} alt="Avatar" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      {post.profiles?.avatar_cid ? <img src={getIPFSGatewayUrl(post.profiles.avatar_cid)} alt="Avatar" loading="lazy" decoding="async" className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                           <span className="text-primary text-xs">
                             {post.profiles?.artist_name?.[0] || '?'}
                           </span>
@@ -577,7 +598,7 @@ export default function Feed() {
 
                   {/* Post Media */}
                   {post.media_cid && <div className="mb-3 rounded-lg overflow-hidden">
-                      {post.media_type === 'image' ? <img src={getIPFSGatewayUrl(post.media_cid)} alt="Post media" className="w-full max-h-[600px] object-contain bg-black/5 rounded-lg" /> : post.media_type === 'video' ? <video src={getIPFSGatewayUrl(post.media_cid)} controls className="w-full max-h-[600px] object-contain rounded-lg" /> : null}
+                      {post.media_type === 'image' ? <img src={getIPFSGatewayUrl(post.media_cid)} alt="Post media" loading="lazy" decoding="async" className="w-full max-h-[600px] object-contain bg-black/5 rounded-lg" /> : post.media_type === 'video' ? <video src={getIPFSGatewayUrl(post.media_cid)} controls preload="metadata" className="w-full max-h-[600px] object-contain rounded-lg" /> : null}
                     </div>}
 
                   {/* Post Actions */}
@@ -706,6 +727,8 @@ export default function Feed() {
                           <img
                             src={getIPFSGatewayUrl(song.profiles.avatar_cid)}
                             alt="Avatar"
+                            loading="lazy"
+                            decoding="async"
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
@@ -748,6 +771,8 @@ export default function Feed() {
                         <img
                           src={getIPFSGatewayUrl(song.cover_cid)}
                           alt={song.title}
+                          loading="lazy"
+                          decoding="async"
                           className="w-20 h-20 rounded-lg object-cover"
                         />
                       ) : (

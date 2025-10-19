@@ -1,9 +1,11 @@
 // ROUGEE PLAY PWA Service Worker
 // Optimized for XMTP messaging and blockchain music platform
 
-const CACHE_NAME = 'rougee-play-v2';
-const STATIC_CACHE = 'rougee-play-static-v2';
-const DYNAMIC_CACHE = 'rougee-play-dynamic-v2';
+const CACHE_NAME = 'rougee-play-v3';
+const STATIC_CACHE = 'rougee-play-static-v3';
+const DYNAMIC_CACHE = 'rougee-play-dynamic-v3';
+const IPFS_CACHE = 'rougee-play-ipfs-v3'; // Immutable IPFS content
+const API_CACHE = 'rougee-play-api-v3'; // API responses
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -40,7 +42,10 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+            if (cacheName !== STATIC_CACHE && 
+                cacheName !== DYNAMIC_CACHE && 
+                cacheName !== IPFS_CACHE && 
+                cacheName !== API_CACHE) {
               console.log('🗑️ Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -61,8 +66,33 @@ self.addEventListener('fetch', (event) => {
   
   // Handle different types of requests
   if (request.method === 'GET') {
+    // IPFS content - Cache first (immutable content, cache forever)
+    if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
+      event.respondWith(
+        caches.match(request)
+          .then((cachedResponse) => {
+            if (cachedResponse) {
+              console.log('⚡ IPFS cache hit:', url.pathname.slice(0, 50));
+              return cachedResponse;
+            }
+            // Not in cache, fetch and cache
+            return fetch(request)
+              .then((response) => {
+                if (response.status === 200) {
+                  const responseClone = response.clone();
+                  caches.open(IPFS_CACHE)
+                    .then((cache) => {
+                      cache.put(request, responseClone);
+                      console.log('💾 Cached IPFS:', url.pathname.slice(0, 50));
+                    });
+                }
+                return response;
+              });
+          })
+      );
+    }
     // HTML files - network first, cache fallback (for SPA routing)
-    if (url.pathname === '/' || url.pathname.includes('.html')) {
+    else if (url.pathname === '/' || url.pathname.includes('.html')) {
       event.respondWith(
         fetch(request)
           .then((response) => {
@@ -82,22 +112,25 @@ self.addEventListener('fetch', (event) => {
       );
     }
     
-    // API requests - network first, cache fallback
+    // API requests - network first, with stale-while-revalidate strategy
     else if (url.pathname.includes('/api/') || url.hostname.includes('supabase')) {
       event.respondWith(
-        fetch(request)
-          .then((response) => {
-            // Cache successful API responses
-            if (response.status === 200) {
-              const responseClone = response.clone();
-              caches.open(DYNAMIC_CACHE)
-                .then((cache) => cache.put(request, responseClone));
-            }
-            return response;
-          })
-          .catch(() => {
-            // Fallback to cache if network fails
-            return caches.match(request);
+        caches.match(request)
+          .then((cachedResponse) => {
+            const fetchPromise = fetch(request)
+              .then((response) => {
+                // Cache successful API responses
+                if (response.status === 200) {
+                  const responseClone = response.clone();
+                  caches.open(API_CACHE)
+                    .then((cache) => cache.put(request, responseClone));
+                }
+                return response;
+              })
+              .catch(() => null);
+            
+            // Return cached response immediately if available, update cache in background
+            return cachedResponse || fetchPromise;
           })
       );
     }
