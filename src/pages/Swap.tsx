@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWallet } from "@/hooks/useWallet";
 import { 
   useXRGESwap, 
@@ -21,13 +20,14 @@ import {
   KTA_TOKEN_ADDRESS,
   USDC_TOKEN_ADDRESS
 } from "@/hooks/useXRGESwap";
-import { ArrowDownUp, Loader2, Wallet, Coins, ChevronDown, Info, GripVertical, CreditCard } from "lucide-react";
+import { useSellSongTokens, useSellQuote, BONDING_CURVE_ADDRESS } from "@/hooks/useSongBondingCurve";
+import { ArrowDownUp, Loader2, Info, GripVertical, CreditCard, Music } from "lucide-react";
 import { useFundWallet } from "@privy-io/react-auth";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
-import { useBalance, useReadContract } from "wagmi";
-import { formatEther, parseUnits } from "viem";
+import { useBalance, useReadContract, usePublicClient } from "wagmi";
+import { formatEther, parseUnits, formatUnits, Address } from "viem";
 import {
   Select,
   SelectContent,
@@ -40,6 +40,8 @@ import ethLogo from "@/assets/tokens/ethereum-eth.svg";
 import ktaLogo from "@/assets/tokens/kta.png";
 import usdcLogo from "@/assets/tokens/usdc.jpg";
 import xrgeLogo from "@/assets/tokens/xrge.png";
+import { supabase } from "@/integrations/supabase/client";
+import { getIPFSGatewayUrl } from "@/lib/ipfs";
 
 const ERC20_ABI = [
   {
@@ -58,20 +60,37 @@ const ERC20_ABI = [
   },
 ] as const;
 
+interface SongToken {
+  id: string;
+  title: string;
+  ticker: string;
+  token_address: string;
+  cover_cid: string | null;
+  balance?: bigint;
+}
+
 const Swap = () => {
   const navigate = useNavigate();
   const { isConnected, fullAddress, isPrivyReady } = useWallet();
   const { fundWallet } = useFundWallet();
-  const [buyAmount, setBuyAmount] = useState("");
-  const [sellAmount, setSellAmount] = useState("");
+  const publicClient = usePublicClient();
+  
+  // Core swap state
+  const [fromAmount, setFromAmount] = useState("");
+  const [fromToken, setFromToken] = useState<string>("ETH");
+  const [toToken, setToToken] = useState<string>(XRGE_TOKEN_ADDRESS);
   const [slippage, setSlippage] = useState("5");
-  const [selectedToken, setSelectedToken] = useState<"ETH" | "KTA" | "USDC">("ETH");
-  const [chartHeight, setChartHeight] = useState(280); // Default mobile height
+  const [chartHeight, setChartHeight] = useState(280);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Song tokens state
+  const [songTokens, setSongTokens] = useState<SongToken[]>([]);
+  const [loadingSongTokens, setLoadingSongTokens] = useState(false);
+  
   const { prices, calculateUsdValue } = useTokenPrices();
 
+  // Swap hooks
   const { 
     buyXRGE, 
     sellXRGE, 
@@ -87,84 +106,130 @@ const Swap = () => {
     isSuccess, 
     error 
   } = useXRGESwap();
+
+  // Song token sell hooks
+  const { sell: sellSong } = useSellSongTokens();
   
-  // ETH quotes
-  const { expectedXRGE: expectedXRGEFromETH, isLoading: isBuyQuoteLoadingETH } = useXRGEQuote(buyAmount);
-  const { expectedETH, isLoading: isSellQuoteLoadingETH } = useETHQuote(sellAmount);
+  // Helper functions
+  const isNativeToken = (tokenValue: string): boolean => {
+    return ['ETH', XRGE_TOKEN_ADDRESS, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS].includes(tokenValue);
+  };
   
-  // KTA quotes
-  const { expectedXRGE: expectedXRGEFromKTA, isLoading: isBuyQuoteLoadingKTA } = useXRGEQuoteFromKTA(buyAmount);
-  const { expectedKTA, isLoading: isSellQuoteLoadingKTA } = useKTAQuote(sellAmount);
+  const getTokenType = (token: string): 'native' | 'song' => {
+    return isNativeToken(token) ? 'native' : 'song';
+  };
   
-  // USDC quotes
-  const { expectedXRGE: expectedXRGEFromUSDC, isLoading: isBuyQuoteLoadingUSDC } = useXRGEQuoteFromUSDC(buyAmount);
-  const { expectedUSDC, isLoading: isSellQuoteLoadingUSDC } = useUSDCQuote(sellAmount);
+  const getSongToken = (tokenAddress: string): SongToken | undefined => {
+    return songTokens.find(t => t.token_address === tokenAddress);
+  };
+
+  const flipTokens = () => {
+    const tempToken = fromToken;
+    setFromToken(toToken);
+    setToToken(tempToken);
+    setFromAmount("");
+  };
   
-  const { hasApproval, refetch: refetchApproval } = useXRGEApproval(
-    fullAddress as any,
-    sellAmount
+  // Determine token types
+  const fromTokenType = getTokenType(fromToken);
+  const fromSongToken = fromTokenType === 'song' ? getSongToken(fromToken) : undefined;
+  
+  // Song token sell quote
+  const { xrgeOut: songSellQuote, isLoading: songSellQuoteLoading } = useSellQuote(
+    fromSongToken?.token_address as Address | undefined,
+    fromAmount
   );
   
+  // Native token quotes (for buying XRGE)
+  const { expectedXRGE: expectedXRGEFromETH, isLoading: isBuyQuoteLoadingETH } = useXRGEQuote(fromToken === 'ETH' ? fromAmount : "0");
+  const { expectedXRGE: expectedXRGEFromKTA, isLoading: isBuyQuoteLoadingKTA } = useXRGEQuoteFromKTA(fromToken === KTA_TOKEN_ADDRESS ? fromAmount : "0");
+  const { expectedXRGE: expectedXRGEFromUSDC, isLoading: isBuyQuoteLoadingUSDC } = useXRGEQuoteFromUSDC(fromToken === USDC_TOKEN_ADDRESS ? fromAmount : "0");
+  
+  // Native token quotes (for selling XRGE)
+  const { expectedETH, isLoading: isSellQuoteLoadingETH } = useETHQuote(fromToken === XRGE_TOKEN_ADDRESS && toToken === 'ETH' ? fromAmount : "0");
+  const { expectedKTA, isLoading: isSellQuoteLoadingKTA } = useKTAQuote(fromToken === XRGE_TOKEN_ADDRESS && toToken === KTA_TOKEN_ADDRESS ? fromAmount : "0");
+  const { expectedUSDC, isLoading: isSellQuoteLoadingUSDC } = useUSDCQuote(fromToken === XRGE_TOKEN_ADDRESS && toToken === USDC_TOKEN_ADDRESS ? fromAmount : "0");
+  
+  // Approval hooks
+  const { hasApproval: hasXRGEApproval, refetch: refetchXRGEApproval } = useXRGEApproval(
+    fullAddress as any,
+    fromToken === XRGE_TOKEN_ADDRESS ? fromAmount : "0"
+  );
   
   const { hasApproval: hasUSDCApproval, refetch: refetchUSDCApproval } = useUSDCApproval(
     fullAddress as any,
-    buyAmount
+    fromToken === USDC_TOKEN_ADDRESS ? fromAmount : "0"
   );
   
   const { hasApproval: hasKTAApproval, refetch: refetchKTAApproval } = useKTAApproval(
     fullAddress as any,
-    buyAmount
+    fromToken === KTA_TOKEN_ADDRESS ? fromAmount : "0"
   );
   const { hasApproval: hasKTAAllowance, refetch: refetchKTAAllowance } = useKTAAllowance(
     fullAddress as any,
-    buyAmount
+    fromToken === KTA_TOKEN_ADDRESS ? fromAmount : "0"
   );
   
-  // Effective approval if either source says approved
   const effectiveHasKTAApproval = hasKTAApproval || hasKTAAllowance;
   
   useEffect(() => {
     if (isSuccess) {
       setTimeout(() => {
-        refetchApproval();
+        refetchXRGEApproval();
         refetchUSDCApproval();
         refetchKTAApproval();
         refetchKTAAllowance();
       }, 2000);
     }
-  }, [isSuccess, refetchApproval, refetchUSDCApproval, refetchKTAApproval]);
+  }, [isSuccess, refetchXRGEApproval, refetchUSDCApproval, refetchKTAApproval, refetchKTAAllowance]);
 
-  // Dynamic values based on selected token
-  const expectedBuyAmount = selectedToken === "ETH" ? expectedXRGEFromETH 
-    : selectedToken === "KTA" ? expectedXRGEFromKTA 
-    : expectedXRGEFromUSDC;
+  // Calculate expected output amount based on from/to tokens
+  const getExpectedOutput = (): string => {
+    if (!fromAmount || Number(fromAmount) <= 0) return "0";
+    
+    // Song token → XRGE
+    if (fromTokenType === 'song' && toToken === XRGE_TOKEN_ADDRESS) {
+      return songSellQuote || "0";
+    }
+    
+    // Native → XRGE
+    if (toToken === XRGE_TOKEN_ADDRESS) {
+      if (fromToken === 'ETH') return expectedXRGEFromETH || "0";
+      if (fromToken === KTA_TOKEN_ADDRESS) return expectedXRGEFromKTA || "0";
+      if (fromToken === USDC_TOKEN_ADDRESS) return expectedXRGEFromUSDC || "0";
+    }
+    
+    // XRGE → Native
+    if (fromToken === XRGE_TOKEN_ADDRESS) {
+      if (toToken === 'ETH') return expectedETH || "0";
+      if (toToken === KTA_TOKEN_ADDRESS) return expectedKTA || "0";
+      if (toToken === USDC_TOKEN_ADDRESS) return expectedUSDC || "0";
+    }
+    
+    return "0";
+  };
   
-  const expectedSellAmount = selectedToken === "ETH" ? expectedETH 
-    : selectedToken === "KTA" ? expectedKTA 
-    : expectedUSDC;
+  const isQuoteLoading = 
+    (fromTokenType === 'song' && songSellQuoteLoading) ||
+    (fromToken === 'ETH' && isBuyQuoteLoadingETH) ||
+    (fromToken === KTA_TOKEN_ADDRESS && (isBuyQuoteLoadingKTA || isSellQuoteLoadingKTA)) ||
+    (fromToken === USDC_TOKEN_ADDRESS && (isBuyQuoteLoadingUSDC || isSellQuoteLoadingUSDC)) ||
+    (fromToken === XRGE_TOKEN_ADDRESS && toToken === 'ETH' && isSellQuoteLoadingETH);
   
-  const isBuyQuoteLoading = selectedToken === "ETH" ? isBuyQuoteLoadingETH 
-    : selectedToken === "KTA" ? isBuyQuoteLoadingKTA 
-    : isBuyQuoteLoadingUSDC;
-  
-  const isSellQuoteLoading = selectedToken === "ETH" ? isSellQuoteLoadingETH 
-    : selectedToken === "KTA" ? isSellQuoteLoadingKTA 
-    : isSellQuoteLoadingUSDC;
+  const expectedOutput = getExpectedOutput();
 
   // Fetch ETH balance
   const { data: ethBalance, refetch: refetchEthBalance } = useBalance({
     address: fullAddress as any,
   });
 
-  // Fetch XRGE balance
+  // Fetch token balances
   const { data: xrgeBalance, refetch: refetchXrgeBalance } = useReadContract({
     address: XRGE_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
-    query: {
-      enabled: !!fullAddress,
-    },
+    query: { enabled: !!fullAddress },
   });
 
   const { data: xrgeDecimals } = useReadContract({
@@ -172,32 +237,27 @@ const Swap = () => {
     abi: ERC20_ABI,
     functionName: "decimals",
   });
+  
   const { data: ktaTokenDecimals } = useReadContract({
     address: KTA_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
   });
 
-  // Fetch KTA balance
   const { data: ktaBalance, refetch: refetchKtaBalance } = useReadContract({
     address: KTA_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
-    query: {
-      enabled: !!fullAddress,
-    },
+    query: { enabled: !!fullAddress },
   });
 
-  // Fetch USDC balance
   const { data: usdcBalance, refetch: refetchUsdcBalance } = useReadContract({
     address: USDC_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: fullAddress ? [fullAddress as `0x${string}`] : undefined,
-    query: {
-      enabled: !!fullAddress,
-    },
+    query: { enabled: !!fullAddress },
   });
 
   // Format balances
@@ -211,8 +271,65 @@ const Swap = () => {
   const ktaBalanceFormatted = formatTokenBalance(ktaBalance as bigint | undefined, Number(xrgeDecimals || 18));
   const usdcBalanceFormatted = formatTokenBalance(usdcBalance as bigint | undefined, 6);
 
+  // Fetch user's song tokens
   useEffect(() => {
-    // Only redirect if Privy is ready and user is not connected
+    const fetchSongTokens = async () => {
+      if (!fullAddress || !publicClient) return;
+      
+      try {
+        setLoadingSongTokens(true);
+        
+        const { data: userSongs, error } = await supabase
+          .from('songs')
+          .select('id, title, ticker, token_address, cover_cid')
+          .eq('wallet_address', fullAddress)
+          .not('token_address', 'is', null);
+
+        if (error) throw error;
+        
+        if (!userSongs || userSongs.length === 0) {
+          setSongTokens([]);
+          return;
+        }
+
+        const songsWithBalance = await Promise.all(
+          userSongs.map(async (song) => {
+            try {
+              const balance = await publicClient.readContract({
+                address: song.token_address as Address,
+                abi: ERC20_ABI,
+                functionName: 'balanceOf',
+                args: [fullAddress as Address],
+              } as any) as bigint;
+
+              return {
+                ...song,
+                balance,
+              };
+            } catch (error) {
+              console.error(`Error fetching balance for ${song.ticker}:`, error);
+              return {
+                ...song,
+                balance: BigInt(0),
+              };
+            }
+          })
+        );
+
+        const tokensWithBalance = songsWithBalance.filter(song => song.balance > BigInt(0));
+        setSongTokens(tokensWithBalance as SongToken[]);
+        console.log(`Found ${tokensWithBalance.length} song tokens with balance`);
+      } catch (error) {
+        console.error('Error fetching song tokens:', error);
+      } finally {
+        setLoadingSongTokens(false);
+      }
+    };
+
+    fetchSongTokens();
+  }, [fullAddress, publicClient]);
+
+  useEffect(() => {
     if (isPrivyReady && !isConnected) {
       navigate("/");
     }
@@ -224,15 +341,14 @@ const Swap = () => {
         title: "Swap Successful!",
         description: "Your transaction has been confirmed.",
       });
-      setBuyAmount("");
-      setSellAmount("");
-      refetchApproval();
+      setFromAmount("");
+      refetchXRGEApproval();
       refetchEthBalance();
       refetchXrgeBalance();
       refetchKtaBalance();
       refetchUsdcBalance();
     }
-  }, [isSuccess, refetchApproval, refetchEthBalance, refetchXrgeBalance, refetchKtaBalance, refetchUsdcBalance]);
+  }, [isSuccess]);
 
   useEffect(() => {
     if (error) {
@@ -241,217 +357,102 @@ const Swap = () => {
     }
   }, [error]);
 
-  const handleApproveUSDC = async () => {
-    if (!buyAmount || Number(buyAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid USDC amount",
-        variant: "destructive",
-      });
+  // Unified swap handler
+  const handleSwap = async () => {
+    if (!fromAmount || Number(fromAmount) <= 0) {
+      toast({ title: "Invalid Amount", description: "Please enter a valid amount", variant: "destructive" });
       return;
     }
 
-    toast({
-      title: "Approving USDC",
-      description: "Please confirm the approval in your wallet...",
-    });
-
-    try {
-      const txHash = await approveUSDC(buyAmount);
-
-      let attempts = 0;
-      const maxAttempts = 20;
-      const pollInterval = setInterval(async () => {
-        attempts++;
-        await refetchUSDCApproval();
-        
-        if (attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-        }
-      }, 2000);
-
-      // Also refetch after 5 seconds to be safe
-      setTimeout(async () => {
-        await refetchUSDCApproval();
-        clearInterval(pollInterval);
-        toast({
-          title: "USDC Approved",
-          description: "You can now buy XRGE",
-        });
-      }, 5000);
-    } catch (err) {
-      toast({
-        title: "Approval Failed",
-        description: err instanceof Error ? err.message : "Failed to approve USDC",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleBuy = () => {
-    if (!buyAmount || Number(buyAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: `Please enter a valid ${selectedToken} amount`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check USDC approval if using USDC
-    if (selectedToken === "USDC" && !hasUSDCApproval) {
-      toast({
-        title: "Approval Required",
-        description: "Please approve USDC first before buying",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Check KTA approval if using KTA
-    if (selectedToken === "KTA" && !effectiveHasKTAApproval) {
-      toast({
-        title: "Approval Required",
-        description: "Please approve KTA first before buying",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     const slippageBps = Number(slippage) * 100;
-    
-    if (selectedToken === "ETH") {
-      buyXRGE(buyAmount, slippageBps);
-    } else if (selectedToken === "KTA") {
-      buyXRGEWithKTA(buyAmount, slippageBps);
-    } else if (selectedToken === "USDC") {
-      buyXRGEWithUSDC(buyAmount, slippageBps);
-    }
-  };
 
-  const handleSell = async () => {
-    if (!sellAmount || Number(sellAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid XRGE amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!hasApproval) {
-      toast({
-        title: "Approval Required",
-        description: "Please approve XRGE first before selling",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const slippageBps = Number(slippage) * 100;
-    
-    toast({
-      title: "Selling XRGE",
-      description: "Step 2 of 2: Please confirm the swap in your wallet...",
-    });
-    
-    try {
-      let txHash;
-      if (selectedToken === "ETH") {
-        txHash = await sellXRGE(sellAmount, slippageBps);
-      } else if (selectedToken === "KTA") {
-        txHash = await sellXRGEForKTA(sellAmount, slippageBps);
-      } else if (selectedToken === "USDC") {
-        txHash = await sellXRGEForUSDC(sellAmount, slippageBps);
+    // Song token → XRGE (via bonding curve)
+    if (fromTokenType === 'song' && toToken === XRGE_TOKEN_ADDRESS) {
+      const songToken = getSongToken(fromToken);
+      if (!songToken) {
+        toast({ title: "Error", description: "Song token not found", variant: "destructive" });
+        return;
       }
-      
-      // Reset the amount to clear the approval state
-      setSellAmount("");
-      
-      // Refetch balances after successful swap
-      setTimeout(() => {
-        refetchXrgeBalance();
-        if (selectedToken === "KTA") refetchKtaBalance();
-        if (selectedToken === "USDC") refetchUsdcBalance();
-        if (selectedToken === "ETH") refetchEthBalance();
-      }, 3000);
-      
-      toast({
-        title: "✅ Swap Successful!",
-        description: `Swapped ${sellAmount} XRGE for ${selectedToken}`,
-      });
-    } catch (error) {
-      // Error toast already shown by hook
+      toast({ title: `Selling ${songToken.ticker?.toUpperCase()}`, description: "Please confirm the transaction...", });
+      try {
+        await sellSong(songToken.token_address as Address, fromAmount, "0");
+        setFromAmount("");
+        toast({ title: "✅ Swap Successful!", description: `Sold ${fromAmount} ${songToken.ticker?.toUpperCase()} for XRGE`, });
+      } catch (error) {
+        console.error("Song sell error:", error);
+      }
+      return;
+    }
+
+    // Native → XRGE (buying XRGE)
+    if (toToken === XRGE_TOKEN_ADDRESS) {
+      toast({ title: "Buying XRGE", description: "Please confirm the swap...", });
+      try {
+        if (fromToken === 'ETH') {
+          await buyXRGE(fromAmount, slippageBps);
+        } else if (fromToken === KTA_TOKEN_ADDRESS) {
+          if (!effectiveHasKTAApproval) {
+            toast({ title: "Approval Required", description: "Please approve KTA first", variant: "destructive" });
+            return;
+          }
+          await buyXRGEWithKTA(fromAmount, slippageBps);
+        } else if (fromToken === USDC_TOKEN_ADDRESS) {
+          if (!hasUSDCApproval) {
+            toast({ title: "Approval Required", description: "Please approve USDC first", variant: "destructive" });
+            return;
+          }
+          await buyXRGEWithUSDC(fromAmount, slippageBps);
+        }
+        setFromAmount("");
+      } catch (error) {
+        console.error("Buy XRGE error:", error);
+      }
+      return;
+    }
+
+    // XRGE → Native (selling XRGE)
+    if (fromToken === XRGE_TOKEN_ADDRESS) {
+      if (!hasXRGEApproval) {
+        toast({ title: "Approval Required", description: "Please approve XRGE first", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Selling XRGE", description: "Please confirm the swap...", });
+      try {
+        if (toToken === 'ETH') {
+          await sellXRGE(fromAmount, slippageBps);
+        } else if (toToken === KTA_TOKEN_ADDRESS) {
+          await sellXRGEForKTA(fromAmount, slippageBps);
+        } else if (toToken === USDC_TOKEN_ADDRESS) {
+          await sellXRGEForUSDC(fromAmount, slippageBps);
+        }
+        setFromAmount("");
+      } catch (error) {
+        console.error("Sell XRGE error:", error);
+      }
     }
   };
 
+  // Handle approvals
   const handleApprove = async () => {
-    if (!buyAmount || Number(buyAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: `Please enter a valid ${selectedToken} amount`,
-        variant: "destructive",
-      });
+    if (!fromAmount || Number(fromAmount) <= 0) {
+      toast({ title: "Invalid Amount", description: "Please enter a valid amount", variant: "destructive" });
       return;
     }
-    
-    if (selectedToken === "ETH") {
-      // ETH doesn't need approval
-      return;
-    }
-    
+
     try {
-      let txHash;
-      if (selectedToken === "KTA") {
-        txHash = await approveKTA(buyAmount);
-      } else if (selectedToken === "USDC") {
-        txHash = await approveUSDC(buyAmount);
+      if (fromToken === KTA_TOKEN_ADDRESS) {
+        await approveKTA(fromAmount);
+        setTimeout(() => Promise.all([refetchKTAApproval(), refetchKTAAllowance()]), 3000);
+      } else if (fromToken === USDC_TOKEN_ADDRESS) {
+        await approveUSDC(fromAmount);
+        setTimeout(() => refetchUSDCApproval(), 3000);
+      } else if (fromToken === XRGE_TOKEN_ADDRESS) {
+        await approveXRGE(fromAmount);
+        setTimeout(() => refetchXRGEApproval(), 3000);
       }
-      
-      if (!txHash) {
-        throw new Error("No transaction hash returned from approval");
-      }
-
-      let attempts = 0;
-      const maxAttempts = 20;
-      const pollInterval = setInterval(async () => {
-        attempts++;
-        if (selectedToken === "USDC") {
-          await refetchUSDCApproval();
-        } else if (selectedToken === "KTA") {
-          await Promise.all([refetchKTAApproval(), refetchKTAAllowance()]);
-        }
-        
-        if (attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-        }
-      }, 2000);
-
-      // Also refetch after 5 seconds to be safe
-      setTimeout(async () => {
-        if (selectedToken === "USDC") {
-          await refetchUSDCApproval();
-        } else if (selectedToken === "KTA") {
-          await Promise.all([refetchKTAApproval(), refetchKTAAllowance()]);
-        }
-        clearInterval(pollInterval);
-      }, 5000);
-    } catch (err: any) {
-      // Check if user rejected the transaction
-      const isUserRejection = err?.message?.includes('User rejected') || 
-                              err?.message?.includes('user rejected') ||
-                              err?.code === 4001 ||
-                              err?.code === 'ACTION_REJECTED';
-      
-      if (isUserRejection) {
-        toast({
-          title: "Transaction Cancelled",
-          description: "You cancelled the approval",
-        });
-      }
-      
-      // Re-throw to let the calling function know approval failed
-      throw err;
+      toast({ title: "✅ Approval Successful", description: "You can now proceed with the swap" });
+    } catch (error) {
+      console.error("Approval error:", error);
     }
   };
   
@@ -472,7 +473,6 @@ const Swap = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
-    
     const delta = e.clientY - lastY;
     const newHeight = Math.max(200, Math.min(800, chartHeight + delta));
     setChartHeight(newHeight);
@@ -481,20 +481,14 @@ const Swap = () => {
 
   const handleTouchMove = (e: TouchEvent) => {
     if (!isDragging) return;
-    
     const delta = e.touches[0].clientY - lastY;
     const newHeight = Math.max(200, Math.min(800, chartHeight + delta));
     setChartHeight(newHeight);
     setLastY(e.touches[0].clientY);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
+  const handleTouchEnd = () => setIsDragging(false);
 
   useEffect(() => {
     if (isDragging) {
@@ -526,63 +520,23 @@ const Swap = () => {
     };
   }, [isDragging, chartHeight, lastY]);
 
-  const handleApproveXRGE = async () => {
-    if (!sellAmount || Number(sellAmount) <= 0) {
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid XRGE amount",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    toast({
-      title: "Approving XRGE",
-      description: "Step 1 of 2: Please confirm the approval in your wallet...",
-    });
-    
-    try {
-      const txHash = await approveXRGE(sellAmount);
-      
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      for (let i = 0; i < 5; i++) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await refetchApproval();
-      }
-      
-      toast({
-        title: "✅ Approval Successful",
-        description: "You can now proceed to sell XRGE",
-      });
-    } catch (error) {
-      // Error toast already shown by hook
-    }
-  };
-
-  // Show nothing while Privy is initializing
-  if (!isPrivyReady) {
-    return null;
-  }
-
-  if (!isConnected) {
+  if (!isPrivyReady || !isConnected) {
     return null;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      
       <main className="container mx-auto px-4 py-6 md:py-8 max-w-2xl mb-24 md:mb-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold font-mono text-neon-green mb-2">
-            [SWAP XRGE]
+            [SWAP TOKENS]
           </h1>
           <p className="text-muted-foreground font-mono">
-            Buy or sell XRGE tokens instantly
+            Swap between native tokens and music tokens
           </p>
         </div>
 
-        {/* DexScreener Chart - Resizable */}
+        {/* DexScreener Chart */}
         <Card className="p-3 md:p-6 bg-card border-tech-border mb-4 md:mb-6">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h2 className="font-mono text-sm md:text-lg font-bold text-neon-green">
@@ -597,7 +551,6 @@ const Swap = () => {
               View on DexScreener →
             </a>
           </div>
-          {/* Resizable chart container */}
           <div className="relative w-full" style={{ height: `${chartHeight}px` }}>
             <iframe
               src={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}?embed=1&theme=dark&trades=0&info=0`}
@@ -606,7 +559,6 @@ const Swap = () => {
               allowFullScreen
             />
           </div>
-          {/* Drag handle */}
           <div
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
@@ -625,451 +577,362 @@ const Swap = () => {
           </div>
         </Card>
 
-        <Card className="p-6 bg-card border-tech-border">
-          <Tabs defaultValue="buy" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="buy" className="font-mono">
-                BUY XRGE
-              </TabsTrigger>
-              <TabsTrigger value="sell" className="font-mono">
-                SELL XRGE
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Buy Tab */}
-            <TabsContent value="buy" className="space-y-6">
-              <div className="space-y-4">
-                {/* Transaction Guide - Only show when token is selected */}
-                {selectedToken && (
-                  <Alert className="bg-blue-500/10 border-blue-500/20">
-                    <Info className="h-4 w-4" />
-                    <AlertDescription className="font-mono text-sm">
-                      <div className="space-y-2">
-                        <div className="font-bold text-blue-400">💡 Transaction Guide:</div>
-                        {selectedToken === "ETH" && (
-                          <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
-                            <div className="font-bold text-green-400">ETH → XRGE</div>
-                            <div>⚡ 1 transaction - Direct swap</div>
-                            <div>💰 No approval needed</div>
-                          </div>
-                        )}
-                        {selectedToken === "USDC" && (
-                          <div className="bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
-                            <div className="font-bold text-yellow-400">USDC → XRGE</div>
-                            <div>⚡ 2 transactions - Approve + swap</div>
-                            <div>💰 Standard ERC-20 process</div>
-                          </div>
-                        )}
-                        {selectedToken === "KTA" && (
-                          <div className="bg-blue-500/10 p-2 rounded border border-blue-500/20">
-                            <div className="font-bold text-blue-400">KTA → XRGE</div>
-                            <div>⚡ 3-5 transactions - Multi-step process</div>
-                            <div>💰 Reset allowance + approve + swap</div>
-                          </div>
-                        )}
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <div>
-                  <Label htmlFor="token-select" className="font-mono text-sm">
-                    Pay With
-                  </Label>
-                  <Select value={selectedToken} onValueChange={(value: any) => setSelectedToken(value)}>
-                    <SelectTrigger className="mt-2 font-mono">
+        {/* Swap Interface */}
+        <Card className="p-4 md:p-6 bg-card border-tech-border">
+          <div className="space-y-4">
+            {/* FROM Section */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs text-muted-foreground">FROM</Label>
+              <Card className="p-4 bg-muted/30 border-primary/20">
+                <div className="space-y-3">
+                  <Select value={fromToken} onValueChange={(value: any) => setFromToken(value)}>
+                    <SelectTrigger className="font-mono">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* Native Tokens */}
                       <SelectItem value="ETH" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={ethLogo} alt="ETH" className="w-5 h-5" />
-                            <span>ETH</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <img src={ethLogo} alt="ETH" className="w-5 h-5" />
+                          <span>ETH</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="KTA" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={ktaLogo} alt="KTA" className="w-5 h-5 rounded-full" />
-                            <span>KTA</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
-                          </span>
+                      <SelectItem value={XRGE_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={xrgeLogo} alt="XRGE" className="w-5 h-5" />
+                          <span>XRGE</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="USDC" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={usdcLogo} alt="USDC" className="w-5 h-5 rounded-full" />
-                            <span>USDC</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
-                          </span>
+                      <SelectItem value={KTA_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={ktaLogo} alt="KTA" className="w-5 h-5" />
+                          <span>KTA</span>
                         </div>
                       </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="buy-amount" className="font-mono text-sm">
-                    {selectedToken} Amount
-                  </Label>
-                  <Input
-                    id="buy-amount"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.0"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(e.target.value)}
-                    className="mt-2 font-mono"
-                  />
-                </div>
-
-                <div className="flex justify-center">
-                  <ArrowDownUp className="h-6 w-6 text-neon-green" />
-                </div>
-
-                <div>
-                  <Label className="font-mono text-sm">Expected XRGE</Label>
-                  <div className="mt-2 p-3 bg-muted rounded-md">
-                    <p className="font-mono text-lg">
-                      {isBuyQuoteLoading ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading...
-                        </span>
-                      ) : (
-                        `≈ ${Number(expectedBuyAmount).toFixed(4)} XRGE`
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="buy-slippage" className="font-mono text-sm">
-                    Slippage Tolerance (%)
-                  </Label>
-                  <div className="flex gap-2 mt-2">
-                    {["0.5", "1", "5"].map((val) => (
-                      <Button
-                        key={val}
-                        variant={slippage === val ? "neon" : "outline"}
-                        size="sm"
-                        onClick={() => setSlippage(val)}
-                        className="font-mono"
-                      >
-                        {val}%
-                      </Button>
-                    ))}
-                    <Input
-                      id="buy-slippage"
-                      type="number"
-                      step="0.1"
-                      placeholder="Custom"
-                      value={slippage}
-                      onChange={(e) => setSlippage(e.target.value)}
-                      className="w-24 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      setIsProcessing(true);
+                      <SelectItem value={USDC_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={usdcLogo} alt="USDC" className="w-5 h-5" />
+                          <span>USDC</span>
+                        </div>
+                      </SelectItem>
                       
-                      // Validate amount
-                      if (!buyAmount || Number(buyAmount) <= 0) {
-                        toast({
-                          title: "Invalid Amount",
-                          description: `Please enter a valid ${selectedToken} amount`,
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-
-                      const slippageBps = Number(slippage) * 100;
-
-                      // ETH path needs no approval
-                      if (selectedToken === "ETH") {
-                        handleBuy();
-                        return;
-                      }
-
-                      // Ensure approval (KTA/USDC). We actively poll allowance to avoid stale UI state
-                      const ensureApproval = async (): Promise<boolean> => {
-                        try {
-                          if (selectedToken === "USDC") {
-                            if (!hasUSDCApproval) {
-                              await handleApprove();
-                            }
-                            for (let i = 0; i < 20; i++) {
-                              const res: any = await refetchUSDCApproval();
-                              const ok = res?.data?.[0] ?? false;
-                              if (ok) return true;
-                              await new Promise(r => setTimeout(r, 1500));
-                            }
-                            return false;
-                          }
-
-                          if (selectedToken === "KTA") {
-                            if (!effectiveHasKTAApproval) {
-                              await handleApprove();
-                            }
-                            for (let i = 0; i < 20; i++) {
-                              const [resA, resB]: any = await Promise.all([
-                                refetchKTAApproval(),
-                                refetchKTAAllowance(),
-                              ]);
-                              const approvedByContract = resA?.data?.[0] ?? false;
-                              const allowanceRaw = resB?.data as bigint | undefined;
-                              const needed = ktaTokenDecimals !== undefined
-                                ? parseUnits(buyAmount, Number(ktaTokenDecimals))
-                                : undefined;
-                              const approvedByAllowance =
-                                allowanceRaw !== undefined &&
-                                needed !== undefined &&
-                                allowanceRaw >= (needed as bigint);
-                              if (approvedByContract || approvedByAllowance) return true;
-                              await new Promise(r => setTimeout(r, 1500));
-                            }
-                            return false;
-                          }
-
-                          return true;
-                        } catch (error) {
-                          console.error("Approval error:", error);
-                          // User rejected or error occurred, return false
-                          return false;
+                      {/* Song Tokens */}
+                      {songTokens.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-mono text-muted-foreground border-t mt-1">
+                            Your Music Tokens
+                          </div>
+                          {songTokens.map((token) => (
+                            <SelectItem key={token.token_address} value={token.token_address} className="font-mono">
+                              <div className="flex items-center gap-2">
+                                {token.cover_cid ? (
+                                  <img 
+                                    src={getIPFSGatewayUrl(token.cover_cid)} 
+                                    alt={token.title} 
+                                    className="w-5 h-5 rounded object-cover" 
+                                  />
+                                ) : (
+                                  <Music className="w-5 h-5" />
+                                )}
+                                <span>${token.ticker}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Input
+                    type="number"
+                    placeholder="0.0"
+                    value={fromAmount}
+                    onChange={(e) => setFromAmount(e.target.value)}
+                    className="font-mono text-2xl h-14 text-right"
+                    step="0.000001"
+                  />
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                    <span>Balance: {
+                      fromToken === 'ETH' ? ethBalanceFormatted :
+                      fromToken === XRGE_TOKEN_ADDRESS ? xrgeBalanceFormatted :
+                      fromToken === KTA_TOKEN_ADDRESS ? ktaBalanceFormatted :
+                      fromToken === USDC_TOKEN_ADDRESS ? usdcBalanceFormatted :
+                      fromTokenType === 'song' && fromSongToken ? formatUnits(fromSongToken.balance || BigInt(0), 18) :
+                      '0.00'
+                    }</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        if (fromToken === 'ETH') setFromAmount(ethBalanceFormatted);
+                        else if (fromToken === XRGE_TOKEN_ADDRESS) setFromAmount(xrgeBalanceFormatted);
+                        else if (fromToken === KTA_TOKEN_ADDRESS) setFromAmount(ktaBalanceFormatted);
+                        else if (fromToken === USDC_TOKEN_ADDRESS) setFromAmount(usdcBalanceFormatted);
+                        else if (fromTokenType === 'song' && fromSongToken) {
+                          setFromAmount(formatUnits(fromSongToken.balance || BigInt(0), 18));
                         }
-                      };
+                      }}
+                    >
+                      MAX
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
 
-                      const approved = await ensureApproval();
-                      if (!approved) {
-                        toast({
-                          title: "Approval Required",
-                          description: "Please approve the transaction to continue.",
-                        });
-                        return;
-                      }
+            {/* Flip Button */}
+            <div className="flex justify-center -my-2 relative z-10">
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-2 border-primary/30 bg-background hover:bg-primary/10 hover:border-primary/50 hover:rotate-180 transition-all duration-300"
+                onClick={flipTokens}
+              >
+                <ArrowDownUp className="h-5 w-5" />
+              </Button>
+            </div>
 
-                      // Proceed with swap directly to avoid re-check race conditions
-                      try {
-                        if (selectedToken === "USDC") {
-                          await buyXRGEWithUSDC(buyAmount, slippageBps);
-                        } else if (selectedToken === "KTA") {
-                          await buyXRGEWithKTA(buyAmount, slippageBps);
-                        }
-                      } catch (swapError) {
-                        console.error("Swap error:", swapError);
-                        // Error toast will be shown by the hook
-                      }
-                    } finally {
-                      setIsProcessing(false);
-                    }
-                  }}
-                  disabled={
-                    isPending || 
-                    isConfirming || 
-                    isProcessing ||
-                    !buyAmount
-                  }
-                  className="w-full font-mono relative z-10 pointer-events-auto"
-                  variant="neon"
-                  size="lg"
-                >
-                  {isPending || isConfirming || isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isProcessing ? "PROCESSING..." : isPending ? "CONFIRMING..." : "FINALIZING..."}
-                    </>
-                  ) : (
-                    `BUY XRGE WITH ${selectedToken}`
-                  )}
-                </Button>
-
-                {/* Apple Pay / Fiat Onramp Button */}
-                <Button
-                  onClick={() => {
-                    if (fullAddress) {
-                      fundWallet({ address: fullAddress as `0x${string}` });
-                      toast({
-                        title: "Opening Fiat Onramp",
-                        description: "Buy ETH with Apple Pay, then return to swap to XRGE!",
-                      });
-                    }
-                  }}
-                  className="w-full font-mono bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
-                  size="lg"
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  BUY ETH WITH APPLE PAY
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* Sell Tab */}
-            <TabsContent value="sell" className="space-y-6">
-              
-              <div className="space-y-4">
-                {/* Token Selector */}
-                <div>
-                  <Label htmlFor="sell-token-select" className="font-mono text-sm">
-                    Receive
-                  </Label>
-                  <Select value={selectedToken} onValueChange={(value: any) => setSelectedToken(value)}>
-                    <SelectTrigger className="mt-2 font-mono">
+            {/* TO Section */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs text-muted-foreground">TO</Label>
+              <Card className="p-4 bg-muted/30 border-primary/20">
+                <div className="space-y-3">
+                  <Select value={toToken} onValueChange={(value: any) => setToToken(value)}>
+                    <SelectTrigger className="font-mono">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ETH" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={ethLogo} alt="ETH" className="w-5 h-5" />
-                            <span>ETH</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {ethBalanceFormatted} ≈ ${calculateUsdValue(Number(ethBalanceFormatted), 'eth').toFixed(2)}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <img src={ethLogo} alt="ETH" className="w-5 h-5" />
+                          <span>ETH</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="KTA" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={ktaLogo} alt="KTA" className="w-5 h-5 rounded-full" />
-                            <span>KTA</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {ktaBalanceFormatted} ≈ ${calculateUsdValue(Number(ktaBalanceFormatted), 'kta').toFixed(2)}
-                          </span>
+                      <SelectItem value={XRGE_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={xrgeLogo} alt="XRGE" className="w-5 h-5" />
+                          <span>XRGE</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="USDC" className="font-mono">
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <img src={usdcLogo} alt="USDC" className="w-5 h-5 rounded-full" />
-                            <span>USDC</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground ml-4">
-                            {usdcBalanceFormatted} ≈ ${calculateUsdValue(Number(usdcBalanceFormatted), 'usdc').toFixed(2)}
-                          </span>
+                      <SelectItem value={KTA_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={ktaLogo} alt="KTA" className="w-5 h-5" />
+                          <span>KTA</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={USDC_TOKEN_ADDRESS} className="font-mono">
+                        <div className="flex items-center gap-2">
+                          <img src={usdcLogo} alt="USDC" className="w-5 h-5" />
+                          <span>USDC</span>
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="sell-xrge" className="font-mono text-sm">
-                      XRGE Amount
-                    </Label>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      Balance: {xrgeBalanceFormatted} XRGE
-                    </span>
+                  
+                  <div className="font-mono text-2xl h-14 flex items-center justify-end pr-3 bg-muted/50 rounded-md border border-input">
+                    {isQuoteLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <span className={expectedOutput && Number(expectedOutput) > 0 ? "text-foreground" : "text-muted-foreground"}>
+                        {expectedOutput && Number(expectedOutput) > 0 ? Number(expectedOutput).toFixed(6) : '0.0'}
+                      </span>
+                    )}
                   </div>
-                  <Input
-                    id="sell-xrge"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.0"
-                    value={sellAmount}
-                    onChange={(e) => setSellAmount(e.target.value)}
-                    className="mt-2 font-mono"
-                  />
-                  <button
-                    onClick={() => setSellAmount(xrgeBalanceFormatted)}
-                    className="text-xs text-neon-green hover:text-neon-green/80 font-mono mt-1"
-                    type="button"
-                  >
-                    MAX
-                  </button>
-                </div>
-
-                <div className="flex justify-center">
-                  <ArrowDownUp className="h-6 w-6 text-neon-green" />
-                </div>
-
-                <div>
-                  <Label className="font-mono text-sm">Expected {selectedToken}</Label>
-                  <div className="mt-2 p-3 bg-muted rounded-md">
-                    <p className="font-mono text-lg">
-                      {isSellQuoteLoading ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Loading...
-                        </span>
-                      ) : (
-                        `≈ ${Number(expectedSellAmount).toFixed(selectedToken === "USDC" ? 6 : selectedToken === "ETH" ? 6 : 4)} ${selectedToken}`
-                      )}
-                    </p>
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                    <span>Balance: {
+                      toToken === 'ETH' ? ethBalanceFormatted :
+                      toToken === XRGE_TOKEN_ADDRESS ? xrgeBalanceFormatted :
+                      toToken === KTA_TOKEN_ADDRESS ? ktaBalanceFormatted :
+                      toToken === USDC_TOKEN_ADDRESS ? usdcBalanceFormatted :
+                      '0.00'
+                    }</span>
                   </div>
                 </div>
+              </Card>
+            </div>
 
-                <div>
-                  <Label htmlFor="sell-slippage" className="font-mono text-sm">
-                    Slippage Tolerance (%)
-                  </Label>
-                  <div className="flex gap-2 mt-2">
-                    {["0.5", "1", "5"].map((val) => (
-                      <Button
-                        key={val}
-                        variant={slippage === val ? "neon" : "outline"}
-                        size="sm"
-                        onClick={() => setSlippage(val)}
-                        className="font-mono"
-                      >
-                        {val}%
-                      </Button>
-                    ))}
-                    <Input
-                      id="sell-slippage"
-                      type="number"
-                      step="0.1"
-                      placeholder="Custom"
-                      value={slippage}
-                      onChange={(e) => setSlippage(e.target.value)}
-                      className="w-24 font-mono"
-                    />
-                  </div>
+            {/* Slippage Setting */}
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-primary/10">
+              <Label className="font-mono text-xs text-muted-foreground">Slippage Tolerance</Label>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {["0.5", "1", "5"].map((val) => (
+                    <Button
+                      key={val}
+                      variant={slippage === val ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSlippage(val)}
+                      className="font-mono h-7 px-2 text-xs"
+                    >
+                      {val}%
+                    </Button>
+                  ))}
                 </div>
-
-                <Button
-                  onClick={async () => {
-                    // Auto-handle approval if needed
-                    if (!hasApproval) {
-                      await handleApproveXRGE();
-                      // Wait for approval to propagate
-                      await new Promise(resolve => setTimeout(resolve, 3000));
-                    }
-                    handleSell();
-                  }}
-                  disabled={isPending || isConfirming || !sellAmount}
-                  className="w-full font-mono"
-                  variant="neon"
-                  size="lg"
-                >
-                  {isPending || isConfirming ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isPending ? "CONFIRMING..." : "PROCESSING..."}
-                    </>
-                  ) : (
-                    `SELL XRGE FOR ${selectedToken}`
-                  )}
-                </Button>
+                <Input
+                  type="number"
+                  value={slippage}
+                  onChange={(e) => setSlippage(e.target.value)}
+                  className="w-16 h-7 text-center font-mono text-xs"
+                  step="0.1"
+                  min="0.1"
+                  max="50"
+                />
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+
+            {/* Transaction Guide - Conditional */}
+            {fromAmount && Number(fromAmount) > 0 && (
+              <Alert className="bg-blue-500/10 border-blue-500/20">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="font-mono text-xs">
+                  <div className="space-y-1.5">
+                    <div className="font-bold text-blue-400">💡 Transaction Guide:</div>
+                    {fromTokenType === 'song' && (
+                      <div className="bg-purple-500/10 p-2 rounded border border-purple-500/20">
+                        <div className="font-bold text-purple-400">Music Token → XRGE</div>
+                        <div>⚡ Bonding curve sale</div>
+                        <div>💰 Instant liquidity</div>
+                      </div>
+                    )}
+                    {fromToken === "ETH" && toToken === XRGE_TOKEN_ADDRESS && (
+                      <div className="bg-green-500/10 p-2 rounded border border-green-500/20">
+                        <div className="font-bold text-green-400">ETH → XRGE</div>
+                        <div>⚡ 1 transaction - Direct swap</div>
+                        <div>💰 No approval needed</div>
+                      </div>
+                    )}
+                    {fromToken === USDC_TOKEN_ADDRESS && toToken === XRGE_TOKEN_ADDRESS && (
+                      <div className="bg-yellow-500/10 p-2 rounded border border-yellow-500/20">
+                        <div className="font-bold text-yellow-400">USDC → XRGE</div>
+                        <div>⚡ 2 transactions - Approve + swap</div>
+                        <div>💰 Standard ERC-20 process</div>
+                      </div>
+                    )}
+                    {fromToken === KTA_TOKEN_ADDRESS && toToken === XRGE_TOKEN_ADDRESS && (
+                      <div className="bg-blue-500/10 p-2 rounded border border-blue-500/20">
+                        <div className="font-bold text-blue-400">KTA → XRGE</div>
+                        <div>⚡ 2 transactions - Approve + swap</div>
+                        <div>💰 Standard ERC-20 process</div>
+                      </div>
+                    )}
+                    {fromToken === XRGE_TOKEN_ADDRESS && (
+                      <div className="bg-orange-500/10 p-2 rounded border border-orange-500/20">
+                        <div className="font-bold text-orange-400">XRGE → {toToken === 'ETH' ? 'ETH' : toToken === KTA_TOKEN_ADDRESS ? 'KTA' : 'USDC'}</div>
+                        <div>⚡ 2 transactions - Approve + swap</div>
+                        <div>💰 XRGE approval required</div>
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Approval Button (if needed) */}
+            {fromAmount && Number(fromAmount) > 0 && (
+              <>
+                {fromToken === KTA_TOKEN_ADDRESS && !effectiveHasKTAApproval && toToken === XRGE_TOKEN_ADDRESS && (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isPending || isConfirming}
+                    className="w-full font-mono"
+                    variant="outline"
+                  >
+                    {isPending || isConfirming ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Approving KTA...
+                      </>
+                    ) : (
+                      "Approve KTA"
+                    )}
+                  </Button>
+                )}
+                {fromToken === USDC_TOKEN_ADDRESS && !hasUSDCApproval && toToken === XRGE_TOKEN_ADDRESS && (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isPending || isConfirming}
+                    className="w-full font-mono"
+                    variant="outline"
+                  >
+                    {isPending || isConfirming ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Approving USDC...
+                      </>
+                    ) : (
+                      "Approve USDC"
+                    )}
+                  </Button>
+                )}
+                {fromToken === XRGE_TOKEN_ADDRESS && !hasXRGEApproval && (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={isPending || isConfirming}
+                    className="w-full font-mono"
+                    variant="outline"
+                  >
+                    {isPending || isConfirming ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Approving XRGE...
+                      </>
+                    ) : (
+                      "Approve XRGE"
+                    )}
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* SWAP Button */}
+            <Button
+              onClick={handleSwap}
+              disabled={
+                !isConnected ||
+                !fromAmount ||
+                Number(fromAmount) <= 0 ||
+                isQuoteLoading ||
+                isPending ||
+                isConfirming ||
+                isProcessing
+              }
+              className="w-full font-mono text-lg h-14"
+              variant="neon"
+              size="lg"
+            >
+              {!isConnected ? (
+                "CONNECT WALLET"
+              ) : isPending || isConfirming || isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  {isPending ? "CONFIRM IN WALLET..." : isConfirming ? "PROCESSING..." : "SWAPPING..."}
+                </>
+              ) : (
+                "SWAP"
+              )}
+            </Button>
+
+            {/* Apple Pay / Fiat Onramp Button */}
+            <Button
+              onClick={() => {
+                if (fullAddress) {
+                  fundWallet({ address: fullAddress as `0x${string}` });
+                  toast({
+                    title: "Opening Fiat Onramp",
+                    description: "Buy ETH with Apple Pay, then return to swap!",
+                  });
+                }
+              }}
+              className="w-full font-mono bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0"
+              size="lg"
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              BUY ETH WITH APPLE PAY
+            </Button>
+          </div>
         </Card>
 
         <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-tech-border">

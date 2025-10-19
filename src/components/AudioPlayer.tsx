@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle, Music } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, CheckCircle, Music, X, ChevronRight, ChevronLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,7 @@ interface AudioPlayerProps {
   onPrevious?: () => void;
   onShuffle?: () => void;
   onRepeat?: () => void;
+  onClose?: () => void;
   shuffleEnabled?: boolean;
   repeatMode?: 'off' | 'all' | 'one';
 }
@@ -52,6 +53,7 @@ const AudioPlayer = ({
   onPrevious,
   onShuffle,
   onRepeat,
+  onClose,
   shuffleEnabled = false,
   repeatMode = 'off'
 }: AudioPlayerProps) => {
@@ -67,6 +69,7 @@ const AudioPlayer = ({
   const [coverImageError, setCoverImageError] = useState(false);
   const [coverImageLoaded, setCoverImageLoaded] = useState(false);
   const [currentCoverUrlIndex, setCurrentCoverUrlIndex] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
   const { toast } = useToast();
 
   // Reset cover image state when song changes
@@ -320,9 +323,71 @@ const AudioPlayer = ({
     return null;
   }
 
-
   return (
-    <Card className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
+    <>
+      {/* Minimized tab view */}
+      {isMinimized && (
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+          <div className="relative">
+            <Button
+              onClick={() => setIsMinimized(false)}
+              className="h-32 w-12 rounded-l-xl rounded-r-none bg-black/40 backdrop-blur-xl border border-white/10 border-r-0 hover:bg-black/60 hover:w-14 transition-all duration-300 flex flex-col items-center justify-center gap-2 shadow-2xl group"
+            >
+              <ChevronLeft className="h-5 w-5 text-neon-green group-hover:animate-pulse" />
+              <div 
+                className="flex flex-col items-center gap-1 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePlayPauseClick();
+                }}
+              >
+                <div className="w-8 h-8 rounded-full border-2 border-neon-green/50 flex items-center justify-center bg-neon-green/10">
+                  {isPlaying ? (
+                    <Pause className="h-4 w-4 text-neon-green" />
+                  ) : (
+                    <Play className="h-4 w-4 text-neon-green fill-neon-green" />
+                  )}
+                </div>
+                {isPlaying && (
+                  <div className="flex gap-0.5">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-0.5 bg-neon-green rounded-full visualizer-bar"
+                        style={{
+                          animationDelay: `${i * 0.1}s`,
+                          height: '12px'
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="writing-mode-vertical text-xs font-mono text-muted-foreground max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap" style={{ writingMode: 'vertical-rl' }}>
+                {displayTitle.slice(0, 20)}
+              </div>
+            </Button>
+            {onClose && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="absolute -top-8 right-0 h-6 w-6 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-black/60 text-muted-foreground hover:text-foreground"
+                title="Close player"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Full player view */}
+      {!isMinimized && (
+    <Card className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300">
 
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />
@@ -338,6 +403,28 @@ const AudioPlayer = ({
               <span className="ml-2 text-neon-green">${currentSong.ticker}</span>
             )}
           </div>
+        </div>
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMinimized(true)}
+            className="h-6 w-6 rounded-full hover:bg-white/10 text-muted-foreground hover:text-foreground"
+            title="Minimize player"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-6 w-6 rounded-full hover:bg-white/10 text-muted-foreground hover:text-foreground"
+              title="Close player"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
       
@@ -659,8 +746,10 @@ const AudioPlayer = ({
           />
         </div>
       </div>
+    </Card>
+      )}
 
-      {/* Hidden Audio Element */}
+      {/* Hidden Audio Element - Always present to maintain playback state */}
       <audio
         key={(currentSong?.id || currentAd?.id) ?? 'no-media'}
         ref={audioRef}
@@ -676,7 +765,7 @@ const AudioPlayer = ({
           }
         }}
       />
-    </Card>
+    </>
   );
 };
 
