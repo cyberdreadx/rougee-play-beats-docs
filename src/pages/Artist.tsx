@@ -22,6 +22,7 @@ import type { Address } from "viem";
 import { HoldersModal } from "@/components/HoldersModal";
 import { XRGETierBadge } from "@/components/XRGETierBadge";
 import { AiBadge } from "@/components/AiBadge";
+import { SongComments } from "@/components/SongComments";
 
 interface Song {
   id: string;
@@ -85,6 +86,7 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const [holdingWallets, setHoldingWallets] = useState<string[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [expandedSongComments, setExpandedSongComments] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [refreshKey, setRefreshKey] = useState(0);
@@ -376,6 +378,20 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
     } else {
       setExpandedComments(prev => new Set(prev).add(postId));
       await loadComments(postId);
+    }
+  };
+
+  const toggleSongComments = (songId: string) => {
+    const isExpanded = expandedSongComments.has(songId);
+    
+    if (isExpanded) {
+      setExpandedSongComments(prev => {
+        const next = new Set(prev);
+        next.delete(songId);
+        return next;
+      });
+    } else {
+      setExpandedSongComments(prev => new Set(prev).add(songId));
     }
   };
 
@@ -775,9 +791,27 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
                           <LikeButton songId={song.id} size="sm" showCount={true} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSongComments(song.id);
+                            }}
+                            className="gap-1"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
                           <ReportButton songId={song.id} />
                         </div>
                       </div>
+
+                      {/* Comments Section */}
+                      {expandedSongComments.has(song.id) && (
+                        <div className="mt-4 pt-4 border-t border-primary/10">
+                          <SongComments songId={song.id} />
+                        </div>
+                      )}
                     </Card>
                   );
                 })}

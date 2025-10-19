@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig, Music, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
@@ -14,6 +14,9 @@ import { usePrivy } from '@privy-io/react-auth';
 import TaggedText from '@/components/TaggedText';
 import TagAutocomplete from '@/components/TagAutocomplete';
 import { XRGETierBadge } from '@/components/XRGETierBadge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SongComments } from '@/components/SongComments';
+import { AiBadge } from '@/components/AiBadge';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -40,6 +43,23 @@ interface FeedPost {
     verified: boolean | null;
   };
 }
+
+interface SongPost {
+  id: string;
+  title: string;
+  artist: string;
+  wallet_address: string;
+  cover_cid: string | null;
+  ticker: string | null;
+  token_address: string | null;
+  created_at: string;
+  ai_usage?: 'none' | 'partial' | 'full' | null;
+  profiles?: {
+    artist_name: string | null;
+    avatar_cid: string | null;
+    verified: boolean | null;
+  };
+}
 export default function Feed() {
   const navigate = useNavigate();
   const {
@@ -48,31 +68,60 @@ export default function Feed() {
   } = useWallet();
   const { getAccessToken } = usePrivy();
   const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [songs, setSongs] = useState<SongPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSongs, setLoadingSongs] = useState(true);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [loadingMoreSongs, setLoadingMoreSongs] = useState(false);
+  const [postsPage, setPostsPage] = useState(1);
+  const [songsPage, setSongsPage] = useState(1);
+  const [hasMorePosts, setHasMorePosts] = useState(true);
+  const [hasMoreSongs, setHasMoreSongs] = useState(true);
+  const ITEMS_PER_PAGE = 5;
   const [posting, setPosting] = useState(false);
   const [contentText, setContentText] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [expandedSongComments, setExpandedSongComments] = useState<Set<string>>(new Set());
   const [comments, setComments] = useState<Record<string, FeedComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
+  const [songCommentCounts, setSongCommentCounts] = useState<Record<string, number>>({});
   useEffect(() => {
     loadPosts();
+    loadSongs();
     if (isConnected && fullAddress) {
       loadLikedPosts();
     }
   }, [isConnected, fullAddress]);
-  const loadPosts = async () => {
+  const loadPosts = async (loadMore = false) => {
     try {
+      if (loadMore) {
+        setLoadingMorePosts(true);
+      } else {
+        setLoading(true);
+      }
+
+      const page = loadMore ? postsPage + 1 : 1;
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
       const {
         data: postsData,
         error
-      } = await supabase.from('feed_posts').select('*').order('created_at', {
-        ascending: false
-      }).limit(50);
+      } = await supabase
+        .from('feed_posts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
       if (error) throw error;
+
+      // Check if there are more posts
+      const hasMore = postsData && postsData.length === ITEMS_PER_PAGE;
+      setHasMorePosts(hasMore);
 
       // Fetch profiles separately (case-insensitive matching)
       const walletAddresses = [...new Set(postsData?.map(p => p.wallet_address) || [])];
@@ -93,7 +142,14 @@ export default function Feed() {
         ...post,
         profiles: profilesData?.find(p => p.wallet_address?.toLowerCase() === post.wallet_address?.toLowerCase()) || null
       })) || [];
-      setPosts(postsWithProfiles as FeedPost[]);
+
+      if (loadMore) {
+        setPosts(prev => [...prev, ...(postsWithProfiles as FeedPost[])]);
+        setPostsPage(page);
+      } else {
+        setPosts(postsWithProfiles as FeedPost[]);
+        setPostsPage(1);
+      }
     } catch (error) {
       console.error('Error loading posts:', error);
       toast({
@@ -103,8 +159,72 @@ export default function Feed() {
       });
     } finally {
       setLoading(false);
+      setLoadingMorePosts(false);
     }
   };
+
+  const loadSongs = async (loadMore = false) => {
+    try {
+      if (loadMore) {
+        setLoadingMoreSongs(true);
+      } else {
+        setLoadingSongs(true);
+      }
+
+      const page = loadMore ? songsPage + 1 : 1;
+      const from = (page - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      const { data: songsData, error } = await supabase
+        .from('songs')
+        .select('id, title, artist, wallet_address, cover_cid, ticker, token_address, created_at, ai_usage')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      // Check if there are more songs
+      const hasMore = songsData && songsData.length === ITEMS_PER_PAGE;
+      setHasMoreSongs(hasMore);
+
+      // Fetch profiles separately (case-insensitive matching)
+      const walletAddresses = [...new Set(songsData?.map(s => s.wallet_address) || [])];
+      let profilesData: { wallet_address: string; artist_name: string | null; avatar_cid: string | null; verified: boolean | null }[] = [];
+      if (walletAddresses.length) {
+        const orFilter = walletAddresses.map((a) => `wallet_address.ilike.${a}`).join(',');
+        const { data } = await supabase
+          .from('profiles')
+          .select('wallet_address, artist_name, avatar_cid, verified')
+          .or(orFilter);
+        profilesData = data || [];
+      }
+
+      // Merge data (normalize addresses to lowercase)
+      const songsWithProfiles = songsData?.map(song => ({
+        ...song,
+        profiles: profilesData?.find(p => p.wallet_address?.toLowerCase() === song.wallet_address?.toLowerCase()) || null
+      })) || [];
+
+      if (loadMore) {
+        setSongs(prev => [...prev, ...(songsWithProfiles as SongPost[])]);
+        setSongsPage(page);
+      } else {
+        setSongs(songsWithProfiles as SongPost[]);
+        setSongsPage(1);
+      }
+    } catch (error) {
+      console.error('Error loading songs:', error);
+      toast({
+        title: 'Error loading songs',
+        description: 'Failed to load songs',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingSongs(false);
+      setLoadingMoreSongs(false);
+    }
+  };
+
   const loadLikedPosts = async () => {
     if (!fullAddress) return;
     try {
@@ -197,6 +317,19 @@ export default function Feed() {
     } else {
       setExpandedComments(prev => new Set(prev).add(postId));
       await loadComments(postId);
+    }
+  };
+
+  const toggleSongComments = (songId: string) => {
+    const isExpanded = expandedSongComments.has(songId);
+    if (isExpanded) {
+      setExpandedSongComments(prev => {
+        const next = new Set(prev);
+        next.delete(songId);
+        return next;
+      });
+    } else {
+      setExpandedSongComments(prev => new Set(prev).add(songId));
     }
   };
   const loadComments = async (postId: string) => {
@@ -348,15 +481,15 @@ export default function Feed() {
   };
   return <>
       <StoriesBar />
-      <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
+      <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-0 md:px-4">
+        <div className="w-full md:max-w-7xl md:mx-auto">
+          <div className="text-center mb-6 md:mb-8 px-4">
             <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
             <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
           </div>
 
           {/* Post Creator */}
-          {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border max-w-2xl mx-auto">
+          {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border w-full md:max-w-2xl md:mx-auto mb-6 md:rounded-lg rounded-none border-x-0 md:border-x">
               <TagAutocomplete
                 value={contentText}
                 onChange={setContentText}
@@ -392,11 +525,18 @@ export default function Feed() {
               </div>
             </Card>}
 
-          {/* Feed */}
-          <div className="max-w-2xl mx-auto space-y-4">
-            {loading ? <div className="text-center py-8 text-muted-foreground">Loading feed...</div> : posts.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-                No posts yet. Be the first to post!
-              </div> : posts.map(post => <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col">
+          {/* Feed with Tabs */}
+          <Tabs defaultValue="posts" className="w-full md:max-w-2xl md:mx-auto">
+            <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6 mx-4 md:mx-0 md:rounded-lg rounded-md">
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="songs">Songs</TabsTrigger>
+            </TabsList>
+
+            {/* Posts Tab */}
+            <TabsContent value="posts" className="space-y-0 md:space-y-4">
+              {loading ? <div className="text-center py-8 text-muted-foreground px-4">Loading feed...</div> : posts.length === 0 ? <div className="text-center py-8 text-muted-foreground px-4">
+                  No posts yet. Be the first to post!
+                </div> : posts.map(post => <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col w-full md:rounded-lg rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4">
                   {/* Post Header */}
                   <div className="flex items-center gap-2 mb-3">
                     <div 
@@ -511,12 +651,198 @@ export default function Feed() {
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatTimeAgo(comment.created_at)}
                               </p>
-                            </div>
-                          </div>)}
+                        </div>
+                      </div>)}
+                  </div>
+                </div>}
+            </Card>)}
+
+              {/* Load More Posts Button */}
+              {!loading && posts.length > 0 && hasMorePosts && (
+                <div className="flex justify-center py-4 px-4 md:px-0 md:pt-4">
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      loadPosts(true);
+                    }}
+                    type="button"
+                    disabled={loadingMorePosts}
+                    variant="outline"
+                    size="lg"
+                    className="w-full md:max-w-md"
+                  >
+                    {loadingMorePosts ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Load More'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Songs Tab */}
+            <TabsContent value="songs" className="space-y-0 md:space-y-4">
+              {loadingSongs ? (
+                <div className="text-center py-8 text-muted-foreground px-4">Loading songs...</div>
+              ) : songs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground px-4">
+                  No songs uploaded yet.
+                </div>
+              ) : (
+                songs.map(song => (
+                  <Card key={song.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border w-full md:rounded-lg rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4">
+                    {/* Song Post Header */}
+                    <div className="flex items-start gap-3 mb-3">
+                      {/* Artist Avatar */}
+                      <div 
+                        className="flex-shrink-0 cursor-pointer"
+                        onClick={() => navigate(`/artist/${song.wallet_address}`)}
+                      >
+                        {song.profiles?.avatar_cid ? (
+                          <img
+                            src={getIPFSGatewayUrl(song.profiles.avatar_cid)}
+                            alt="Avatar"
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                            <span className="text-primary text-sm">
+                              {song.profiles?.artist_name?.[0] || '?'}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>}
-                </Card>)}
-          </div>
+
+                      <div className="flex-1 min-w-0">
+                        {/* Artist Name and Action */}
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <p 
+                            className="font-semibold text-sm cursor-pointer hover:text-neon-green transition-colors"
+                            onClick={() => navigate(`/artist/${song.wallet_address}`)}
+                          >
+                            {song.profiles?.artist_name || `${song.wallet_address.slice(0, 6)}...${song.wallet_address.slice(-4)}`}
+                          </p>
+                          {song.profiles?.verified && (
+                            <CircleCheckBig className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Verified artist" />
+                          )}
+                          <XRGETierBadge walletAddress={song.wallet_address} size="sm" />
+                          <span className="text-xs text-muted-foreground">posted a track</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {formatTimeAgo(song.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Song Content */}
+                    <div 
+                      className="flex gap-3 mb-3 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => song.token_address ? navigate(`/song/${song.id}`) : null}
+                    >
+                      {/* Album Cover */}
+                      {song.cover_cid ? (
+                        <img
+                          src={getIPFSGatewayUrl(song.cover_cid)}
+                          alt={song.title}
+                          className="w-20 h-20 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg bg-primary/20 flex items-center justify-center">
+                          <Music className="w-8 h-8 text-primary" />
+                        </div>
+                      )}
+
+                      {/* Song Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-base mb-1 truncate flex items-center gap-2">
+                          <span className="truncate">{song.title}</span>
+                          <AiBadge aiUsage={song.ai_usage} size="sm" />
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {song.artist}
+                        </p>
+                        {song.ticker && (
+                          <p className="text-xs text-neon-green font-mono">
+                            ${song.ticker}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Song Actions */}
+                    <div className="flex items-center gap-4 pt-3 border-t border-border">
+                      <LikeButton 
+                        songId={song.id} 
+                        size="sm" 
+                        showCount={true} 
+                      />
+
+                      <button 
+                        onClick={() => toggleSongComments(song.id)} 
+                        className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{songCommentCounts[song.id] || 0}</span>
+                      </button>
+
+                      {song.token_address && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/song/${song.id}`)}
+                          className="ml-auto"
+                        >
+                          Trade
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Comments Section */}
+                    {expandedSongComments.has(song.id) && (
+                      <div className="mt-4 pt-4 border-t border-primary/10">
+                        <SongComments 
+                          songId={song.id} 
+                          onCommentCountChange={(count) => {
+                            setSongCommentCounts(prev => ({ ...prev, [song.id]: count }));
+                          }}
+                        />
+                      </div>
+                    )}
+                  </Card>
+                ))
+              )}
+
+              {/* Load More Songs Button */}
+              {!loadingSongs && songs.length > 0 && hasMoreSongs && (
+                <div className="flex justify-center py-4 px-4 md:px-0 md:pt-4">
+                  <Button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      loadSongs(true);
+                    }}
+                    type="button"
+                    disabled={loadingMoreSongs}
+                    variant="outline"
+                    size="lg"
+                    className="w-full md:max-w-md"
+                  >
+                    {loadingMoreSongs ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Load More'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </>;

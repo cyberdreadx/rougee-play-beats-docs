@@ -24,6 +24,7 @@ import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { useWallet } from "@/hooks/useWallet";
 import { AiBadge } from "@/components/AiBadge";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
+import { SongComments } from "@/components/SongComments";
 import { useBuySongTokens, useSellSongTokens, useSongPrice, useSongMetadata, useCreateSong, SONG_FACTORY_ADDRESS, useApproveToken, useBuyQuote, useSellQuote, useBondingCurveSupply, useSongTokenBalance, BONDING_CURVE_ADDRESS } from "@/hooks/useSongBondingCurve";
 import { useBalance, useConnect, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { useXRGESwap, KTA_TOKEN_ADDRESS, USDC_TOKEN_ADDRESS, useXRGEQuote, useXRGEQuoteFromKTA, useXRGEQuoteFromUSDC, XRGE_TOKEN_ADDRESS as XRGE_TOKEN } from "@/hooks/useXRGESwap";
@@ -2053,6 +2054,14 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Comments Section */}
+        {song && (
+          <Card className="mt-6 p-6">
+            <h2 className="text-2xl font-bold font-mono mb-4 neon-text">Comments</h2>
+            <SongComments songId={song.id} />
+          </Card>
+        )}
       </div>
     </div>
   );
