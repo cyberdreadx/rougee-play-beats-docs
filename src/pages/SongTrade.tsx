@@ -535,7 +535,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               functionName: 'getCurrentPrice',
               args: [songTokenAddress],
               blockNumber: block24hAgo
-            });
+            } as any);
             
             const currentPriceRaw = rawPrice;
             if (currentPriceRaw && historicalPrice) {
@@ -1171,7 +1171,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <div className="flex-1 w-full min-w-0">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-mono font-bold neon-text mb-1 md:mb-2 truncate flex items-center gap-2">
                   <span className="truncate">{song.title}</span>
-                  <AiBadge aiUsage={song.ai_usage} size="md" />
+                  <AiBadge aiUsage={(song as any).ai_usage} size="md" />
                 </h1>
                 <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-mono mb-3 md:mb-4 truncate">
                   By {song.artist || "Unknown Artist"}

@@ -208,11 +208,6 @@ const AudioPlayer = ({
     const audio = audioRef.current;
     if (!audio) return;
 
-    // PWA-specific: Initialize audio context on first interaction
-    if (audio.context && audio.context.state === 'suspended') {
-      audio.context.resume().catch(console.error);
-    }
-
     if (isPlaying) {
       const title = currentAd?.title || currentSong?.title || 'Audio';
       toast({
@@ -220,18 +215,16 @@ const AudioPlayer = ({
         description: title,
       });
       
-      // Use the same audio.play() method as regular browser
-      // PWA-specific handling is done in the hook
-      const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
+      // Direct audio.play() call - works in both browser and PWA
+      const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error("Audio playback error:", error);
           
-          // Enhanced error messages for PWA mode
           if (error.name === 'NotAllowedError') {
             toast({
               title: '🔒 Audio blocked',
-              description: isPWA ? 'Please tap the play button to start audio in PWA mode' : 'Please tap the play button to start audio',
+              description: 'Please tap the play button to start audio',
               variant: 'destructive',
             });
           } else if (error.name === 'NotSupportedError') {
@@ -287,17 +280,12 @@ const AudioPlayer = ({
       return;
     }
     
-    // PWA-specific: Ensure audio context is resumed if needed
-    if (audio.context && audio.context.state === 'suspended') {
-      audio.context.resume().catch(console.error);
-    }
-    
     if (isPlaying) {
       try { audio.pause(); } catch {}
       onPlayPause();
     } else {
-      // Use the same audio.play() method as regular browser
-      const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
+      // Direct audio.play() call
+      const playPromise = audio.play();
       if (playPromise && typeof playPromise.catch === 'function') {
         playPromise.catch((error) => {
           console.error('Audio playback error:', error);
@@ -820,13 +808,10 @@ const AudioPlayer = ({
         playsInline
         crossOrigin="anonymous"
         controlsList="nodownload"
-        // PWA-specific attributes
         x-webkit-airplay="allow"
-        // Ensure proper MIME type for PWA compatibility
-        type="audio/mpeg"
         
         onError={(e) => {
-          console.error('Audio error in PWA:', e);
+          console.error('Audio error:', e);
           handleAudioError();
         }}
         onCanPlay={() => {

@@ -41,41 +41,14 @@ export const usePWAAudio = () => {
     };
   }, []);
 
-  const initializeAudioContext = async (audioElement: HTMLAudioElement) => {
-    if (!isPWA) return true;
-
-    try {
-      // Resume audio context if suspended (common in PWAs)
-      if (audioElement.context && audioElement.context.state === 'suspended') {
-        await audioElement.context.resume();
-      }
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize audio context in PWA:', error);
-      return false;
-    }
-  };
-
   const handlePWAAudioPlay = async (audioElement: HTMLAudioElement) => {
-    if (!isPWA) return audioElement.play();
-
-    try {
-      // Initialize audio context first (PWA-specific)
-      await initializeAudioContext(audioElement);
-      
-      // Use the same audio.play() method as regular browser
-      // The PWA fixes are in the AudioPlayer component, not here
-      return await audioElement.play();
-    } catch (error) {
-      console.error('PWA audio play failed:', error);
-      throw error;
-    }
+    // Simply call play() - PWA doesn't need special AudioContext handling for <audio> elements
+    return audioElement.play();
   };
 
   return {
     isPWA,
     audioSupported,
-    initializeAudioContext,
     handlePWAAudioPlay
   };
 };

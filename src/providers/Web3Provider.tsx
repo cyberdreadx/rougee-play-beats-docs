@@ -10,7 +10,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 10, // 10 minutes - data stays fresh longer
-      cacheTime: 1000 * 60 * 30, // 30 minutes - keep in memory longer
+      gcTime: 1000 * 60 * 30, // 30 minutes - keep in memory longer (renamed from cacheTime in TanStack Query v5)
       refetchOnWindowFocus: false, // Don't refetch when user returns to tab
       refetchOnMount: false, // Don't refetch on component mount if data exists
       refetchOnReconnect: false, // Don't refetch on network reconnect

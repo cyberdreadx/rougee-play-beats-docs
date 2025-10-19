@@ -90,7 +90,7 @@ export const useXRGETier = (walletAddress: string | null) => {
     query: {
       enabled: !!walletAddress,
       staleTime: 300000, // 5 minutes - data stays fresh longer
-      cacheTime: 600000, // 10 minutes - keep in cache longer
+      gcTime: 600000, // 10 minutes - keep in cache longer (renamed from cacheTime in TanStack Query v5)
       refetchInterval: false, // Don't auto-refetch
       refetchOnWindowFocus: false, // Don't refetch on tab focus
       refetchOnMount: false, // Don't refetch on component mount if cached

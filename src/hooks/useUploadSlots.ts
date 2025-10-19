@@ -32,7 +32,7 @@ export const useUploadSlots = () => {
     query: {
       enabled: !!fullAddress,
       staleTime: 180000, // 3 minutes - balance rarely changes
-      cacheTime: 600000, // 10 minutes cache
+      gcTime: 600000, // 10 minutes cache (renamed from cacheTime in TanStack Query v5)
       refetchInterval: false, // Manual refetch only
       refetchOnWindowFocus: false,
       refetchOnMount: false,

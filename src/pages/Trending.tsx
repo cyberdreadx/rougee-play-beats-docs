@@ -258,7 +258,8 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
   const [volume24h, setVolume24h] = useState<number>(0); // Track actual 24h volume in XRGE
   
   // Get current price from bonding curve
-  const { price: priceInXRGE } = useSongPrice(song.token_address as Address);
+  const { price: priceInXRGENumber } = useSongPrice(song.token_address as Address);
+  const priceInXRGE = priceInXRGENumber !== null ? priceInXRGENumber : null;
   
   // Get XRGE raised and supply
   const { data: xrgeRaised } = useReadContract({
@@ -488,7 +489,7 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         <SongPriceSparkline 
           tokenAddress={song.token_address || undefined}
           bondingSupply={bondingSupplyStr || undefined}
-          priceInXRGE={priceInXRGE || undefined}
+          priceInXRGE={typeof priceInXRGE === 'number' ? priceInXRGE : undefined}
           height={30}
           showPercentChange={true}
           timeframeHours={24}
