@@ -184,12 +184,33 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
         const xrgeTransfers = xrgeByTx.get(log.transactionHash) || [];
         let actualXrgeAmount = 0;
         
-        // For trades, we want the largest XRGE transfer (excluding small platform fees)
-        // Sort by amount descending and take the largest one
-        const sortedXrge = [...xrgeTransfers].sort((a, b) => b.amount - a.amount);
-        if (sortedXrge.length > 0) {
-          actualXrgeAmount = sortedXrge[0].amount;
-          console.log(`  💰 Found XRGE transfer: ${actualXrgeAmount.toLocaleString()} XRGE`);
+        if (isBuy) {
+          // For BUY: Find XRGE going TO the bonding curve (user paying)
+          const buyerPayment = xrgeTransfers.find(
+            xrge => xrge.to.toLowerCase() === bondingCurveAddress
+          );
+          if (buyerPayment) {
+            actualXrgeAmount = buyerPayment.amount;
+            console.log(`  💰 BUY - User paid: ${actualXrgeAmount.toLocaleString()} XRGE`);
+          }
+        } else {
+          // For SELL: Find XRGE going FROM bonding curve TO the seller (not to protocol)
+          // The seller is the "from" address in the song token transfer
+          const sellerAddress = from.toLowerCase();
+          const sellerPayment = xrgeTransfers.find(
+            xrge => xrge.from.toLowerCase() === bondingCurveAddress && 
+                    xrge.to.toLowerCase() === sellerAddress
+          );
+          if (sellerPayment) {
+            // Sum all XRGE transfers to the seller (might be split into multiple)
+            actualXrgeAmount = xrgeTransfers
+              .filter(xrge => 
+                xrge.from.toLowerCase() === bondingCurveAddress && 
+                xrge.to.toLowerCase() === sellerAddress
+              )
+              .reduce((sum, xrge) => sum + xrge.amount, 0);
+            console.log(`  💰 SELL - User received: ${actualXrgeAmount.toLocaleString()} XRGE`);
+          }
         }
         
         // Update supply
