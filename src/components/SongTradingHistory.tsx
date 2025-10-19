@@ -12,6 +12,7 @@ interface TradeData {
   type: 'buy' | 'sell';
   amount: number;
   priceUSD: number;
+  xrgeAmount?: number; // Actual XRGE transferred
 }
 
 interface ChartDataPoint {
@@ -44,6 +45,9 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
     try {
       console.log('Fetching trade history for token:', tokenAddress);
 
+      // XRGE token address on Base
+      const XRGE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e' as Address;
+
       // Fetch Transfer events directly from blockchain
       const TRANSFER_EVENT = {
         type: 'event',
@@ -58,12 +62,21 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
       const currentBlock = await publicClient.getBlockNumber();
       const fromBlock = currentBlock - BigInt(100000);
 
-      const transferLogs = await publicClient.getLogs({
-        address: tokenAddress,
-        event: TRANSFER_EVENT,
-        fromBlock,
-        toBlock: 'latest'
-      });
+      // Fetch both song token and XRGE token transfers
+      const [transferLogs, xrgeTransferLogs] = await Promise.all([
+        publicClient.getLogs({
+          address: tokenAddress,
+          event: TRANSFER_EVENT,
+          fromBlock,
+          toBlock: 'latest'
+        }),
+        publicClient.getLogs({
+          address: XRGE_ADDRESS,
+          event: TRANSFER_EVENT,
+          fromBlock,
+          toBlock: 'latest'
+        })
+      ]);
 
       console.log(`Found ${transferLogs.length} total transfer events`);
 
@@ -92,6 +105,23 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
       }
       
       console.log(`Detected bonding curve address: ${bondingCurveAddress} (${maxCount} transfers)`);
+
+      // Build a map of XRGE transfers by transaction hash
+      const xrgeByTx = new Map<string, { amount: number; to: Address; from: Address }[]>();
+      for (const xrgeLog of xrgeTransferLogs) {
+        const { args } = xrgeLog as any;
+        const txHash = xrgeLog.transactionHash;
+        const xrgeAmount = Number(args.value as bigint) / 1e18;
+        
+        if (!xrgeByTx.has(txHash)) {
+          xrgeByTx.set(txHash, []);
+        }
+        xrgeByTx.get(txHash)!.push({
+          amount: xrgeAmount,
+          to: args.to as Address,
+          from: args.from as Address
+        });
+      }
 
       // Process transfers into trades
       const INITIAL_PRICE = 0.001;
@@ -144,6 +174,18 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
         // SELL: FROM user TO bonding curve
         const isBuy = from.toLowerCase() === bondingCurveAddress;
         
+        // Find corresponding XRGE transfer in the same transaction
+        const xrgeTransfers = xrgeByTx.get(log.transactionHash) || [];
+        let actualXrgeAmount = 0;
+        
+        // For trades, we want the largest XRGE transfer (excluding small platform fees)
+        // Sort by amount descending and take the largest one
+        const sortedXrge = [...xrgeTransfers].sort((a, b) => b.amount - a.amount);
+        if (sortedXrge.length > 0) {
+          actualXrgeAmount = sortedXrge[0].amount;
+          console.log(`  💰 Found XRGE transfer: ${actualXrgeAmount.toLocaleString()} XRGE`);
+        }
+        
         // Update supply
         if (isBuy) {
           trackedSupply += amount;
@@ -167,7 +209,8 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
           price: priceInXRGE,
           type: isBuy ? 'buy' : 'sell',
           amount,
-          priceUSD
+          priceUSD,
+          xrgeAmount: actualXrgeAmount > 0 ? actualXrgeAmount : undefined
         });
       }
 
@@ -366,7 +409,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
                   ${(trade.priceUSD * trade.amount).toFixed(2)}
                 </div>
                 <div className="text-muted-foreground text-xs font-mono">
-                  {(trade.price * trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2})} XRGE
+                  {trade.xrgeAmount 
+                    ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 0})
+                    : (trade.price * trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2})
+                  } XRGE
                 </div>
               </div>
             </div>
