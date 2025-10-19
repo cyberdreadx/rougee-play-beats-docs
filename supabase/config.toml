@@ -31,6 +31,9 @@ verify_jwt = false
 [functions.admin-delete-report]
 verify_jwt = false
 
+[functions.admin-update-song-ai-usage]
+verify_jwt = false
+
 # User action functions (likes, comments, reports) using Privy JWT validation
 [functions.like-post]
 verify_jwt = false
