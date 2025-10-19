@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { useXRGETier } from "@/hooks/useXRGETier";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +23,7 @@ export const XRGETierBadge = ({
   className = "" 
 }: XRGETierBadgeProps) => {
   const { tier, xrgeBalance, isLoading } = useXRGETier(walletAddress);
+  const [open, setOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -36,15 +38,21 @@ export const XRGETierBadge = ({
     return null; // No badge for < 1K XRGE
   }
 
-  const sizeClasses = {
-    sm: "text-xs px-2 py-0.5",
-    md: "text-sm px-3 py-1",
-    lg: "text-base px-4 py-1.5"
-  };
-
   // Add special effects for whale tiers
   const isWhale = tier.name.includes("Whale");
   const isGoldWhale = tier.name === "Gold Whale";
+
+  const sizeClasses = {
+    sm: "text-[10px] px-1.5 py-0.5",
+    md: "text-xs px-2 py-0.5",
+    lg: "text-sm px-3 py-1"
+  };
+  
+  const iconSizeClasses = {
+    sm: "text-[10px]",
+    md: "text-xs",
+    lg: "text-sm"
+  };
   const animationClasses = isGoldWhale 
     ? "animate-pulse bg-gradient-to-r from-yellow-400/30 via-amber-500/30 to-yellow-400/30 bg-[length:200%_100%]" 
     : isWhale 
@@ -53,23 +61,26 @@ export const XRGETierBadge = ({
 
   return (
     <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
+      <Tooltip open={open} onOpenChange={setOpen}>
+        <TooltipTrigger asChild onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}>
           <Badge
             variant="outline"
             className={`
               ${tier.color} ${tier.bgColor} ${tier.borderColor}
-              font-bold font-mono gap-1.5 cursor-help
+              font-bold font-mono gap-1 cursor-help
               ${sizeClasses[size]}
               ${animationClasses}
               transition-all duration-300 hover:scale-105
               ${className}
             `}
           >
-            <span className={isGoldWhale ? "text-xl drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" : "text-base"}>
+            <span className={iconSizeClasses[size]}>
               {tier.icon}
             </span>
-            <span className={isGoldWhale ? "font-extrabold tracking-wide" : ""}>{tier.name}</span>
+            <span>{tier.name}</span>
             {showBalance && (
               <span className="text-xs opacity-75">
                 ({(xrgeBalance / 1000000).toFixed(1)}M)
@@ -93,6 +104,9 @@ export const XRGETierBadge = ({
                   <li key={i}>✓ {benefit}</li>
                 ))}
               </ul>
+            </div>
+            <div className="text-xs pt-2 border-t border-border mt-2">
+              <a href="/tiers" className="text-primary hover:underline">View all tiers →</a>
             </div>
           </div>
         </TooltipContent>

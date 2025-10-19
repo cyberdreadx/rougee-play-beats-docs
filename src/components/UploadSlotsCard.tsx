@@ -140,6 +140,14 @@ export const UploadSlotsCard = () => {
                 <Crown className="mr-2 h-4 w-4" />
                 Buy XRGE to Upgrade
               </Button>
+              
+              <Button
+                onClick={() => navigate('/tiers')}
+                variant="outline"
+                className="w-full font-mono text-xs"
+              >
+                View All Tiers & Requirements
+              </Button>
             </div>
           </div>
         )}

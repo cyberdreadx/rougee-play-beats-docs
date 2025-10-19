@@ -26,6 +26,7 @@ import Feed from "./pages/Feed";
 import Swap from "./pages/Swap";
 import Playlists from "./pages/Playlists";
 import HowItWorks from "./pages/HowItWorks";
+import Tiers from "./pages/Tiers";
 import TermsOfService from "./pages/TermsOfService";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
@@ -82,6 +83,7 @@ const AppContent = () => {
           <Route path="/become-artist" element={<BecomeArtist />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/swap" element={<Swap />} />
+          <Route path="/tiers" element={<Tiers />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />

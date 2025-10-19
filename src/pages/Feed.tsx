@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
@@ -13,6 +13,7 @@ import LikeButton from '@/components/LikeButton';
 import { usePrivy } from '@privy-io/react-auth';
 import TaggedText from '@/components/TaggedText';
 import TagAutocomplete from '@/components/TagAutocomplete';
+import { XRGETierBadge } from '@/components/XRGETierBadge';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -409,15 +410,18 @@ export default function Feed() {
                         </div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p 
-                        className="font-semibold text-sm truncate flex items-center gap-1 cursor-pointer hover:text-neon-green transition-colors"
-                        onClick={() => navigate(`/artist/${post.wallet_address}`)}
-                      >
-                        {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p 
+                          className="font-semibold text-sm cursor-pointer hover:text-neon-green transition-colors"
+                          onClick={() => navigate(`/artist/${post.wallet_address}`)}
+                        >
+                          {post.profiles?.artist_name || `${post.wallet_address.slice(0, 6)}...${post.wallet_address.slice(-4)}`}
+                        </p>
                         {post.profiles?.verified && (
-                          <CheckCircle className="h-3.5 w-3.5 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+                          <CircleCheckBig className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Verified artist" />
                         )}
-                      </p>
+                        <XRGETierBadge walletAddress={post.wallet_address} size="sm" />
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {formatTimeAgo(post.created_at)}
                       </p>
@@ -489,15 +493,18 @@ export default function Feed() {
                                 </div>}
                             </div>
                             <div className="flex-1">
-                              <p 
-                                className="text-sm font-semibold flex items-center gap-1 cursor-pointer hover:text-neon-green transition-colors"
-                                onClick={() => navigate(`/artist/${comment.wallet_address}`)}
-                              >
-                                {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <p 
+                                  className="text-sm font-semibold cursor-pointer hover:text-neon-green transition-colors"
+                                  onClick={() => navigate(`/artist/${comment.wallet_address}`)}
+                                >
+                                  {comment.profiles?.artist_name || `${comment.wallet_address.slice(0, 6)}...${comment.wallet_address.slice(-4)}`}
+                                </p>
                                 {comment.profiles?.verified && (
-                                  <CheckCircle className="h-3 w-3 text-neon-green flex-shrink-0" aria-label="Verified artist" />
+                                  <CircleCheckBig className="h-3 w-3 text-blue-500 flex-shrink-0" aria-label="Verified artist" />
                                 )}
-                              </p>
+                                <XRGETierBadge walletAddress={comment.wallet_address} size="sm" />
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 <TaggedText text={comment.comment_text} />
                               </div>
