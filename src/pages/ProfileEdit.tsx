@@ -16,6 +16,9 @@ import { toast } from "@/hooks/use-toast";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
+import { UploadSlotsCard } from "@/components/UploadSlotsCard";
+import { UploadSlotsBadge } from "@/components/UploadSlotsBadge";
+import { XRGETierBadge } from "@/components/XRGETierBadge";
 
 const ProfileEdit = () => {
   const navigate = useNavigate();
@@ -311,7 +314,10 @@ const ProfileEdit = () => {
     <div className="min-h-screen bg-background">
       <NetworkInfo />
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+        {/* Upload Slots - Show for artists */}
+        {isArtist && <UploadSlotsCard />}
+
         {showAvatarCrop && tempAvatarUrl && (
           <AvatarCropModal
             imageUrl={tempAvatarUrl}
@@ -320,9 +326,12 @@ const ProfileEdit = () => {
           />
         )}
 
-        <h1 className="text-3xl font-mono font-bold neon-text mb-6">
-          {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-mono font-bold neon-text">
+            {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
+          </h1>
+          <XRGETierBadge walletAddress={fullAddress} showBalance size="lg" />
+        </div>
 
         <Card className="console-bg tech-border p-6">
           <form onSubmit={handleSubmit} className="space-y-6">

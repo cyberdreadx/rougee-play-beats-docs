@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useWallet } from "@/hooks/useWallet";
 import { usePrivyToken } from "@/hooks/usePrivyToken";
 import { useCreateSong } from "@/hooks/useSongBondingCurve";
+import { useUploadSlots } from "@/hooks/useUploadSlots";
+import { UploadSlotsCard } from "@/components/UploadSlotsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +26,7 @@ export default function UploadMusic() {
   const navigate = useNavigate();
   const { fullAddress: address } = useWallet();
   const { getAuthHeaders } = usePrivyToken();
+  const { slotsRemaining, xrgeBalance, xrgeNeeded, refetch: refetchSlots } = useUploadSlots();
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [title, setTitle] = useState("");
@@ -152,6 +155,15 @@ export default function UploadMusic() {
   const performUpload = async () => {
     if (!audioFile || !address) return;
 
+    // Check upload slots before uploading
+    if (slotsRemaining <= 0) {
+      const message = xrgeBalance > 0 
+        ? `No upload slots remaining! You need ${xrgeNeeded.toLocaleString()} more XRGE for unlimited uploads.`
+        : 'No upload slots remaining! Hold 1,000,000 XRGE to unlock unlimited uploads.';
+      toast.error(message);
+      return;
+    }
+
     setUploading(true);
     try {
       const headers = await getAuthHeaders();
@@ -182,6 +194,9 @@ export default function UploadMusic() {
 
       if (uploadError) throw uploadError;
 
+      // Refresh upload slots count
+      refetchSlots();
+
       toast.success('Music uploaded to IPFS successfully!');
 
       // Reset form
@@ -210,11 +225,15 @@ export default function UploadMusic() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto bg-card rounded-lg border border-border p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Music className="w-6 h-6 text-primary" />
-          <h2 className="text-2xl font-bold">Launch Music on ROUGEE</h2>
-        </div>
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Upload Slots Card */}
+        <UploadSlotsCard />
+
+        <div className="bg-card rounded-lg border border-border p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Music className="w-6 h-6 text-primary" />
+            <h2 className="text-2xl font-bold">Launch Music on ROUGEE</h2>
+          </div>
 
         <div className="space-y-4">
           <div>
@@ -342,11 +361,30 @@ export default function UploadMusic() {
 
           <Button
             onClick={handleUpload}
-            disabled={uploading || scanning || !audioFile || !address}
+            disabled={uploading || scanning || !audioFile || !address || slotsRemaining <= 0}
             className="w-full"
           >
-            <Upload className="w-4 h-4 mr-2" />
-            {scanning ? "Scanning for copyright..." : uploading ? "Uploading to IPFS..." : "Upload to IPFS"}
+            {uploading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Uploading to IPFS...
+              </>
+            ) : scanning ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Scanning for copyright...
+              </>
+            ) : slotsRemaining <= 0 ? (
+              <>
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                No Slots Available
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload to IPFS ({slotsRemaining} slots left)
+              </>
+            )}
           </Button>
 
           {!address && (
@@ -414,6 +452,7 @@ export default function UploadMusic() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

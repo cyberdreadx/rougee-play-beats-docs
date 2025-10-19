@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Loader2, ExternalLink, Edit, Music, Play, Pause, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle, Upload } from "lucide-react";
+import { Loader2, ExternalLink, Edit, Music, Play, Pause, Calendar, Instagram, Globe, Users, Wallet, MessageSquare, Send, CheckCircle, Upload, CircleCheckBig } from "lucide-react";
 import { FaXTwitter } from "react-icons/fa6";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { toast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
 import type { Address } from "viem";
 import { HoldersModal } from "@/components/HoldersModal";
+import { XRGETierBadge } from "@/components/XRGETierBadge";
 
 interface Song {
   id: string;
@@ -70,6 +71,9 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const publicClient = usePublicClient();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
+  const [songsPage, setSongsPage] = useState(1);
+  const [hasMoreSongs, setHasMoreSongs] = useState(true);
+  const SONGS_PER_PAGE = 12;
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [holdersCount, setHoldersCount] = useState<number>(0);
@@ -86,32 +90,47 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
 
   const isOwnProfile = fullAddress?.toLowerCase() === walletAddress?.toLowerCase();
 
-  useEffect(() => {
-    const fetchArtistSongs = async () => {
-      if (!walletAddress) return;
+  const fetchArtistSongs = async (loadMore = false) => {
+    if (!walletAddress) return;
 
-      try {
-        setLoadingSongs(true);
-        const { data, error } = await supabase
-          .from("songs")
-          .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at")
-          .ilike("wallet_address", walletAddress)
-          .order("created_at", { ascending: false });
+    try {
+      setLoadingSongs(true);
+      const page = loadMore ? songsPage + 1 : 1;
+      const from = (page - 1) * SONGS_PER_PAGE;
+      const to = from + SONGS_PER_PAGE - 1;
 
-        if (error) throw error;
+      const { data, error, count } = await supabase
+        .from("songs")
+        .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, created_at", { count: 'exact' })
+        .ilike("wallet_address", walletAddress)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      
+      if (loadMore) {
+        setSongs(prev => [...prev, ...(data || [])]);
+        setSongsPage(page);
+      } else {
         setSongs(data || []);
-      } catch (err) {
-        console.error("Error fetching artist songs:", err);
-        toast({
-          title: "Error loading songs",
-          description: "Failed to load artist's music",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingSongs(false);
+        setSongsPage(1);
       }
-    };
+      
+      // Check if there are more songs to load
+      setHasMoreSongs((data?.length || 0) === SONGS_PER_PAGE && (songs.length + (data?.length || 0)) < (count || 0));
+    } catch (err) {
+      console.error("Error fetching artist songs:", err);
+      toast({
+        title: "Error loading songs",
+        description: "Failed to load artist's music",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSongs(false);
+    }
+  };
 
+  useEffect(() => {
     fetchArtistSongs();
   }, [walletAddress]);
 
@@ -499,11 +518,12 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                 {profile.artist_name}
               </h1>
               {profile.verified && (
-                <>
-                  <CheckCircle className="h-5 w-5 text-neon-green" aria-label="Verified artist" />
-                  <Badge className="bg-neon-green/20 text-neon-green border-neon-green">VERIFIED</Badge>
-                </>
+                <CircleCheckBig 
+                  className="h-5 w-5 text-blue-500" 
+                  aria-label="Verified artist"
+                />
               )}
+              <XRGETierBadge walletAddress={walletAddress || null} size="md" />
             </div>
             {profile.artist_ticker && (
               <p className="text-2xl font-mono text-neon-green mb-2">
@@ -754,6 +774,29 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
                     </Card>
                   );
                 })}
+                
+                {/* Load More Button */}
+                {hasMoreSongs && !loadingSongs && (
+                  <div className="flex justify-center pt-6">
+                    <Button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        fetchArtistSongs(true);
+                      }}
+                      variant="outline"
+                      className="font-mono"
+                      type="button"
+                    >
+                      Load More Songs
+                    </Button>
+                  </div>
+                )}
+                
+                {loadingSongs && songs.length > 0 && (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-neon-green" />
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

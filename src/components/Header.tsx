@@ -7,12 +7,13 @@ import WalletButton from "@/components/WalletButton";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { Button } from "@/components/ui/button";
 import { User, Shield, CheckCircle, HelpCircle } from "lucide-react";
+import { UploadSlotsBadge } from "@/components/UploadSlotsBadge";
 
 
 const Header = () => {
   const navigate = useNavigate();
   const { isConnected, fullAddress, isPrivyReady } = useWallet();
-  const { profile } = useCurrentUserProfile();
+  const { profile, isArtist } = useCurrentUserProfile();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -63,6 +64,11 @@ const Header = () => {
 
         {/* Right side buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          {/* Upload Slots Badge - Show for artists */}
+          {isConnected && isArtist && (
+            <UploadSlotsBadge className="hidden md:flex" />
+          )}
+          
           {/* How It Works - always visible */}
           <Button
             variant="ghost"
