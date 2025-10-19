@@ -254,6 +254,10 @@ const StoryViewer = ({
             className="max-h-full max-w-full object-contain"
             onEnded={handleNext}
             onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
+            // Important for PWA/iOS playback
+            crossOrigin="anonymous"
+            controlsList="nodownload noremoteplayback"
+            disablePictureInPicture
           />
         )}
 

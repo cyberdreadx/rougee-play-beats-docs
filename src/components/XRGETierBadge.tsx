@@ -70,22 +70,18 @@ export const XRGETierBadge = ({
             variant="outline"
             className={`
               ${tier.color} ${tier.bgColor} ${tier.borderColor}
-              font-bold font-mono gap-1 cursor-help
+              font-bold font-mono gap-0 cursor-help
               ${sizeClasses[size]}
               ${animationClasses}
               transition-all duration-300 hover:scale-105
               ${className}
             `}
+            aria-label={`${tier.name} tier`}
+            title={tier.name}
           >
-            <span className={iconSizeClasses[size]}>
+            <span className={`${iconSizeClasses[size]} leading-none`}>
               {tier.icon}
             </span>
-            <span>{tier.name}</span>
-            {showBalance && (
-              <span className="text-xs opacity-75">
-                ({(xrgeBalance / 1000000).toFixed(1)}M)
-              </span>
-            )}
           </Badge>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">

@@ -126,6 +126,12 @@ const StoriesBar = () => {
                           <video 
                             src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
                             className="w-full h-full object-cover"
+                            muted
+                            playsInline
+                            // @ts-ignore
+                            webkit-playsinline
+                            preload="metadata"
+                            crossOrigin="anonymous"
                           />
                         )
                       ) : (
@@ -192,6 +198,12 @@ const StoriesBar = () => {
                         <video 
                           src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
                           className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          // @ts-ignore
+                          webkit-playsinline
+                          preload="metadata"
+                          crossOrigin="anonymous"
                         />
                       )}
                     </div>
