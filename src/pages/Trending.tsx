@@ -727,7 +727,7 @@ const Trending = () => {
           <div className="bg-gradient-to-br from-orange-500/10 to-transparent border border-orange-500/20 rounded-xl p-4 backdrop-blur-sm">
             <div className="text-xs text-muted-foreground font-mono mb-1">TOP GAINER</div>
             <div className="text-2xl font-bold font-mono text-orange-400">
-              {topGainerPercent > 0 ? `+${topGainerPercent.toFixed(1)}%` : '...'}
+              {loading ? '...' : topGainerPercent > 0 ? `+${topGainerPercent.toFixed(1)}%` : '0%'}
             </div>
           </div>
           <div className="bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20 rounded-xl p-4 backdrop-blur-sm">

@@ -1,9 +1,9 @@
 // ROUGEE PLAY PWA Service Worker
 // Optimized for XMTP messaging and blockchain music platform
 
-const CACHE_NAME = 'rougee-play-v1';
-const STATIC_CACHE = 'rougee-play-static-v1';
-const DYNAMIC_CACHE = 'rougee-play-dynamic-v1';
+const CACHE_NAME = 'rougee-play-v2';
+const STATIC_CACHE = 'rougee-play-static-v2';
+const DYNAMIC_CACHE = 'rougee-play-dynamic-v2';
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -61,25 +61,23 @@ self.addEventListener('fetch', (event) => {
   
   // Handle different types of requests
   if (request.method === 'GET') {
-    // Static files - cache first
+    // HTML files - network first, cache fallback (for SPA routing)
     if (url.pathname === '/' || url.pathname.includes('.html')) {
       event.respondWith(
-        caches.match(request)
+        fetch(request)
           .then((response) => {
-            if (response) {
-              console.log('📦 Serving from cache:', url.pathname);
-              return response;
+            // Cache successful responses
+            if (response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(STATIC_CACHE)
+                .then((cache) => cache.put(request, responseClone));
             }
-            return fetch(request)
-              .then((response) => {
-                // Cache successful responses
-                if (response.status === 200) {
-                  const responseClone = response.clone();
-                  caches.open(STATIC_CACHE)
-                    .then((cache) => cache.put(request, responseClone));
-                }
-                return response;
-              });
+            return response;
+          })
+          .catch(() => {
+            // Fallback to cache if network fails (offline mode)
+            console.log('📦 Network failed, serving from cache:', url.pathname);
+            return caches.match(request);
           })
       );
     }

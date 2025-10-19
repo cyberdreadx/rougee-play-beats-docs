@@ -25,9 +25,24 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: 'esnext',
+    chunkSizeWarningLimit: 5000, // Increase chunk size warning limit to 5MB
     commonjsOptions: {
       transformMixedEsModules: true,
       include: [/protobufjs/, /node_modules/],
+    },
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress PURE annotation warnings
+        if (warning.code === 'INVALID_ANNOTATION' && warning.message.includes('/*#__PURE__*/')) {
+          return;
+        }
+        // Suppress eval warnings from protobufjs
+        if (warning.code === 'EVAL' && warning.id?.includes('protobufjs')) {
+          return;
+        }
+        // Use default for everything else
+        warn(warning);
+      },
     },
   },
 }));
