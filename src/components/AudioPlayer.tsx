@@ -323,18 +323,19 @@ const AudioPlayer = ({
   };
 
   const preferredGateway = 'https://gateway.lighthouse.storage/ipfs';
-  const audioSource = isAd 
-    ? getIPFSGatewayUrl(currentAd.audio_cid, preferredGateway, false) // Prefer direct Lighthouse
-    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, preferredGateway, false) : "");
-
-  // Build fallback URLs: other public gateways, then proxy last
-  const baseFallbacks = isAd 
-    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // Direct IPFS gateways
-    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
+  // Prefer Supabase IPFS proxy first for reliable streaming & CORS; fallback to direct gateways
   const proxyUrl = isAd 
     ? getIPFSGatewayUrl(currentAd.audio_cid, undefined, true)
     : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, undefined, true) : '');
-  const fallbackUrls = proxyUrl ? [...baseFallbacks, proxyUrl] : baseFallbacks;
+  const directPrimaryUrl = isAd
+    ? getIPFSGatewayUrl(currentAd.audio_cid, preferredGateway, false)
+    : (currentSong ? getIPFSGatewayUrl(currentSong.audio_cid, preferredGateway, false) : '');
+  const baseFallbacks = isAd 
+    ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // Direct IPFS gateways
+    : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
+  const audioSource = proxyUrl || directPrimaryUrl;
+  // Ensure primary direct URL is first in fallbacks, followed by other gateways
+  const fallbackUrls = [directPrimaryUrl, ...baseFallbacks].filter(Boolean);
 
   // Handle audio loading errors with fallback
   const handleAudioError = () => {
@@ -806,7 +807,6 @@ const AudioPlayer = ({
         src={fallbackUrls[currentAudioUrlIndex] || audioSource}
         preload="metadata"
         playsInline
-        crossOrigin="anonymous"
         controlsList="nodownload"
         x-webkit-airplay="allow"
         
