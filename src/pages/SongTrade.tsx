@@ -1444,9 +1444,25 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
           {/* Trade Tab */}
           <TabsContent value="trade" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
-              {/* Buy Card */}
-              <Card className="console-bg tech-border p-4 md:p-6">
+            {!isConnected ? (
+              <Card className="console-bg tech-border p-8 text-center">
+                <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-mono font-bold mb-2">Connect Wallet to Trade</h3>
+                <p className="text-sm text-muted-foreground font-mono mb-4">
+                  You need to connect your wallet to buy or sell song tokens
+                </p>
+                <Button 
+                  variant="neon" 
+                  onClick={() => navigate('/')}
+                  className="font-mono"
+                >
+                  CONNECT WALLET
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
+                {/* Buy Card */}
+                <Card className="console-bg tech-border p-4 md:p-6">
                 <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
                   <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 text-green-500" />
                   {song?.cover_cid ? (
@@ -1804,7 +1820,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                   </p>
                 </div>
               </Card>
-            </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Chart Tab */}
