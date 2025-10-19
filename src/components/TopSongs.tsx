@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { AiBadge } from "@/components/AiBadge";
 
 interface Song {
   id: string;
@@ -21,6 +22,7 @@ interface Song {
   created_at: string;
   ticker?: string | null;
   genre?: string | null;
+  ai_usage?: 'none' | 'partial' | 'full' | null;
 }
 
 interface TopSongsProps {
@@ -73,7 +75,7 @@ const fetchSongs = async () => {
   try {
     const { data, error } = await supabase
       .from('songs')
-      .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at')
+      .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, ai_usage')
       .order('play_count', { ascending: false })
       .limit(10);
 
@@ -194,6 +196,7 @@ const fetchSongs = async () => {
                     {song.ticker && (
                       <span className="text-neon-green text-xs md:text-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110">${song.ticker}</span>
                     )}
+                    <AiBadge aiUsage={song.ai_usage} size="sm" />
                   </div>
                   {song.artist && (
                     <Link

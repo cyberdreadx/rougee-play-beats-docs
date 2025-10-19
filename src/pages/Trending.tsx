@@ -17,6 +17,7 @@ import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { useSongPrice } from "@/hooks/useSongBondingCurve";
 import { useReadContract, usePublicClient } from "wagmi";
 import { Address } from "viem";
+import { AiBadge } from "@/components/AiBadge";
 
 interface Artist {
   wallet_address: string;
@@ -39,6 +40,7 @@ interface Song {
   ticker: string | null;
   genre: string | null;
   created_at: string;
+  ai_usage?: 'none' | 'partial' | 'full' | null;
 }
 
 const SONG_TOKEN_ABI = [
@@ -271,6 +273,7 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
               {song.ticker && (
                 <span className="text-xs text-neon-green font-mono">${song.ticker}</span>
               )}
+              <AiBadge aiUsage={song.ai_usage} size="sm" />
               {/* Top gainer badge */}
               {change24h > 50 && (
                 <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-mono font-bold">
@@ -382,7 +385,7 @@ const Trending = () => {
               .limit(50),
             supabase
               .from("songs")
-              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address")
+              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
               .not("token_address", "is", null) // Only show deployed songs
               .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%`)
               .order("play_count", { ascending: false })
@@ -406,7 +409,7 @@ const Trending = () => {
               .limit(50),
             supabase
               .from("songs")
-              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address")
+              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
               .not("token_address", "is", null) // Only show deployed songs
               .order("play_count", { ascending: false })
               .limit(50)
