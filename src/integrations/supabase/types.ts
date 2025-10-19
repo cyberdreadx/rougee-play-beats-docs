@@ -491,6 +491,7 @@ export type Database = {
       }
       songs: {
         Row: {
+          ai_usage: Database["public"]["Enums"]["ai_usage_type"]
           artist: string | null
           audio_cid: string
           cover_cid: string | null
@@ -507,6 +508,7 @@ export type Database = {
           wallet_address: string
         }
         Insert: {
+          ai_usage?: Database["public"]["Enums"]["ai_usage_type"]
           artist?: string | null
           audio_cid: string
           cover_cid?: string | null
@@ -523,6 +525,7 @@ export type Database = {
           wallet_address: string
         }
         Update: {
+          ai_usage?: Database["public"]["Enums"]["ai_usage_type"]
           artist?: string | null
           audio_cid?: string
           cover_cid?: string | null
@@ -876,6 +879,7 @@ export type Database = {
       }
     }
     Enums: {
+      ai_usage_type: "none" | "partial" | "full"
       app_role: "admin" | "artist" | "listener"
       report_type: "copyright" | "hate_speech" | "other"
       verification_status: "pending" | "approved" | "rejected"
@@ -1006,6 +1010,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_usage_type: ["none", "partial", "full"],
       app_role: ["admin", "artist", "listener"],
       report_type: ["copyright", "hate_speech", "other"],
       verification_status: ["pending", "approved", "rejected"],

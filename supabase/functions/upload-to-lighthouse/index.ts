@@ -90,7 +90,8 @@ serve(async (req) => {
           title: z.string().min(1).max(200),
           artist: z.string().max(200).optional(),
           genre: z.string().max(100).optional(),
-          description: z.string().max(1000).optional()
+          description: z.string().max(1000).optional(),
+          aiUsage: z.enum(['none', 'partial', 'full']).optional()
         });
         const metadataValidation = MetadataSchema.safeParse(parsedMetadata);
         if (!metadataValidation.success) {
@@ -197,6 +198,7 @@ serve(async (req) => {
         genre: metadataJson.genre,
         description: metadataJson.description,
         ticker: metadataJson.ticker,
+        ai_usage: parsedMetadata.aiUsage || 'none',
       })
       .select()
       .single();

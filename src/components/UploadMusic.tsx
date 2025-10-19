@@ -34,6 +34,7 @@ export default function UploadMusic() {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [aiUsage, setAiUsage] = useState<'none' | 'partial' | 'full'>('none');
   const [copyrightWarning, setCopyrightWarning] = useState<{
     show: boolean;
     detectedInfo: any;
@@ -165,7 +166,8 @@ export default function UploadMusic() {
         artist,
         genre,
         description,
-        ticker
+        ticker,
+        aiUsage
       }));
 
       // Upload to IPFS
@@ -188,6 +190,7 @@ export default function UploadMusic() {
       setGenre("");
       setDescription("");
       setTicker("");
+      setAiUsage('none');
       setAudioFile(null);
       setCoverFile(null);
       setCoverPreview(null);
@@ -317,6 +320,24 @@ export default function UploadMusic() {
               maxLength={10}
               disabled={uploading || scanning}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="ai-usage">AI Usage</Label>
+            <select
+              id="ai-usage"
+              value={aiUsage}
+              onChange={(e) => setAiUsage(e.target.value as 'none' | 'partial' | 'full')}
+              disabled={uploading || scanning}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="none">No AI Used</option>
+              <option value="partial">Partially AI Generated</option>
+              <option value="full">Fully AI Generated</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Indicate if AI was used to create this track
+            </p>
           </div>
 
           <Button
