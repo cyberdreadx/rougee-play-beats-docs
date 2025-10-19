@@ -98,6 +98,19 @@ const AudioPlayer = ({
     fetchArtistData();
   }, [currentSong?.wallet_address]);
 
+  // Computed values (must come before handlers that use them)
+  const isAd = !!currentAd;
+  const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
+  const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
+  const coverCid = isAd ? currentAd.image_cid : currentSong?.cover_cid;
+  const displayCover = coverCid ? getIPFSGatewayUrl(coverCid) : "";
+
+  // Get multiple fallback URLs for the cover image
+  const coverFallbackUrls = coverCid ? getIPFSGatewayUrls(coverCid, 3, false) : [];
+
+  // Get current cover URL to try
+  const currentCoverUrl = coverFallbackUrls[currentCoverUrlIndex] || displayCover;
+
   // Handle cover image load success
   const handleCoverImageLoad = () => {
     setCoverImageLoaded(true);
@@ -115,9 +128,6 @@ const AudioPlayer = ({
       setCoverImageError(false); // Reset error state to try next URL
     }
   };
-
-  // Get current cover URL to try
-  const currentCoverUrl = coverFallbackUrls[currentCoverUrlIndex] || displayCover;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -243,14 +253,6 @@ const AudioPlayer = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const isAd = !!currentAd;
-  const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
-  const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
-  const coverCid = isAd ? currentAd.image_cid : currentSong?.cover_cid;
-  const displayCover = coverCid ? getIPFSGatewayUrl(coverCid) : "";
-
-  // Get multiple fallback URLs for the cover image
-  const coverFallbackUrls = coverCid ? getIPFSGatewayUrls(coverCid, 3, false) : [];
   const preferredGateway = 'https://gateway.lighthouse.storage/ipfs';
   const audioSource = isAd 
     ? getIPFSGatewayUrl(currentAd.audio_cid, preferredGateway, false) // Prefer direct Lighthouse
