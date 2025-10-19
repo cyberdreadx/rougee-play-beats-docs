@@ -241,14 +241,12 @@ const StoryViewer = ({
             </p>
           </div>
         </div>
-        <Button 
-          variant="ghost" 
-          size="lg" 
+        <button 
           onClick={onClose} 
-          className="text-white bg-black/50 backdrop-blur-sm rounded-full p-3 hover:bg-black/70 min-w-[60px] min-h-[60px]"
+          className="text-white bg-transparent hover:bg-black/20 rounded-full p-2 transition-all z-30"
         >
-          <X className="w-8 h-8" />
-        </Button>
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Media */}
@@ -261,49 +259,48 @@ const StoryViewer = ({
           />
         ) : (
           <video
+            ref={(el) => {
+              if (el) {
+                el.muted = isMuted;
+              }
+            }}
             src={supabase.storage.from('stories').getPublicUrl(currentStory.media_path).data.publicUrl}
             autoPlay
             playsInline
-            // iOS Safari inline playback hint
             controls={false}
             preload="metadata"
             className="max-h-full max-w-full object-contain"
             onEnded={handleNext}
             onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
-            // Important for PWA/iOS playback
             crossOrigin="anonymous"
             controlsList="nodownload noremoteplayback"
             disablePictureInPicture
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent closing the story
-              toggleMute();
-            }}
-            muted={isMuted}
           />
         )}
 
-        {/* Mute/Unmute button - moved to bottom right to avoid conflict with close button */}
-        <div className="absolute bottom-4 right-4">
-          <Button
-            variant="ghost"
-            size="lg"
+        {/* Instagram-style mute button - top right, small and subtle */}
+        {currentStory.media_type === "video" && (
+          <button
             onClick={(e) => {
               e.stopPropagation();
               toggleMute();
             }}
-            className="bg-black/70 backdrop-blur-sm rounded-full p-3 text-white hover:bg-black/80 min-w-[60px] min-h-[60px]"
+            className="absolute top-20 right-4 bg-black/50 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/70 transition-all z-20"
+            style={{
+              top: 'calc(4rem + env(safe-area-inset-top, 0px))'
+            }}
           >
             {isMuted ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
               </svg>
             ) : (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
               </svg>
             )}
-          </Button>
-        </div>
+          </button>
+        )}
 
         {/* Caption and Stats */}
         <div className="absolute bottom-20 left-0 right-0 px-8">
@@ -328,46 +325,33 @@ const StoryViewer = ({
       </div>
 
       {/* Like Button */}
-      <div className="absolute bottom-32 right-8 z-10">
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`w-14 h-14 rounded-full ${hasLiked ? 'bg-red-500/20' : 'bg-black/50'}`}
-          onClick={handleLike}
+      <div className="absolute bottom-32 right-8 z-20">
+        <button
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${hasLiked ? 'bg-red-500/20' : 'bg-black/30 hover:bg-black/50'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLike();
+          }}
         >
           <Heart 
-            className={`w-7 h-7 ${hasLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
+            className={`w-6 h-6 ${hasLiked ? 'fill-red-500 text-red-500' : 'text-white'}`}
           />
-        </Button>
+        </button>
       </div>
 
-      {/* Navigation */}
-      <div className="absolute inset-0 flex">
-        <div className="flex-1 cursor-pointer" onClick={handlePrevious} />
-        <div className="flex-1 cursor-pointer" onClick={handleNext} />
-      </div>
-
-      {/* Navigation buttons */}
-      {currentWalletIndex > 0 && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-white"
+      {/* Instagram-style Navigation - tap left/right to navigate */}
+      <div className="absolute inset-0 flex z-10">
+        {/* Left tap zone - 1/3 of screen */}
+        <div 
+          className="w-1/3 cursor-pointer" 
           onClick={handlePrevious}
-        >
-          <ChevronLeft className="w-8 h-8" />
-        </Button>
-      )}
-      {currentWalletIndex < walletAddresses.length - 1 && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-white"
+        />
+        {/* Right tap zone - 2/3 of screen */}
+        <div 
+          className="flex-1 cursor-pointer" 
           onClick={handleNext}
-        >
-          <ChevronRight className="w-8 h-8" />
-        </Button>
-      )}
+        />
+      </div>
     </div>
   );
 };
