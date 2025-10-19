@@ -75,47 +75,72 @@ serve(async (req) => {
     // Upload media to Lighthouse if provided
     if (mediaFile) {
       console.log('Uploading media to Lighthouse:', mediaFile.name, 'Size:', mediaFile.size);
-      
-      try {
+
+      const attemptUpload = async (attempt: number) => {
         const uploadFormData = new FormData();
         uploadFormData.append('file', mediaFile);
 
-        // Add timeout to Lighthouse upload (30 seconds)
-        const uploadController = new AbortController();
-        const uploadTimeout = setTimeout(() => uploadController.abort(), 30000);
+        const timeoutMs = 90000; // 90 seconds
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-        const uploadResponse = await fetch(
-          'https://node.lighthouse.storage/api/v0/add',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${lighthouseApiKey}`,
-            },
-            body: uploadFormData,
-            signal: uploadController.signal,
+        try {
+          const uploadResponse = await fetch(
+            'https://node.lighthouse.storage/api/v0/add',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${lighthouseApiKey}`,
+              },
+              body: uploadFormData,
+              signal: controller.signal,
+            }
+          );
+
+          clearTimeout(timer);
+
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text().catch(() => '');
+            console.error(`Lighthouse upload failed (attempt ${attempt}):`, uploadResponse.status, errorText);
+            throw new Error(`Lighthouse upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
           }
-        );
 
-        clearTimeout(uploadTimeout);
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
-          console.error('Lighthouse upload failed:', uploadResponse.status, errorText);
-          throw new Error(`Lighthouse upload failed: ${uploadResponse.statusText}`);
+          const uploadData = await uploadResponse.json();
+          return uploadData;
+        } catch (uploadError: any) {
+          clearTimeout(timer);
+          console.error(`Upload error (attempt ${attempt}):`, uploadError);
+          throw uploadError;
         }
+      };
 
-        const uploadData = await uploadResponse.json();
-        mediaCid = uploadData.Hash;
-        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 
-                    mediaFile.type.startsWith('video/') ? 'video' : 'other';
-        
-        console.log('Media uploaded to IPFS:', mediaCid);
-      } catch (uploadError) {
-        console.error('Upload error:', uploadError);
-        if (uploadError.name === 'AbortError') {
-          throw new Error('Media upload timed out. Please try again with a smaller file.');
+      let lastError: any = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const uploadData = await attemptUpload(attempt);
+          mediaCid = uploadData.Hash;
+          mediaType = mediaFile.type.startsWith('image/') ? 'image' :
+                      mediaFile.type.startsWith('video/') ? 'video' : 'other';
+
+          console.log('Media uploaded to IPFS:', mediaCid);
+          break;
+        } catch (e: any) {
+          lastError = e;
+          if (e?.name === 'AbortError') {
+            console.warn(`Upload attempt ${attempt} timed out after 90s`);
+          }
+          // Small backoff before retrying
+          if (attempt < 2) {
+            await new Promise((r) => setTimeout(r, 1500));
+          }
         }
-        throw new Error(`Failed to upload media: ${uploadError.message}`);
+      }
+
+      if (!mediaCid) {
+        const reason = lastError?.name === 'AbortError'
+          ? 'Media upload timed out. Please try again shortly.'
+          : `Failed to upload media: ${lastError?.message || 'Unknown error'}`;
+        throw new Error(reason);
       }
     }
 
