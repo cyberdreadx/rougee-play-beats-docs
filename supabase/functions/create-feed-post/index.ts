@@ -86,7 +86,7 @@ serve(async (req) => {
 
         try {
           const uploadResponse = await fetch(
-            'https://node.lighthouse.storage/api/v0/add',
+            'https://upload.lighthouse.storage/api/v0/add',
             {
               method: 'POST',
               headers: {
