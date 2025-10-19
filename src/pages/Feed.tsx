@@ -158,7 +158,6 @@ export default function Feed() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'x-privy-token': token || '',
         },
         body: formData
       });
