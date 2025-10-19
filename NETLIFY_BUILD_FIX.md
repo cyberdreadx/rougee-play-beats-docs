@@ -5,6 +5,7 @@ Netlify build was failing due to:
 1. Missing `lovable-tagger` - a private dependency that Netlify couldn't install
 2. Missing build configuration for Netlify
 3. No proper SPA routing redirects
+4. Import statement with file extension (`./App.tsx`) causing module resolution issues
 
 ## Solution Applied
 
@@ -34,7 +35,12 @@ Netlify build was failing due to:
 - This fixes the home page navigation issue
 - Users now get fresh content instead of stale cached versions
 
-### 6. Suppressed Build Warnings
+### 6. Fixed Import Statement in `src/main.tsx`
+- Changed `import App from "./App.tsx"` to `import App from "./App"`
+- Removed file extension from import (common practice and required by some build systems)
+- This resolves the "Can't resolve './App'" error on Netlify
+
+### 7. Suppressed Build Warnings
 - Suppressed `/*#__PURE__*/` annotation warnings from dependencies
 - Suppressed eval warnings from protobufjs
 - Increased chunk size warning limit to 5MB
@@ -46,6 +52,7 @@ Netlify build was failing due to:
 - ✅ `vite.config.ts` (safe import for lovable-tagger + warning suppression)
 - ✅ `public/sw.js` (network-first strategy + cache version bump)
 - ✅ `src/pages/Trending.tsx` (fixed "..." display in TOP GAINER stat)
+- ✅ `src/main.tsx` (removed .tsx extension from App import)
 
 ## Testing
 Local build tested successfully:
