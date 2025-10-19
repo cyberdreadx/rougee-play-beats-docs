@@ -7,7 +7,7 @@ import { Address } from 'viem';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface TradeData {
+export interface TradeData {
   timestamp: number;
   price: number;
   type: 'buy' | 'sell';
@@ -30,14 +30,32 @@ interface SongTradingHistoryProps {
   coverCid?: string;
   currentPriceInXRGE?: number;
   onVolumeCalculated?: (volume24h: number) => void; // Callback to pass 24h volume
+  showRecentTrades?: boolean; // Whether to show the recent trades section
+  onTradesLoaded?: (trades: TradeData[]) => void; // Callback to pass trades data
 }
 
-const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, songTicker, coverCid, onVolumeCalculated }: SongTradingHistoryProps) => {
+const SongTradingHistory = ({ 
+  tokenAddress, 
+  xrgeUsdPrice, 
+  currentPriceInXRGE, 
+  songTicker, 
+  coverCid, 
+  onVolumeCalculated,
+  showRecentTrades = true,
+  onTradesLoaded
+}: SongTradingHistoryProps) => {
   const [trades, setTrades] = useState<TradeData[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState<'1H' | '24H' | '7D' | '30D' | 'ALL'>('ALL');
   const publicClient = usePublicClient();
+
+  // Pass trades data to parent whenever it changes
+  useEffect(() => {
+    if (onTradesLoaded) {
+      onTradesLoaded(trades);
+    }
+  }, [trades, onTradesLoaded]);
 
   // Calculate 24h volume whenever trades change
   useEffect(() => {
@@ -402,9 +420,10 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
       </Card>
 
       {/* Recent Trades */}
-      <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
-        <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+      {showRecentTrades && (
+        <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
+          <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
           {trades.length === 0 ? (
             <p className="text-muted-foreground font-mono text-xs sm:text-sm text-center py-4">No trades yet</p>
           ) : (
@@ -463,6 +482,7 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, so
           )}
         </div>
       </Card>
+      )}
     </div>
   );
 };

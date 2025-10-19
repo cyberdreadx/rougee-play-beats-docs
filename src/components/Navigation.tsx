@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music, MessageSquare } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music, MessageSquare, Search } from "lucide-react";
 import MusicBars from "./MusicBars";
 import { useState, useEffect } from "react";
 
@@ -58,20 +58,13 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "UPLOAD", path: "/upload", icon: Upload },
   ];
 
-  // Mobile tabs - essential only (no How It Works, no Upload, no Become Artist)
+  // Mobile tabs - SoundCloud/Spotify style with labels
   const mobileTabs = [
-    { name: "DISCOVER", path: "/", icon: Compass },
-    { name: "GLTCH FEED", path: "/feed", icon: Radio },
-    { name: "TRENDING", path: "/trending", icon: TrendingUp },
-    { name: "PLAYLISTS", path: "/playlists", icon: Music },
-    { name: "MESSAGES", path: "/messages", icon: MessageSquare },
-    { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
-    { name: "WALLET", path: "/wallet", icon: Wallet },
-    // Always include a profile entry for listeners/artists
-    ...(isArtist 
-      ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
-      : [{ name: "PROFILE", path: "/profile/edit", icon: User }]
-    ),
+    { name: "Home", path: "/", icon: Compass },
+    { name: "Feed", path: "/feed", icon: Radio },
+    { name: "Trending", path: "/trending", icon: TrendingUp },
+    { name: "Wallet", path: "/wallet", icon: Wallet },
+    { name: "Profile", path: isArtist ? `/artist/${fullAddress}` : "/profile/edit", icon: User },
   ];
 
   const handleTabClick = (tab: typeof desktopTabs[0]) => {
@@ -124,7 +117,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     <>
       {/* Desktop Navigation */}
       <nav className="hidden md:block w-full px-6 py-4">
-        <div className="flex items-center space-x-2 bg-black/10 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+        <div className="flex items-center space-x-2 bg-black/10 backdrop-blur-xl border border-neon-green/30 rounded-2xl p-2 shadow-2xl">
           <MusicBars bars={4} className="mr-3 text-neon-green/80" />
           {desktopTabs.map((tab) => (
             <Button
@@ -134,8 +127,8 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
               className={`
                 font-mono text-sm px-4 py-2 rounded-xl transition-all duration-300 backdrop-blur-sm
                 ${isActive(tab) 
-                  ? 'bg-white/10 text-neon-green border border-neon-green/30 shadow-lg shadow-neon-green/20' 
-                  : 'text-white/60 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                  ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 shadow-lg shadow-neon-green/40 font-bold' 
+                  : 'text-white/70 hover:text-neon-green hover:bg-neon-green/5 hover:border-neon-green/20 border border-transparent'
                 }
               `}
               onClick={() => handleTabClick(tab)}
@@ -147,29 +140,31 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
         </div>
       </nav>
 
-      {/* Mobile Bottom Navigation - Essential tabs only (Upload from desktop/profile) */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10 supports-[backdrop-filter]:bg-black/80 transition-transform duration-300 ${
+      {/* Mobile Bottom Navigation - ROUGEE Cyber Style */}
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-neon-green/30 transition-transform duration-300 ${
         isMobileNavVisible ? 'translate-y-0' : 'translate-y-full'
       }`} style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}>
-        <div className="flex justify-around items-center h-16 px-1">
+        <div className="flex justify-around items-center px-2 py-2">
           {mobileTabs.map((tab) => {
             const Icon = tab.icon;
+            const active = isActive(tab);
             return (
-              <Button
+              <button
                 key={tab.name}
-                variant="ghost"
-                size="icon"
                 className={`
-                  h-12 w-12 rounded-xl transition-all duration-300 backdrop-blur-sm
-                  ${isActive(tab) 
-                    ? 'bg-white/10 text-neon-green border border-neon-green/30 shadow-lg shadow-neon-green/20' 
-                    : 'text-white/60 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                  flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-lg transition-all duration-200 min-w-[60px]
+                  ${active 
+                    ? 'text-neon-green bg-neon-green/10 border border-neon-green/30' 
+                    : 'text-white/60 hover:text-neon-green hover:bg-neon-green/5 active:scale-95 border border-transparent'
                   }
                 `}
                 onClick={() => handleTabClick(tab)}
               >
-                <Icon className="h-5 w-5" />
-              </Button>
+                <Icon className={`h-6 w-6 ${active ? 'drop-shadow-[0_0_10px_rgba(0,255,159,0.6)]' : ''}`} />
+                <span className={`text-[10px] font-mono ${active ? 'font-bold' : 'font-medium'}`}>
+                  {tab.name}
+                </span>
+              </button>
             );
           })}
         </div>

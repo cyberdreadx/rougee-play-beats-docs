@@ -8,7 +8,7 @@ import { useSongPrice } from "@/hooks/useSongBondingCurve";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw, Send, Music2 } from "lucide-react";
+import { Loader2, Wallet as WalletIcon, Copy, Check, CreditCard, ArrowDownToLine, RefreshCw, Send, Music2, ArrowLeftRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBalance, useReadContract, useSendTransaction, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { supabase } from "@/integrations/supabase/client";
@@ -540,7 +540,7 @@ const Wallet = () => {
             {/* Quick Actions */}
             <Card className="p-3 mb-3 bg-card/50 backdrop-blur border-neon-green/20">
               <p className="text-xs text-muted-foreground font-mono mb-2">Quick Actions</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <Button
                   variant="neon"
                   size="sm"
@@ -549,6 +549,15 @@ const Wallet = () => {
                 >
                   <CreditCard className="h-4 w-4" />
                   <span className="text-[10px]">BUY</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/swap')}
+                  className="font-mono text-xs h-auto py-3 flex-col gap-1 border-neon-green/50"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                  <span className="text-[10px]">SWAP</span>
                 </Button>
                 <Button
                   variant="outline"

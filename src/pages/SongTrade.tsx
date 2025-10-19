@@ -9,8 +9,7 @@ import ktaLogo from "@/assets/tokens/kta.png";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import SongTradingHistory from "@/components/SongTradingHistory";
+import SongTradingHistory, { TradeData } from "@/components/SongTradingHistory";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -47,17 +46,6 @@ interface Song {
   ticker?: string | null;
 }
 
-interface Comment {
-  id: string;
-  wallet_address: string;
-  user_name: string | null;
-  comment_text: string;
-  created_at: string;
-  profiles?: {
-    artist_name: string | null;
-    avatar_cid: string | null;
-  };
-}
 
 interface SongTradeProps {
   playSong: (song: Song) => void;
@@ -81,9 +69,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [loading, setLoading] = useState(true);
   const [buyAmount, setBuyAmount] = useState("");
   const [sellAmount, setSellAmount] = useState("");
-  const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loadingComments, setLoadingComments] = useState(false);
   const [songTokenAddress, setSongTokenAddress] = useState<`0x${string}` | undefined>();
   const [isProcessingBuy, setIsProcessingBuy] = useState(false);
   const [paymentToken, setPaymentToken] = useState<'XRGE' | 'ETH' | 'KTA' | 'USDC'>('XRGE');
@@ -95,6 +80,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [copied, setCopied] = useState(false);
   const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
   const [volume24h, setVolume24h] = useState<number>(0);
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
+  const [recentTrades, setRecentTrades] = useState<TradeData[]>([]);
 
   // Fetch artist profile from IPFS
   const { profile: artistProfile } = useArtistProfile(song?.wallet_address || null);
@@ -181,7 +168,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   useEffect(() => {
     if (songId) {
       fetchSong();
-      fetchComments();
     }
   }, [songId]);
 
@@ -606,36 +592,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
   };
 
-  const fetchComments = async () => {
-    setLoadingComments(true);
-    try {
-      const { data: commentsData, error } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("song_id", songId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch profiles for comment authors
-      const walletAddresses = [...new Set(commentsData?.map(c => c.wallet_address) || [])];
-      const { data: profilesData } = await supabase
-        .from('public_profiles')
-        .select('wallet_address, artist_name, avatar_cid')
-        .in('wallet_address', walletAddresses);
-
-      const commentsWithProfiles = commentsData?.map(comment => ({
-        ...comment,
-        profiles: profilesData?.find(p => p.wallet_address === comment.wallet_address) || null,
-      })) || [];
-
-      setComments(commentsWithProfiles as Comment[]);
-    } catch (error) {
-      // Silent fail for comments
-    } finally {
-      setLoadingComments(false);
-    }
-  };
 
   const handleBuy = async () => {
     if (!isConnected || !fullAddress) {
@@ -1101,52 +1057,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
     }
   };
 
-  const handlePostComment = async () => {
-    if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet to comment",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!commentText.trim()) {
-      toast({
-        title: "Comment required",
-        description: "Please enter a comment",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase.functions.invoke('add-song-comment', {
-        body: {
-          songId,
-          commentText: commentText.trim(),
-          walletAddress: fullAddress,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Comment posted!",
-        description: "Your comment has been added",
-      });
-
-      setCommentText("");
-      fetchComments();
-    } catch (error) {
-      console.error("Error posting comment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to post comment",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleShare = async () => {
     if (!song) return;
@@ -1218,9 +1128,22 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8">
         {/* Song Header */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
-          <Card className="console-bg tech-border p-4 md:p-6 lg:col-span-2">
-            <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6">
-              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 border-2 border-neon-green shrink-0">
+          <Card className="console-bg tech-border p-4 md:p-6 lg:col-span-2 relative overflow-hidden">
+            {/* Background Cover Image with Fade */}
+            <div 
+              className="absolute inset-0 z-0"
+              style={(artistProfile?.cover_cid || song.cover_cid) ? {
+                backgroundImage: `url(${getIPFSGatewayUrl(artistProfile?.cover_cid || song.cover_cid)})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              } : undefined}
+            >
+              {(artistProfile?.cover_cid || song.cover_cid) && (
+                <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background/95" />
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6 relative z-10">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 border-2 border-neon-green shrink-0 shadow-2xl">
                 <AvatarImage
                   src={song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : undefined}
                   className="object-cover"
@@ -1491,40 +1414,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           </Card>
         </div>
 
-        {/* Artist Cover & Trading Chart Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
-          {/* Large Artist Cover Display */}
-          <Card className="console-bg tech-border p-3 md:p-4 lg:p-6 flex items-center justify-center">
-            <div className="w-full aspect-square max-w-md mx-auto">
-              {artistProfile?.cover_cid ? (
-                <img
-                  src={getIPFSGatewayUrl(artistProfile.cover_cid)}
-                  alt={artistProfile.artist_name || song.artist || 'Artist'}
-                  className="w-full h-full object-cover rounded-lg border-2 border-neon-green/50 shadow-lg"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-primary/20 rounded-lg border-2 border-neon-green/50">
-                  <div className="text-center p-4">
-                    <div className="text-4xl md:text-6xl font-mono text-neon-green mb-4">
-                      {(song.artist || song.title).substring(0, 2).toUpperCase()}
-                    </div>
-                    <p className="text-xs md:text-sm text-muted-foreground font-mono">
-                      {song.artist || 'Unknown Artist'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Trading Chart */}
-          <div className="lg:col-span-2">
-            <SongTradingChart 
-              songTokenAddress={songTokenAddress} 
-              priceInXRGE={priceInXRGE}
-              bondingSupply={bondingSupply}
+        {/* Trading History Section */}
+        <div className="mb-6 md:mb-8">
+          {songTokenAddress && song && (
+            <SongTradingHistory 
+              tokenAddress={songTokenAddress}
+              xrgeUsdPrice={prices.xrge || 0}
+              songTicker={song.ticker || undefined}
+              coverCid={song.cover_cid || undefined}
+              currentPriceInXRGE={priceInXRGE}
+              onVolumeCalculated={setVolume24h}
+              showRecentTrades={false}
+              onTradesLoaded={setRecentTrades}
             />
-          </div>
+          )}
         </div>
 
         {/* Main Content */}
@@ -1534,8 +1437,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
             <TabsTrigger value="chart" className="text-xs sm:text-sm">CHART</TabsTrigger>
             <TabsTrigger value="holders" className="text-xs sm:text-sm">HOLDERS</TabsTrigger>
             <TabsTrigger value="comments" className="text-xs sm:text-sm">
-              <span className="hidden sm:inline">COMMENTS ({comments.length})</span>
-              <span className="sm:hidden">💬 ({comments.length})</span>
+              <span className="hidden sm:inline">COMMENTS</span>
+              <span className="sm:hidden">💬</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1557,28 +1460,61 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 </Button>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
+              <div className="space-y-4">
+                {/* Buy/Sell Toggle */}
+                <div className="flex justify-center">
+                  <div className="inline-flex rounded-lg border border-neon-green/30 p-1 bg-black/50 backdrop-blur-sm">
+                    <button
+                      onClick={() => setTradeMode('buy')}
+                      className={`
+                        px-6 md:px-8 py-2 md:py-3 rounded-lg font-mono text-sm md:text-base font-bold transition-all duration-300
+                        ${tradeMode === 'buy' 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/50 shadow-lg shadow-green-500/30' 
+                          : 'text-white/60 hover:text-green-400 hover:bg-green-500/5'
+                        }
+                      `}
+                    >
+                      <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 inline mr-2" />
+                      BUY
+                    </button>
+                    <button
+                      onClick={() => setTradeMode('sell')}
+                      className={`
+                        px-6 md:px-8 py-2 md:py-3 rounded-lg font-mono text-sm md:text-base font-bold transition-all duration-300
+                        ${tradeMode === 'sell' 
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/50 shadow-lg shadow-red-500/30' 
+                          : 'text-white/60 hover:text-red-400 hover:bg-red-500/5'
+                        }
+                      `}
+                    >
+                      <ArrowDownRight className="h-4 w-4 md:h-5 md:w-5 inline mr-2" />
+                      SELL
+                    </button>
+                  </div>
+                </div>
+
                 {/* Buy Card */}
-                <Card className="console-bg tech-border p-4 md:p-6">
-                <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
-                  <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 text-green-500" />
-                  {song?.cover_cid ? (
-                    <Avatar className="h-5 w-5 md:h-6 md:w-6 border border-neon-green">
-                      <AvatarImage
-                        src={getIPFSGatewayUrl(song.cover_cid)}
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
-                        {song.ticker?.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  ) : null}
-                  BUY ${song?.ticker ? song.ticker.toUpperCase() : ''}
-                </h3>
+                {tradeMode === 'buy' && (
+                  <Card className="console-bg tech-border p-4 md:p-6">
+                  <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
+                    <ArrowUpRight className="h-4 w-4 md:h-5 md:w-5 text-green-500" />
+                    {song?.cover_cid ? (
+                      <Avatar className="h-5 w-5 md:h-6 md:w-6 border border-neon-green">
+                        <AvatarImage
+                          src={getIPFSGatewayUrl(song.cover_cid)}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
+                          {song.ticker?.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : null}
+                    BUY ${song?.ticker ? song.ticker.toUpperCase() : ''}
+                  </h3>
 
                 <div className="space-y-3 md:space-y-4">
-                  {/* Transaction Guide - Only show when token is selected */}
-                  {paymentToken && (
+                  {/* Transaction Guide - Only show when amount is entered */}
+                  {paymentToken && buyAmount && parseFloat(buyAmount) > 0 && (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-4">
                       <div className="font-mono text-xs space-y-2">
                         <div className="font-bold text-blue-400">💡 Transaction Guide:</div>
@@ -1822,10 +1758,12 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}
                   </p>
                 </div>
-              </Card>
+                </Card>
+                )}
 
-              {/* Sell Card */}
-              <Card className="console-bg tech-border p-4 md:p-6">
+                {/* Sell Card */}
+                {tradeMode === 'sell' && (
+                  <Card className="console-bg tech-border p-4 md:p-6">
                 <h3 className="text-lg md:text-xl font-mono font-bold neon-text mb-4 flex items-center gap-2">
                   <ArrowDownRight className="h-4 w-4 md:h-5 md:w-5 text-red-500" />
                   {song?.cover_cid ? (
@@ -1916,23 +1854,80 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     {songTokenAddress ? '✅ Bonding curve active' : '⚠️ Song not deployed to bonding curve'}
                   </p>
                 </div>
-              </Card>
+                </Card>
+                )}
               </div>
+            )}
+
+            {/* Recent Trades */}
+            {recentTrades.length > 0 && (
+              <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border mt-4">
+                <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {recentTrades.slice(-10).reverse().map((trade, i) => {
+                    const coverUrl = song?.cover_cid ? `https://ipfs.io/ipfs/${song.cover_cid}` : '/placeholder-cover.png';
+                    const xrgeAmount = trade.xrgeAmount 
+                      ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
+                      : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
+                    const shortAddress = trade.trader 
+                      ? `${trade.trader.slice(0, 4)}...${trade.trader.slice(-4)}`
+                      : 'Unknown';
+                    
+                    return (
+                      <div 
+                        key={i}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold flex-shrink-0 ${
+                            trade.type === 'buy' 
+                              ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-500 border border-red-500/30'
+                          }`}>
+                            {trade.type.toUpperCase()}
+                          </div>
+                          <img 
+                            src={coverUrl} 
+                            alt={song?.ticker || 'Song'} 
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover flex-shrink-0"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder-cover.png';
+                            }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-mono text-xs sm:text-sm font-bold truncate">
+                              {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${song?.ticker?.toUpperCase() || 'SONG'}
+                            </div>
+                            <div className="text-[10px] sm:text-xs text-muted-foreground font-mono flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 truncate">
+                              <span className="hidden sm:inline">{new Date(trade.timestamp).toLocaleString()}</span>
+                              <span className="sm:hidden">{new Date(trade.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-cyan-400 truncate">by {shortAddress}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0 self-end sm:self-auto">
+                          <div className="font-mono text-xs sm:text-sm font-bold text-neon-green">
+                            ${trade.priceUSD < 0.000001 ? trade.priceUSD.toFixed(10) : trade.priceUSD.toFixed(8)}
+                          </div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                            {xrgeAmount} XRGE
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
             )}
           </TabsContent>
 
-          {/* Chart Tab */}
+          {/* Chart Tab - Bonding Curve */}
           <TabsContent value="chart" className="mt-0">
-            {songTokenAddress && song && (
-              <SongTradingHistory 
-                tokenAddress={songTokenAddress}
-                xrgeUsdPrice={prices.xrge || 0}
-                songTicker={song.ticker || undefined}
-                coverCid={song.cover_cid || undefined}
-                currentPriceInXRGE={priceInXRGE}
-                onVolumeCalculated={setVolume24h}
-              />
-            )}
+            <SongTradingChart 
+              songTokenAddress={songTokenAddress} 
+              priceInXRGE={priceInXRGE}
+              bondingSupply={bondingSupply}
+            />
           </TabsContent>
 
           {/* Holders Tab */}
@@ -1987,81 +1982,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 <MessageSquare className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                 COMMENTS
               </h3>
-
-              {/* Post Comment */}
-              <div className="mb-4 md:mb-6 space-y-2 md:space-y-3">
-                <Textarea
-                  placeholder="Share your thoughts..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="font-mono resize-none text-sm"
-                  rows={3}
-                />
-                <Button onClick={handlePostComment} variant="neon" size="sm" className="w-full sm:w-auto">
-                  POST COMMENT
-                </Button>
-              </div>
-
-              {/* Comments List */}
-              <div className="space-y-3 md:space-y-4">
-                {loadingComments ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : comments.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground font-mono">
-                    No comments yet. Be the first!
-                  </div>
-                ) : (
-                  comments.map((comment) => (
-                    <div key={comment.id} className="console-bg p-3 md:p-4 border border-border rounded-lg">
-                      <div className="flex items-start gap-2 md:gap-3">
-                        <div 
-                          className="cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => navigate(`/artist/${comment.wallet_address}`)}
-                        >
-                          <Avatar className="h-8 w-8 md:h-10 md:w-10 border border-neon-green shrink-0">
-                            {comment.profiles?.avatar_cid && (
-                              <AvatarImage
-                                src={getIPFSGatewayUrl(comment.profiles.avatar_cid)}
-                                className="object-cover"
-                              />
-                            )}
-                            <AvatarFallback className="bg-primary/20 text-neon-green font-mono text-xs">
-                              {comment.profiles?.artist_name?.[0]?.toUpperCase() || comment.wallet_address.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                            <p 
-                              className="font-mono text-xs md:text-sm font-semibold truncate cursor-pointer hover:text-neon-green transition-colors"
-                              onClick={() => navigate(`/artist/${comment.wallet_address}`)}
-                            >
-                              {comment.profiles?.artist_name || `${comment.wallet_address.substring(0, 6)}...${comment.wallet_address.substring(38)}`}
-                            </p>
-                            <p className="font-mono text-xs text-muted-foreground">
-                              {new Date(comment.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <p className="font-mono text-xs md:text-sm text-foreground break-words">{comment.comment_text}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              {song && <SongComments songId={song.id} />}
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Comments Section */}
-        {song && (
-          <Card className="mt-6 p-6">
-            <h2 className="text-2xl font-bold font-mono mb-4 neon-text">Comments</h2>
-            <SongComments songId={song.id} />
-          </Card>
-        )}
       </div>
     </div>
   );

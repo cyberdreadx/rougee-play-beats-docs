@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Upload, ExternalLink, Loader2, CheckCircle2, Clock } from "lucide-react";
+import { Upload, ExternalLink, Loader2, CheckCircle2, Clock, ArrowLeftRight, Wallet, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { supabase } from "@/integrations/supabase/client";
@@ -326,11 +326,51 @@ const ProfileEdit = () => {
           />
         )}
 
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-mono font-bold neon-text">
-            {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
-          </h1>
-          <XRGETierBadge walletAddress={fullAddress} showBalance size="lg" />
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-mono font-bold neon-text">
+              {profile ? "EDIT PROFILE" : "CREATE PROFILE"}
+            </h1>
+            <XRGETierBadge walletAddress={fullAddress} showBalance size="lg" />
+          </div>
+          
+          {/* Quick Access Actions */}
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
+            {isArtist && (
+              <Button
+                onClick={() => navigate("/upload")}
+                variant="outline"
+                className="font-mono border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50 flex flex-col items-center gap-1 h-auto py-3"
+              >
+                <Upload className="h-5 w-5 text-neon-green" />
+                <span className="text-xs">Upload</span>
+              </Button>
+            )}
+            <Button
+              onClick={() => navigate("/swap")}
+              variant="outline"
+              className="font-mono border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50 flex flex-col items-center gap-1 h-auto py-3"
+            >
+              <ArrowLeftRight className="h-5 w-5 text-neon-green" />
+              <span className="text-xs">Swap</span>
+            </Button>
+            <Button
+              onClick={() => navigate("/wallet")}
+              variant="outline"
+              className="font-mono border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50 flex flex-col items-center gap-1 h-auto py-3"
+            >
+              <Wallet className="h-5 w-5 text-neon-green" />
+              <span className="text-xs">Wallet</span>
+            </Button>
+            <Button
+              onClick={() => navigate("/messages")}
+              variant="outline"
+              className="font-mono border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50 flex flex-col items-center gap-1 h-auto py-3"
+            >
+              <MessageSquare className="h-5 w-5 text-neon-green" />
+              <span className="text-xs">Messages</span>
+            </Button>
+          </div>
         </div>
 
         <Card className="console-bg tech-border p-6">
