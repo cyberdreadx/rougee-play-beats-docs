@@ -299,6 +299,7 @@ const AudioPlayer = ({
   const handleAudioError = () => {
     if (currentAudioUrlIndex < fallbackUrls.length - 1) {
       const nextIndex = currentAudioUrlIndex + 1;
+      console.log(`🔄 Audio failed, trying fallback ${nextIndex + 1}/${fallbackUrls.length}...`);
       setCurrentAudioUrlIndex(nextIndex);
       
       // Update the audio source
@@ -316,6 +317,14 @@ const AudioPlayer = ({
           }
         }
       }
+    } else {
+      // All fallbacks exhausted
+      console.error('❌ All audio gateways failed for:', displayTitle);
+      toast({
+        title: "Audio Loading Failed",
+        description: "Unable to load audio from any gateway. Please check your connection.",
+        variant: "destructive",
+      });
     }
   };
 

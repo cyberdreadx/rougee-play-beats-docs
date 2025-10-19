@@ -20,7 +20,7 @@ import {
   KTA_TOKEN_ADDRESS,
   USDC_TOKEN_ADDRESS
 } from "@/hooks/useXRGESwap";
-import { useSellSongTokens, useSellQuote, BONDING_CURVE_ADDRESS } from "@/hooks/useSongBondingCurve";
+import { useSellSongTokens, useSellQuote, BONDING_CURVE_ADDRESS, useApproveToken, useSongTokenApproval, useBuySongTokens, useBuyQuote } from "@/hooks/useSongBondingCurve";
 import { ArrowDownUp, Loader2, Info, GripVertical, CreditCard, Music } from "lucide-react";
 import { useFundWallet } from "@privy-io/react-auth";
 import { toast } from "@/hooks/use-toast";
@@ -83,12 +83,45 @@ const Swap = () => {
   const [chartHeight, setChartHeight] = useState(280);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [useUsdInput, setUseUsdInput] = useState(false); // Toggle for USD input mode
   
   // Song tokens state
-  const [songTokens, setSongTokens] = useState<SongToken[]>([]);
+  const [songTokens, setSongTokens] = useState<SongToken[]>([]); // User's holdings (for selling)
+  const [allSongTokens, setAllSongTokens] = useState<SongToken[]>([]); // All deployed songs (for buying)
   const [loadingSongTokens, setLoadingSongTokens] = useState(false);
   
   const { prices, calculateUsdValue } = useTokenPrices();
+
+  // Helper to get token price in USD
+  const getTokenPrice = (token: string): number => {
+    if (token === 'ETH') return prices.eth || 0;
+    if (token === XRGE_TOKEN_ADDRESS) return prices.xrge || 0;
+    if (token === KTA_TOKEN_ADDRESS) return prices.kta || 0;
+    if (token === USDC_TOKEN_ADDRESS) return 1; // USDC is $1
+    return 0; // Song tokens don't have direct USD price
+  };
+
+  // Calculate USD value from token amount
+  const calculateFromUsd = (): string => {
+    if (!fromAmount || Number(fromAmount) <= 0) return "$0.00";
+    const price = getTokenPrice(fromToken);
+    if (price === 0) return "N/A";
+    const usdValue = Number(fromAmount) * price;
+    return `$${usdValue.toFixed(2)}`;
+  };
+
+  // Calculate token amount from USD input
+  const handleUsdInput = (usdValue: string) => {
+    const usd = Number(usdValue);
+    if (usd <= 0 || !usd) {
+      setFromAmount("");
+      return;
+    }
+    const price = getTokenPrice(fromToken);
+    if (price === 0) return;
+    const tokenAmount = usd / price;
+    setFromAmount(tokenAmount.toFixed(6));
+  };
 
   // Swap hooks
   const { 
@@ -107,8 +140,10 @@ const Swap = () => {
     error 
   } = useXRGESwap();
 
-  // Song token sell hooks
+  // Song token hooks
   const { sell: sellSong } = useSellSongTokens();
+  const { buyWithXRGE: buySongWithXRGE } = useBuySongTokens();
+  const { approve: approveToken } = useApproveToken(); // For approving both XRGE and song tokens
   
   // Helper functions
   const isNativeToken = (tokenValue: string): boolean => {
@@ -132,12 +167,20 @@ const Swap = () => {
   
   // Determine token types
   const fromTokenType = getTokenType(fromToken);
+  const toTokenType = getTokenType(toToken);
   const fromSongToken = fromTokenType === 'song' ? getSongToken(fromToken) : undefined;
+  const toSongToken = toTokenType === 'song' ? allSongTokens.find(t => t.token_address === toToken) : undefined;
   
-  // Song token sell quote
+  // Song token sell quote (Song Token -> XRGE)
   const { xrgeOut: songSellQuote, isLoading: songSellQuoteLoading } = useSellQuote(
     fromSongToken?.token_address as Address | undefined,
     fromAmount
+  );
+  
+  // Song token buy quote (XRGE -> Song Token)
+  const { tokensOut: songBuyQuote, isLoading: songBuyQuoteLoading } = useBuyQuote(
+    toSongToken?.token_address as Address | undefined,
+    fromToken === XRGE_TOKEN_ADDRESS && toTokenType === 'song' ? fromAmount : "0"
   );
   
   // Native token quotes (for buying XRGE)
@@ -192,6 +235,11 @@ const Swap = () => {
       return songSellQuote || "0";
     }
     
+    // XRGE → Song token
+    if (fromToken === XRGE_TOKEN_ADDRESS && toTokenType === 'song') {
+      return songBuyQuote || "0";
+    }
+    
     // Native → XRGE
     if (toToken === XRGE_TOKEN_ADDRESS) {
       if (fromToken === 'ETH') return expectedXRGEFromETH || "0";
@@ -211,6 +259,7 @@ const Swap = () => {
   
   const isQuoteLoading = 
     (fromTokenType === 'song' && songSellQuoteLoading) ||
+    (toTokenType === 'song' && songBuyQuoteLoading) ||
     (fromToken === 'ETH' && isBuyQuoteLoadingETH) ||
     (fromToken === KTA_TOKEN_ADDRESS && (isBuyQuoteLoadingKTA || isSellQuoteLoadingKTA)) ||
     (fromToken === USDC_TOKEN_ADDRESS && (isBuyQuoteLoadingUSDC || isSellQuoteLoadingUSDC)) ||
@@ -271,7 +320,7 @@ const Swap = () => {
   const ktaBalanceFormatted = formatTokenBalance(ktaBalance as bigint | undefined, Number(xrgeDecimals || 18));
   const usdcBalanceFormatted = formatTokenBalance(usdcBalance as bigint | undefined, 6);
 
-  // Fetch user's song tokens
+  // Fetch ALL deployed song tokens (for buying) and user's holdings (for selling)
   useEffect(() => {
     const fetchSongTokens = async () => {
       if (!fullAddress || !publicClient) return;
@@ -279,21 +328,24 @@ const Swap = () => {
       try {
         setLoadingSongTokens(true);
         
-        const { data: userSongs, error } = await supabase
+        // Fetch ALL songs that have been deployed to bonding curve
+        const { data: allSongs, error } = await supabase
           .from('songs')
-          .select('id, title, ticker, token_address, cover_cid')
-          .eq('wallet_address', fullAddress)
-          .not('token_address', 'is', null);
+          .select('id, title, ticker, token_address, cover_cid, wallet_address')
+          .not('token_address', 'is', null)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
         
-        if (!userSongs || userSongs.length === 0) {
+        if (!allSongs || allSongs.length === 0) {
           setSongTokens([]);
+          setAllSongTokens([]);
           return;
         }
 
+        // Fetch balances for all songs
         const songsWithBalance = await Promise.all(
-          userSongs.map(async (song) => {
+          allSongs.map(async (song) => {
             try {
               const balance = await publicClient.readContract({
                 address: song.token_address as Address,
@@ -316,9 +368,15 @@ const Swap = () => {
           })
         );
 
+        // User's holdings (for selling) - only tokens with balance > 0
         const tokensWithBalance = songsWithBalance.filter(song => song.balance > BigInt(0));
         setSongTokens(tokensWithBalance as SongToken[]);
-        console.log(`Found ${tokensWithBalance.length} song tokens with balance`);
+        
+        // All deployed songs (for buying)
+        setAllSongTokens(songsWithBalance as SongToken[]);
+        
+        console.log(`Found ${tokensWithBalance.length} song tokens with balance (selling)`);
+        console.log(`Found ${songsWithBalance.length} total deployed song tokens (buying)`);
       } catch (error) {
         console.error('Error fetching song tokens:', error);
       } finally {
@@ -334,6 +392,34 @@ const Swap = () => {
       navigate("/");
     }
   }, [isConnected, isPrivyReady, navigate]);
+
+  // Auto-select XRGE as TO token when a song token is selected in FROM (for selling)
+  useEffect(() => {
+    if (fromTokenType === 'song' && toToken !== XRGE_TOKEN_ADDRESS) {
+      setToToken(XRGE_TOKEN_ADDRESS);
+    }
+  }, [fromToken, fromTokenType, toToken]);
+  
+  // Prevent FROM and TO from being the same token
+  useEffect(() => {
+    if (fromToken === toToken) {
+      // If they're the same, switch TO to a different token
+      if (fromToken === XRGE_TOKEN_ADDRESS) {
+        setToToken('ETH'); // Switch to ETH
+      } else if (fromToken === 'ETH') {
+        setToToken(XRGE_TOKEN_ADDRESS); // Switch to XRGE
+      } else {
+        setToToken(XRGE_TOKEN_ADDRESS); // Default to XRGE
+      }
+    }
+  }, [fromToken, toToken]);
+
+  // Disable USD input mode for song tokens
+  useEffect(() => {
+    if (fromTokenType === 'song' && useUsdInput) {
+      setUseUsdInput(false);
+    }
+  }, [fromToken, fromTokenType, useUsdInput]);
 
   useEffect(() => {
     if (isSuccess) {
@@ -366,18 +452,36 @@ const Swap = () => {
 
     const slippageBps = Number(slippage) * 100;
 
-    // Song token → XRGE (via bonding curve)
+    // Song token → XRGE (via bonding curve - SELLING)
     if (fromTokenType === 'song' && toToken === XRGE_TOKEN_ADDRESS) {
       const songToken = getSongToken(fromToken);
       if (!songToken) {
         toast({ title: "Error", description: "Song token not found", variant: "destructive" });
         return;
       }
-      toast({ title: `Selling ${songToken.ticker?.toUpperCase()}`, description: "Please confirm the transaction...", });
+      
       try {
+        // Step 1: Approve bonding curve to spend song tokens
+        toast({
+          title: "Approval required",
+          description: `Please approve your ${songToken.ticker?.toUpperCase()} tokens for selling`,
+        });
+        
+        await approveToken(songToken.token_address as Address, fromAmount);
+        
+        toast({
+          title: "Approval confirmed",
+          description: "Now processing your sale...",
+        });
+        
+        // Step 2: Execute the sell
         await sellSong(songToken.token_address as Address, fromAmount, "0");
         setFromAmount("");
-        toast({ title: "✅ Swap Successful!", description: `Sold ${fromAmount} ${songToken.ticker?.toUpperCase()} for XRGE`, });
+        
+        toast({ 
+          title: "✅ Swap Successful!", 
+          description: `Sold ${fromAmount} ${songToken.ticker?.toUpperCase()} for XRGE` 
+        });
       } catch (error) {
         console.error("Song sell error:", error);
       }
@@ -406,6 +510,41 @@ const Swap = () => {
         setFromAmount("");
       } catch (error) {
         console.error("Buy XRGE error:", error);
+      }
+      return;
+    }
+
+    // XRGE → Song token (buying song token via bonding curve - BUYING)
+    if (fromToken === XRGE_TOKEN_ADDRESS && toTokenType === 'song') {
+      if (!toSongToken) {
+        toast({ title: "Error", description: "Song token not found", variant: "destructive" });
+        return;
+      }
+      
+      try {
+        // Step 1: Approve bonding curve to spend XRGE
+        toast({
+          title: "Approval required",
+          description: `Please approve XRGE spending to buy ${toSongToken.ticker?.toUpperCase()}`,
+        });
+        
+        await approveToken(XRGE_TOKEN_ADDRESS as Address, fromAmount);
+        
+        toast({
+          title: "Approval confirmed",
+          description: "Now processing your purchase...",
+        });
+        
+        // Step 2: Execute the buy
+        await buySongWithXRGE(toSongToken.token_address as Address, fromAmount, "0");
+        setFromAmount("");
+        
+        toast({ 
+          title: "✅ Swap Successful!", 
+          description: `Bought ${toSongToken.ticker?.toUpperCase()} with ${fromAmount} XRGE` 
+        });
+      } catch (error) {
+        console.error("Song buy error:", error);
       }
       return;
     }
@@ -536,47 +675,6 @@ const Swap = () => {
           </p>
         </div>
 
-        {/* DexScreener Chart */}
-        <Card className="p-3 md:p-6 bg-card border-tech-border mb-4 md:mb-6">
-          <div className="flex items-center justify-between mb-3 md:mb-4">
-            <h2 className="font-mono text-sm md:text-lg font-bold text-neon-green">
-              XRGE Price Chart
-            </h2>
-            <a 
-              href={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-xs text-neon-green hover:underline"
-            >
-              View on DexScreener →
-            </a>
-          </div>
-          <div className="relative w-full" style={{ height: `${chartHeight}px` }}>
-            <iframe
-              src={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}?embed=1&theme=dark&trades=0&info=0`}
-              className="w-full h-full rounded-t-lg border border-tech-border md:rounded-t-xl pointer-events-auto"
-              style={{ border: 0 }}
-              allowFullScreen
-            />
-          </div>
-          <div
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            className={`
-              w-full h-10 flex items-center justify-center cursor-ns-resize touch-none
-              bg-gradient-to-b from-muted/50 to-transparent
-              border-x border-b border-tech-border rounded-b-lg md:rounded-b-xl
-              hover:from-primary/20 active:from-primary/30 transition-colors
-              ${isDragging ? 'from-primary/30' : ''}
-            `}
-          >
-            <div className="flex flex-col items-center gap-0.5">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-mono">DRAG TO RESIZE</span>
-            </div>
-          </div>
-        </Card>
-
         {/* Swap Interface */}
         <Card className="p-4 md:p-6 bg-card border-tech-border">
           <div className="space-y-4">
@@ -589,7 +687,7 @@ const Swap = () => {
                     <SelectTrigger className="font-mono">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[100]">
                       {/* Native Tokens */}
                       <SelectItem value="ETH" className="font-mono">
                         <div className="flex items-center gap-2">
@@ -643,14 +741,53 @@ const Swap = () => {
                     </SelectContent>
                   </Select>
                   
-                  <Input
-                    type="number"
-                    placeholder="0.0"
-                    value={fromAmount}
-                    onChange={(e) => setFromAmount(e.target.value)}
-                    className="font-mono text-2xl h-14 text-right"
-                    step="0.000001"
-                  />
+                  {/* Input Toggle */}
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button
+                      variant={useUsdInput ? "outline" : "ghost"}
+                      size="sm"
+                      className="h-7 px-2 text-xs font-mono"
+                      onClick={() => setUseUsdInput(false)}
+                    >
+                      Token
+                    </Button>
+                    <Button
+                      variant={useUsdInput ? "ghost" : "outline"}
+                      size="sm"
+                      className="h-7 px-2 text-xs font-mono"
+                      onClick={() => setUseUsdInput(true)}
+                      disabled={fromTokenType === 'song'} // Disable for song tokens (no USD price)
+                    >
+                      USD
+                    </Button>
+                  </div>
+
+                  {/* Token Amount Input */}
+                  {!useUsdInput ? (
+                    <Input
+                      type="number"
+                      placeholder="0.0"
+                      value={fromAmount}
+                      onChange={(e) => setFromAmount(e.target.value)}
+                      className="font-mono text-2xl h-14 text-right"
+                      step="0.000001"
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      placeholder="$0.00"
+                      onChange={(e) => handleUsdInput(e.target.value)}
+                      className="font-mono text-2xl h-14 text-right"
+                      step="1"
+                    />
+                  )}
+
+                  {/* USD Value Display */}
+                  {!useUsdInput && fromAmount && Number(fromAmount) > 0 && (
+                    <div className="text-right text-sm text-muted-foreground font-mono">
+                      ≈ {calculateFromUsd()}
+                    </div>
+                  )}
                   
                   <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
                     <span>Balance: {
@@ -699,35 +836,69 @@ const Swap = () => {
               <Label className="font-mono text-xs text-muted-foreground">TO</Label>
               <Card className="p-4 bg-muted/30 border-primary/20">
                 <div className="space-y-3">
-                  <Select value={toToken} onValueChange={(value: any) => setToToken(value)}>
+                  <Select value={toToken} onValueChange={(value: any) => setToToken(value)} disabled={fromTokenType === 'song'}>
                     <SelectTrigger className="font-mono">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ETH" className="font-mono">
-                        <div className="flex items-center gap-2">
-                          <img src={ethLogo} alt="ETH" className="w-5 h-5" />
-                          <span>ETH</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value={XRGE_TOKEN_ADDRESS} className="font-mono">
-                        <div className="flex items-center gap-2">
-                          <img src={xrgeLogo} alt="XRGE" className="w-5 h-5" />
-                          <span>XRGE</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value={KTA_TOKEN_ADDRESS} className="font-mono">
-                        <div className="flex items-center gap-2">
-                          <img src={ktaLogo} alt="KTA" className="w-5 h-5" />
-                          <span>KTA</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value={USDC_TOKEN_ADDRESS} className="font-mono">
-                        <div className="flex items-center gap-2">
-                          <img src={usdcLogo} alt="USDC" className="w-5 h-5" />
-                          <span>USDC</span>
-                        </div>
-                      </SelectItem>
+                    <SelectContent className="z-[100]">
+                      {/* Native Tokens - exclude the FROM token */}
+                      {fromToken !== 'ETH' && (
+                        <SelectItem value="ETH" className="font-mono">
+                          <div className="flex items-center gap-2">
+                            <img src={ethLogo} alt="ETH" className="w-5 h-5" />
+                            <span>ETH</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {fromToken !== XRGE_TOKEN_ADDRESS && (
+                        <SelectItem value={XRGE_TOKEN_ADDRESS} className="font-mono">
+                          <div className="flex items-center gap-2">
+                            <img src={xrgeLogo} alt="XRGE" className="w-5 h-5" />
+                            <span>XRGE</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {fromToken !== KTA_TOKEN_ADDRESS && (
+                        <SelectItem value={KTA_TOKEN_ADDRESS} className="font-mono">
+                          <div className="flex items-center gap-2">
+                            <img src={ktaLogo} alt="KTA" className="w-5 h-5" />
+                            <span>KTA</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      {fromToken !== USDC_TOKEN_ADDRESS && (
+                        <SelectItem value={USDC_TOKEN_ADDRESS} className="font-mono">
+                          <div className="flex items-center gap-2">
+                            <img src={usdcLogo} alt="USDC" className="w-5 h-5" />
+                            <span>USDC</span>
+                          </div>
+                        </SelectItem>
+                      )}
+                      
+                      {/* Song Tokens (show when FROM is XRGE) */}
+                      {fromToken === XRGE_TOKEN_ADDRESS && allSongTokens.length > 0 && (
+                        <>
+                          <div className="px-2 py-1.5 text-xs font-mono text-muted-foreground border-t mt-1">
+                            Music Tokens
+                          </div>
+                          {allSongTokens.map((token) => (
+                            <SelectItem key={token.token_address} value={token.token_address} className="font-mono">
+                              <div className="flex items-center gap-2">
+                                {token.cover_cid ? (
+                                  <img 
+                                    src={getIPFSGatewayUrl(token.cover_cid)} 
+                                    alt={token.title} 
+                                    className="w-5 h-5 rounded object-cover" 
+                                  />
+                                ) : (
+                                  <Music className="w-5 h-5" />
+                                )}
+                                <span>${token.ticker}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   
@@ -740,6 +911,13 @@ const Swap = () => {
                       </span>
                     )}
                   </div>
+
+                  {/* Expected Output USD Value */}
+                  {expectedOutput && Number(expectedOutput) > 0 && toTokenType !== 'song' && (
+                    <div className="text-right text-sm text-muted-foreground font-mono">
+                      ≈ ${(Number(expectedOutput) * getTokenPrice(toToken)).toFixed(2)}
+                    </div>
+                  )}
                   
                   <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
                     <span>Balance: {
@@ -747,6 +925,7 @@ const Swap = () => {
                       toToken === XRGE_TOKEN_ADDRESS ? xrgeBalanceFormatted :
                       toToken === KTA_TOKEN_ADDRESS ? ktaBalanceFormatted :
                       toToken === USDC_TOKEN_ADDRESS ? usdcBalanceFormatted :
+                      toTokenType === 'song' && toSongToken ? formatUnits(toSongToken.balance || BigInt(0), 18) :
                       '0.00'
                     }</span>
                   </div>
@@ -932,6 +1111,47 @@ const Swap = () => {
               <CreditCard className="mr-2 h-4 w-4" />
               BUY ETH WITH APPLE PAY
             </Button>
+          </div>
+        </Card>
+
+        {/* DexScreener Chart */}
+        <Card className="p-3 md:p-6 bg-card border-tech-border mt-6">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h2 className="font-mono text-sm md:text-lg font-bold text-neon-green">
+              XRGE Price Chart
+            </h2>
+            <a 
+              href={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-neon-green hover:underline"
+            >
+              View on DexScreener →
+            </a>
+          </div>
+          <div className="relative w-full" style={{ height: `${chartHeight}px` }}>
+            <iframe
+              src={`https://dexscreener.com/base/${XRGE_TOKEN_ADDRESS}?embed=1&theme=dark&trades=0&info=0`}
+              className="w-full h-full rounded-t-lg border border-tech-border md:rounded-t-xl pointer-events-auto"
+              style={{ border: 0 }}
+              allowFullScreen
+            />
+          </div>
+          <div
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className={`
+              w-full h-10 flex items-center justify-center cursor-ns-resize touch-none
+              bg-gradient-to-b from-muted/50 to-transparent
+              border-x border-b border-tech-border rounded-b-lg md:rounded-b-xl
+              hover:from-primary/20 active:from-primary/30 transition-colors
+              ${isDragging ? 'from-primary/30' : ''}
+            `}
+          >
+            <div className="flex flex-col items-center gap-0.5">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-mono">DRAG TO RESIZE</span>
+            </div>
           </div>
         </Card>
 

@@ -1,11 +1,11 @@
 // ROUGEE PLAY PWA Service Worker
 // Optimized for XMTP messaging and blockchain music platform
 
-const CACHE_NAME = 'rougee-play-v3';
-const STATIC_CACHE = 'rougee-play-static-v3';
-const DYNAMIC_CACHE = 'rougee-play-dynamic-v3';
-const IPFS_CACHE = 'rougee-play-ipfs-v3'; // Immutable IPFS content
-const API_CACHE = 'rougee-play-api-v3'; // API responses
+const CACHE_NAME = 'rougee-play-v4';
+const STATIC_CACHE = 'rougee-play-static-v4';
+const DYNAMIC_CACHE = 'rougee-play-dynamic-v4';
+const IPFS_CACHE = 'rougee-play-ipfs-v4'; // Immutable IPFS content
+const API_CACHE = 'rougee-play-api-v4'; // API responses
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -66,8 +66,38 @@ self.addEventListener('fetch', (event) => {
   
   // Handle different types of requests
   if (request.method === 'GET') {
-    // IPFS content - Cache first (immutable content, cache forever)
-    if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
+    // IPFS Audio files - Network first with range request support (for streaming)
+    if ((url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) && 
+        (url.pathname.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i) || request.headers.get('range'))) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            // Don't cache partial responses (range requests)
+            if (response.status === 200 && !request.headers.get('range')) {
+              const responseClone = response.clone();
+              caches.open(IPFS_CACHE)
+                .then((cache) => {
+                  cache.put(request, responseClone);
+                  console.log('💾 Cached audio:', url.pathname.slice(0, 50));
+                });
+            }
+            return response;
+          })
+          .catch((error) => {
+            console.log('🔴 Audio fetch failed, trying cache:', error);
+            // Fallback to cache only if network fails completely
+            return caches.match(request).then((cachedResponse) => {
+              if (cachedResponse) {
+                console.log('📦 Serving cached audio:', url.pathname.slice(0, 50));
+                return cachedResponse;
+              }
+              throw error;
+            });
+          })
+      );
+    }
+    // IPFS Images/Other - Cache first (immutable content)
+    else if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
       event.respondWith(
         caches.match(request)
           .then((cachedResponse) => {

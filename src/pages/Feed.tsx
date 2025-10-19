@@ -515,7 +515,7 @@ export default function Feed() {
                 value={contentText}
                 onChange={setContentText}
                 placeholder="What's on your mind? Use $ to tag artists and songs..."
-                className="min-h-[100px] resize-none w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[100px] resize-none w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
 
               {mediaPreview && <div className="relative">
@@ -634,7 +634,7 @@ export default function Feed() {
                     e.preventDefault();
                     handleAddComment(post.id);
                   }
-                }} className="flex-1" />
+                }} className="flex-1 text-base" />
                           <Button size="sm" onClick={() => handleAddComment(post.id)} disabled={!commentText[post.id]?.trim()}>
                             <Send className="w-4 h-4" />
                           </Button>
