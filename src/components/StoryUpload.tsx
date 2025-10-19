@@ -159,8 +159,6 @@ const StoryUpload = () => {
                   controls
                   className="w-full h-64 object-cover rounded-lg"
                   playsInline
-                  // @ts-ignore
-                  webkit-playsinline
                   crossOrigin="anonymous"
                   preload="metadata"
                 />

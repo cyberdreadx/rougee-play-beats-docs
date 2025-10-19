@@ -220,29 +220,30 @@ const AudioPlayer = ({
         description: title,
       });
       
-      // PWA-specific: Enhanced error handling for autoplay
+      // Use the same audio.play() method as regular browser
+      // PWA-specific handling is done in the hook
       const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
-          console.error("PWA Playback error:", error);
+          console.error("Audio playback error:", error);
           
-          // PWA-specific error messages
+          // Enhanced error messages for PWA mode
           if (error.name === 'NotAllowedError') {
             toast({
-              title: '🔒 Autoplay blocked in PWA',
-              description: 'Please tap the play button to start audio',
+              title: '🔒 Audio blocked',
+              description: isPWA ? 'Please tap the play button to start audio in PWA mode' : 'Please tap the play button to start audio',
               variant: 'destructive',
             });
           } else if (error.name === 'NotSupportedError') {
             toast({
               title: '❌ Audio format not supported',
-              description: 'This audio format may not work in PWA mode',
+              description: 'This audio format is not supported',
               variant: 'destructive',
             });
           } else {
             toast({
               title: '❌ Playback failed',
-              description: error.message || 'Could not play audio in PWA mode',
+              description: error.message || 'Could not play audio',
               variant: 'destructive',
             });
           }
@@ -295,29 +296,29 @@ const AudioPlayer = ({
       try { audio.pause(); } catch {}
       onPlayPause();
     } else {
-      // PWA-specific: Add user gesture detection
+      // Use the same audio.play() method as regular browser
       const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
       if (playPromise && typeof playPromise.catch === 'function') {
         playPromise.catch((error) => {
-          console.error('Playback error (PWA):', error);
+          console.error('Audio playback error:', error);
           
-          // PWA-specific error handling
+          // Enhanced error handling
           if (error.name === 'NotAllowedError') {
             toast({ 
               title: '🔒 Audio blocked', 
-              description: 'Please tap the play button to start audio playback', 
+              description: isPWA ? 'Please tap the play button to start audio in PWA mode' : 'Please tap the play button to start audio', 
               variant: 'destructive' 
             });
           } else if (error.name === 'NotSupportedError') {
             toast({ 
               title: '❌ Audio not supported', 
-              description: 'This audio format is not supported in PWA mode', 
+              description: 'This audio format is not supported', 
               variant: 'destructive' 
             });
           } else {
             toast({ 
               title: '❌ Playback failed', 
-              description: error.message || 'Could not play audio in PWA mode', 
+              description: error.message || 'Could not play audio', 
               variant: 'destructive' 
             });
           }
@@ -820,7 +821,6 @@ const AudioPlayer = ({
         crossOrigin="anonymous"
         controlsList="nodownload"
         // PWA-specific attributes
-        webkit-playsinline="true"
         x-webkit-airplay="allow"
         // Ensure proper MIME type for PWA compatibility
         type="audio/mpeg"
@@ -832,15 +832,15 @@ const AudioPlayer = ({
         onCanPlay={() => {
           const audio = audioRef.current;
           if (isPlaying && audio && audio.paused) {
-            // PWA-specific: Ensure user gesture before autoplay
+            // Use the same audio.play() method as regular browser
             const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
             if (playPromise && typeof playPromise.catch === 'function') {
               playPromise.catch((error) => {
-                console.error('PWA autoplay blocked:', error);
+                console.error('Audio autoplay blocked:', error);
                 if (error.name === 'NotAllowedError') {
                   toast({
                     title: '🔒 Autoplay blocked',
-                    description: 'Tap play to start audio in PWA mode',
+                    description: isPWA ? 'Tap play to start audio in PWA mode' : 'Tap play to start audio',
                     variant: 'destructive'
                   });
                 }

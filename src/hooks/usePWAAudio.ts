@@ -60,10 +60,11 @@ export const usePWAAudio = () => {
     if (!isPWA) return audioElement.play();
 
     try {
-      // Initialize audio context first
+      // Initialize audio context first (PWA-specific)
       await initializeAudioContext(audioElement);
       
-      // Attempt to play
+      // Use the same audio.play() method as regular browser
+      // The PWA fixes are in the AudioPlayer component, not here
       return await audioElement.play();
     } catch (error) {
       console.error('PWA audio play failed:', error);

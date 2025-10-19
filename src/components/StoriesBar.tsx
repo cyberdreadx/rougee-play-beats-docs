@@ -123,16 +123,29 @@ const StoriesBar = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <video 
-                            src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
-                            className="w-full h-full object-cover"
-                            muted
-                            playsInline
-                            // @ts-ignore
-                            webkit-playsinline
-                            preload="metadata"
-                            crossOrigin="anonymous"
-                          />
+                          <div className="relative w-full h-full">
+                            <video 
+                              src={supabase.storage.from('stories').getPublicUrl(stories[fullAddress][0].media_path).data.publicUrl}
+                              className="w-full h-full object-cover"
+                              playsInline
+                              preload="metadata"
+                              crossOrigin="anonymous"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const video = e.currentTarget;
+                              video.muted = !video.muted;
+                              if (!video.muted) {
+                                video.play().catch(console.error);
+                              }
+                            }}
+                            />
+                            {/* Audio indicator */}
+                            <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                              </svg>
+                            </div>
+                          </div>
                         )
                       ) : (
                         <Avatar className="w-full h-full">
@@ -195,16 +208,29 @@ const StoriesBar = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <video 
-                          src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
-                          className="w-full h-full object-cover"
-                          muted
-                          playsInline
-                          // @ts-ignore
-                          webkit-playsinline
-                          preload="metadata"
-                          crossOrigin="anonymous"
-                        />
+                        <div className="relative w-full h-full">
+                          <video 
+                            src={supabase.storage.from('stories').getPublicUrl(userStories[0].media_path).data.publicUrl}
+                            className="w-full h-full object-cover"
+                            playsInline
+                            preload="metadata"
+                            crossOrigin="anonymous"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const video = e.currentTarget;
+                              video.muted = !video.muted;
+                              if (!video.muted) {
+                                video.play().catch(console.error);
+                              }
+                            }}
+                          />
+                          {/* Audio indicator */}
+                          <div className="absolute top-1 right-1 bg-black/50 rounded-full p-1">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                            </svg>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

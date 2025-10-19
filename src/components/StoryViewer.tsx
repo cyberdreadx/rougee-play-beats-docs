@@ -45,6 +45,7 @@ const StoryViewer = ({
   const [hasLiked, setHasLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   const { fullAddress } = useWallet();
   const { toast } = useToast();
 
@@ -126,6 +127,10 @@ const StoryViewer = ({
     }
   };
 
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
   const handlePrevious = () => {
     if (currentStoryIndex > 0) {
       setCurrentStoryIndex(currentStoryIndex - 1);
@@ -180,9 +185,16 @@ const StoryViewer = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-black flex items-center justify-center" style={{
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      paddingLeft: 'env(safe-area-inset-left, 0px)',
+      paddingRight: 'env(safe-area-inset-right, 0px)'
+    }}>
       {/* Progress bars */}
-      <div className="absolute top-0 left-0 right-0 flex gap-1 p-2 z-10">
+      <div className="absolute top-0 left-0 right-0 flex gap-1 p-2 z-10" style={{
+        paddingTop: 'calc(0.5rem + env(safe-area-inset-top, 0px))'
+      }}>
         {currentStories.map((_, index) => (
           <div key={index} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
             <div
@@ -196,7 +208,9 @@ const StoryViewer = ({
       </div>
 
       {/* Header */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
+      <div className="absolute left-4 right-4 flex items-center justify-between z-10" style={{
+        top: 'calc(1rem + env(safe-area-inset-top, 0px) + 0.5rem)'
+      }}>
         <div 
           className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => {
@@ -244,11 +258,8 @@ const StoryViewer = ({
           <video
             src={supabase.storage.from('stories').getPublicUrl(currentStory.media_path).data.publicUrl}
             autoPlay
-            muted
             playsInline
             // iOS Safari inline playback hint
-            // @ts-ignore
-            webkit-playsinline
             controls={false}
             preload="metadata"
             className="max-h-full max-w-full object-contain"
@@ -258,8 +269,36 @@ const StoryViewer = ({
             crossOrigin="anonymous"
             controlsList="nodownload noremoteplayback"
             disablePictureInPicture
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent closing the story
+              toggleMute();
+            }}
+            muted={isMuted}
           />
         )}
+
+        {/* Mute/Unmute button */}
+        <div className="absolute top-4 right-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="bg-black/50 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/70"
+          >
+            {isMuted ? (
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            )}
+          </Button>
+        </div>
 
         {/* Caption and Stats */}
         <div className="absolute bottom-20 left-0 right-0 px-8">

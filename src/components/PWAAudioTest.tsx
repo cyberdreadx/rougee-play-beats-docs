@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePWAAudio } from '@/hooks/usePWAAudio';
 import { useToast } from '@/hooks/use-toast';
+import { getIPFSGatewayUrl } from '@/lib/ipfs';
 
 export default function PWAAudioTest() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -11,6 +12,7 @@ export default function PWAAudioTest() {
   const { isPWA, audioSupported, handlePWAAudioPlay } = usePWAAudio();
 
   const testAudio = () => {
+    // Use the same audio fetching pattern as your app
     const audio = new Audio(audioUrl);
     
     if (isPlaying) {
@@ -21,6 +23,7 @@ export default function PWAAudioTest() {
         description: 'Test audio playback stopped'
       });
     } else {
+      // Use the same audio.play() method as your regular app
       const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
       
       if (playPromise && typeof playPromise.catch === 'function') {
@@ -31,7 +34,7 @@ export default function PWAAudioTest() {
             description: 'Test audio playback started'
           });
         }).catch((error) => {
-          console.error('PWA audio test failed:', error);
+          console.error('Audio test failed:', error);
           toast({
             title: '❌ Audio test failed',
             description: `Error: ${error.message}`,
