@@ -148,19 +148,25 @@ export default function Feed() {
     setPosting(true);
     try {
       const token = await getAccessToken();
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${token}`,
-      };
       
       const formData = new FormData();
       if (contentText) formData.append('content_text', contentText);
       if (mediaFile) formData.append('media', mediaFile);
       if (fullAddress) formData.append('walletAddress', fullAddress);
-      const response = await supabase.functions.invoke('create-feed-post', {
-        headers,
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-feed-post`, {
+        method: 'POST',
+        headers: {
+          'x-privy-token': token || '',
+        },
         body: formData
       });
-      if (response.error) throw response.error;
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create post');
+      }
       toast({
         title: 'Posted!',
         description: 'Your post was uploaded to IPFS and published'
