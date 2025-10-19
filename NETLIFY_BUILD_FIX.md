@@ -25,10 +25,10 @@ Netlify build was failing due to:
 - This allows npm to skip it if it can't be installed (e.g., private package on Netlify)
 
 ### 4. Updated `vite.config.ts`
-- Added safe import wrapper for `lovable-tagger`
-- Uses try-catch to gracefully handle when the package is missing
-- Only uses the tagger in development mode anyway
-- Falls back to null if not available (production builds work without it)
+- Removed `lovable-tagger` completely (not needed for production)
+- Simplified config to avoid ES module/CommonJS conflicts
+- The `require()` statement was causing build failures on Netlify
+- Now uses clean ES module syntax only
 
 ### 5. Fixed Service Worker Cache Strategy
 - Changed from "cache first" to "network first" for HTML files
@@ -49,7 +49,7 @@ Netlify build was failing due to:
 - ✅ `netlify.toml` (new)
 - ✅ `.npmrc` (new)
 - ✅ `package.json` (lovable-tagger moved to optionalDependencies)
-- ✅ `vite.config.ts` (safe import for lovable-tagger + warning suppression)
+- ✅ `vite.config.ts` (removed lovable-tagger import + warning suppression)
 - ✅ `public/sw.js` (network-first strategy + cache version bump)
 - ✅ `src/pages/Trending.tsx` (fixed "..." display in TOP GAINER stat)
 - ✅ `src/main.tsx` (removed .tsx extension from App import)
@@ -58,8 +58,12 @@ Netlify build was failing due to:
 Local build tested successfully:
 ```bash
 npm run build
-# ✓ built in 26.52s (no errors)
+# ✓ built in 26.77s (no errors, no warnings)
 ```
+
+### Errors Fixed
+1. `Module not found: Error: Can't resolve './App'` ✅ Fixed by removing `.tsx` extension
+2. `Build script returned non-zero exit code: 2` ✅ Fixed by removing `require()` from vite.config.ts
 
 ## Deployment
 After pushing these changes:
