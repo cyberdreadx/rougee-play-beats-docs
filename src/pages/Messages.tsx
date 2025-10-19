@@ -132,9 +132,9 @@ export default function Messages() {
           const inboxState = inboxStates[0];
           console.log('📊 Inbox state:', inboxState);
           
-          // Extract the Ethereum wallet address from the identities
-          if (inboxState.identities && Array.isArray(inboxState.identities)) {
-            const ethereumIdentity = inboxState.identities.find(
+          // Extract the Ethereum wallet address from the identifiers
+          if (inboxState.identifiers && Array.isArray(inboxState.identifiers)) {
+            const ethereumIdentity = inboxState.identifiers.find(
               (identity: any) => identity.kind === 'ETHEREUM' || identity.identifierKind === 'Ethereum'
             );
             
@@ -146,7 +146,7 @@ export default function Messages() {
               console.warn('⚠️ No Ethereum identity found in inbox state');
             }
           } else {
-            console.warn('⚠️ No identities array in inbox state');
+            console.warn('⚠️ No identifiers array in inbox state');
           }
         } else {
           console.warn('⚠️ No inbox states returned');
@@ -356,13 +356,13 @@ export default function Messages() {
           console.log('🔍 Getting messages from messages property...');
           messages = actualConvo.messages;
         }
-        // Method 4: Try using the client to get messages
-        else if (xmtpClient && actualConvo.id) {
+        // Method 4: Try using messages() method
+        else if (typeof actualConvo.messages === 'function') {
           try {
-            console.log('🔍 Getting messages via client...');
-            messages = await xmtpClient.conversations.getMessages(actualConvo.id);
+            console.log('🔍 Getting messages via messages() method...');
+            messages = await actualConvo.messages();
           } catch (clientError) {
-            console.warn('⚠️ Could not load messages via client:', clientError);
+            console.warn('⚠️ Could not load messages via messages():', clientError);
           }
         }
         
