@@ -109,10 +109,12 @@ self.addEventListener('fetch', (event) => {
     // HTML files - network first, cache fallback (for SPA routing)
     else if (url.pathname === '/' || url.pathname.includes('.html')) {
       event.respondWith(
-        fetch(request)
+        fetch(request, {
+          cache: 'no-cache' // Force fresh fetch, ignore cache
+        })
           .then((response) => {
-            // Cache successful responses
-            if (response.status === 200) {
+            // Only cache in production, not on localhost
+            if (response.status === 200 && !url.hostname.includes('localhost')) {
               const responseClone = response.clone();
               caches.open(STATIC_CACHE)
                 .then((cache) => cache.put(request, responseClone));
