@@ -161,14 +161,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const xrgeUsdPrice = prices.xrge || 0;
   
   // Calculate different market cap metrics in USD
+  // For bonding curves, "Market Cap" = Total Value Locked (TVL) = actual XRGE spent
+  // NOT currentPrice × tokensSold (that's incorrect for bonding curves since price increases)
   const tokensSold = activeTradingSupply !== undefined ? (990_000_000 - activeTradingSupply) : undefined;
-  // Market Cap = current price × tokens sold (same calculation as Trending page)
-  const marketCapUSD = currentPrice && tokensSold ? currentPrice * tokensSold : 0;
+  const marketCapUSD = xrgeRaised * xrgeUsdPrice; // TVL = actual value locked in contract
   const fullyDilutedValue = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
-  const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders (TVL)
+  const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders
   const realizedValueUSD = xrgeRaised * xrgeUsdPrice; // Convert to USD
   
-  // Use calculated market cap
+  // Use TVL (Total Value Locked) as the market cap
   const marketCap = marketCapUSD;
   
   // Check if data looks like initial/unrealistic values
@@ -1357,7 +1358,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     {hasRealisticData ? (
                       <>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Market Cap:</span>
+                        <span className="text-muted-foreground" title="Total value locked in the bonding curve (actual XRGE spent by all buyers)">Market Cap (TVL):</span>
                         <span className="text-foreground font-semibold">
                           ${marketCapUSD < 1 ? marketCapUSD.toFixed(6) : marketCapUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
                         </span>
