@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Music, Play, CheckCircle } from "lucide-react";
 import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
+import { XRGETierBadge } from "@/components/XRGETierBadge";
 
 interface ArtistCardProps {
   walletAddress: string;
@@ -111,13 +112,14 @@ const ArtistCard = ({
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <h3 className="font-mono font-bold text-lg truncate neon-text">
               {artistName}
             </h3>
             {verified && (
-              <CheckCircle className="h-4 w-4 text-neon-green" aria-label="Verified artist" />
+              <CheckCircle className="h-4 w-4 text-neon-green flex-shrink-0" aria-label="Verified artist" />
             )}
+            <XRGETierBadge walletAddress={walletAddress} size="sm" />
           </div>
           {artistTicker && (
             <p className="text-sm font-mono text-neon-green">

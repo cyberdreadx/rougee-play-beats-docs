@@ -1404,11 +1404,32 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               <div className="text-center py-8">
                 <Rocket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-base md:text-lg font-mono font-bold mb-2">Not Deployed Yet</h3>
-                <p className="text-xs md:text-sm text-muted-foreground font-mono">
+                <p className="text-xs md:text-sm text-muted-foreground font-mono mb-4">
                   {song.wallet_address?.toLowerCase() === fullAddress?.toLowerCase() 
                     ? "Deploy this song to enable trading"
                     : "This song hasn't been deployed to the bonding curve yet"}
                 </p>
+                {song.wallet_address?.toLowerCase() === fullAddress?.toLowerCase() && (
+                  <Button 
+                    onClick={handleDeploy} 
+                    variant="neon" 
+                    size="sm"
+                    disabled={isDeploying || isConfirming}
+                    className="font-mono"
+                  >
+                    {isDeploying || isConfirming ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {isDeploying ? "DEPLOYING..." : "CONFIRMING..."}
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="h-4 w-4 mr-2" />
+                        DEPLOY TO BONDING CURVE
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             )}
           </Card>
