@@ -64,6 +64,9 @@ const SONG_TOKEN_ABI = [
 const FeaturedSong = ({ song }: { song: Song }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
+  const publicClient = usePublicClient();
+  const [volume24h, setVolume24h] = useState<number>(0);
+  
   const { price: priceInXRGE } = useSongPrice(song.token_address as Address);
   const { data: xrgeRaised } = useReadContract({
     address: song.token_address as Address,
@@ -72,8 +75,94 @@ const FeaturedSong = ({ song }: { song: Song }) => {
     query: { enabled: !!song.token_address }
   });
   
+  // Fetch 24h volume from blockchain
+  useEffect(() => {
+    const fetch24hVolume = async () => {
+      if (!publicClient || !song.token_address) return;
+      
+      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
+      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
+      
+      try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const blocksIn24h = 43200;
+        const fromBlock = currentBlock - BigInt(blocksIn24h);
+        
+        // Fetch song token Transfer events for 24h
+        const songTokenLogs = await publicClient.getLogs({
+          address: song.token_address as Address,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          fromBlock,
+          toBlock: currentBlock
+        });
+        
+        // Fetch XRGE Transfer events for 24h
+        const xrgeLogs = await publicClient.getLogs({
+          address: XRGE_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          fromBlock,
+          toBlock: currentBlock
+        });
+        
+        // Build a map of XRGE transfers by transaction hash
+        const xrgeByTx = new Map<string, number>();
+        const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
+        
+        for (const log of xrgeLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
+          const amount = Number(args.value as bigint) / 1e18;
+          
+          if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
+          
+          if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const existing = xrgeByTx.get(log.transactionHash) || 0;
+            xrgeByTx.set(log.transactionHash, existing + amount);
+          }
+        }
+        
+        // Calculate 24h volume by correlating song token transfers with XRGE transfers
+        let volume = 0;
+        for (const log of songTokenLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
+          
+          // Only count transfers involving the bonding curve
+          if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+            volume += xrgeAmount;
+          }
+        }
+        
+        setVolume24h(volume);
+      } catch (error) {
+        console.error('Failed to fetch 24h volume:', error);
+      }
+    };
+    
+    fetch24hVolume();
+  }, [publicClient, song.token_address]);
+  
   const priceUSD = (parseFloat(priceInXRGE) || 0) * (prices.xrge || 0);
-  const volumeUSD = xrgeRaised ? (Number(xrgeRaised) / 1e18) * (prices.xrge || 0) : 0;
+  const volumeUSD = volume24h * (prices.xrge || 0);
   
   return (
     <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-neon-green/30 bg-gradient-to-br from-neon-green/5 via-transparent to-purple-500/5 backdrop-blur-xl p-6">
@@ -106,7 +195,7 @@ const FeaturedSong = ({ song }: { song: Song }) => {
             <div className="bg-black/40 rounded-lg px-3 py-2">
               <div className="text-xs text-muted-foreground font-mono">PRICE</div>
               <div className="text-sm font-bold font-mono neon-text">
-                ${priceUSD < 0.000001 ? priceUSD.toExponential(2) : priceUSD.toFixed(6)}
+                ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
               </div>
             </div>
             <div className="bg-black/40 rounded-lg px-3 py-2">
@@ -136,11 +225,12 @@ const FeaturedSong = ({ song }: { song: Song }) => {
 };
 
 // Component for individual song row with real-time data
-const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number) => void }) => {
+const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
   const publicClient = usePublicClient();
   const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
+  const [volume24h, setVolume24h] = useState<number>(0); // Track actual 24h volume in XRGE
   
   // Get current price from bonding curve
   const { price: priceInXRGE } = useSongPrice(song.token_address as Address);
@@ -160,10 +250,16 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
     query: { enabled: !!song.token_address }
   });
   
-  // Fetch 24h price change from blockchain
+  // Convert bondingSupply to a stable string value to prevent infinite loops
+  const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : null;
+  
+  // Fetch 24h price change and volume from blockchain
   useEffect(() => {
-    const fetch24hChange = async () => {
-      if (!publicClient || !song.token_address) return;
+    const fetch24hData = async () => {
+      if (!publicClient || !song.token_address || !bondingSupplyStr) return;
+      
+      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
+      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
       
       try {
         // Get current block
@@ -173,58 +269,133 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         const blocksIn24h = 43200;
         const fromBlock = currentBlock - BigInt(blocksIn24h);
         
-        // Try to get bonding supply from 24h ago (requires archive node)
-        // This may fail on some RPC providers
-        const supply24hAgo = await publicClient.readContract({
+        // Fetch song token Transfer events for 24h
+        const songTokenLogs = await publicClient.getLogs({
           address: song.token_address as Address,
-          abi: SONG_TOKEN_ABI,
-          functionName: 'bondingCurveSupply',
-          blockNumber: fromBlock
-        } as any);
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          fromBlock,
+          toBlock: currentBlock
+        });
         
-        if (supply24hAgo && bondingSupply) {
-          // Calculate tokens sold then vs now
-          const BONDING_CURVE_TOTAL = 990_000_000;
-          const INITIAL_PRICE = 0.001;
-          const PRICE_INCREMENT = 0.000001;
+        // Fetch XRGE Transfer events for 24h
+        const xrgeLogs = await publicClient.getLogs({
+          address: XRGE_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          fromBlock,
+          toBlock: currentBlock
+        });
+        
+        // Build a map of XRGE transfers by transaction hash
+        const xrgeByTx = new Map<string, number>();
+        const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
+        
+        for (const log of xrgeLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
+          const amount = Number(args.value as bigint) / 1e18;
           
-          const tokensSold24hAgo = BONDING_CURVE_TOTAL - Number(supply24hAgo) / 1e18;
-          const tokensSoldNow = BONDING_CURVE_TOTAL - Number(bondingSupply) / 1e18;
+          // Skip fee transfers
+          if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
           
-          const price24hAgo = INITIAL_PRICE + (tokensSold24hAgo * PRICE_INCREMENT);
-          const priceNow = INITIAL_PRICE + (tokensSoldNow * PRICE_INCREMENT);
-          
-          if (price24hAgo > 0) {
-            const change = ((priceNow - price24hAgo) / price24hAgo) * 100;
-            setPriceChange24h(change);
+          // Only count XRGE going to or from bonding curve
+          if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const existing = xrgeByTx.get(log.transactionHash) || 0;
+            xrgeByTx.set(log.transactionHash, existing + amount);
           }
         }
-      } catch (error: any) {
-        // Silently handle historical state query errors (common with basic RPC providers)
-        // Only log if it's not a "method not supported" error
-        if (!error?.message?.includes('not supported') && !error?.code) {
-          console.warn('Historical price data not available, using estimate');
+        
+        // Calculate 24h volume by correlating song token transfers with XRGE transfers
+        let volume = 0;
+        for (const log of songTokenLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
+          
+          // Only count transfers involving the bonding curve
+          if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+            volume += xrgeAmount;
+          }
         }
-        // Fallback to estimated change based on current activity
-        const tokensSold = bondingSupply ? (990_000_000 - Number(bondingSupply) / 1e18) : 0;
-        if (tokensSold > 0) {
-          // Estimate ~25% growth in 24h for new tokens
-          setPriceChange24h(25);
+        
+        setVolume24h(volume);
+        
+        // Try to get bonding supply from 24h ago for price change (requires archive node)
+        try {
+          const supply24hAgo = await publicClient.readContract({
+            address: song.token_address as Address,
+            abi: SONG_TOKEN_ABI,
+            functionName: 'bondingCurveSupply',
+            blockNumber: fromBlock
+          } as any);
+          
+          if (supply24hAgo) {
+            // Calculate tokens sold then vs now
+            const BONDING_CURVE_TOTAL = 990_000_000;
+            const INITIAL_PRICE = 0.001;
+            const PRICE_INCREMENT = 0.000001;
+            
+            const tokensSold24hAgo = BONDING_CURVE_TOTAL - Number(supply24hAgo) / 1e18;
+            const tokensSoldNow = BONDING_CURVE_TOTAL - Number(bondingSupplyStr) / 1e18;
+            
+            const price24hAgo = INITIAL_PRICE + (tokensSold24hAgo * PRICE_INCREMENT);
+            const priceNow = INITIAL_PRICE + (tokensSoldNow * PRICE_INCREMENT);
+            
+            if (price24hAgo > 0) {
+              const change = ((priceNow - price24hAgo) / price24hAgo) * 100;
+              setPriceChange24h(change);
+            }
+          }
+        } catch (error: any) {
+          // Silently handle historical state query errors (common with basic RPC providers)
+          if (!error?.message?.includes('not supported') && !error?.code) {
+            console.warn('Historical price data not available, using estimate');
+          }
+          // Fallback to estimated change based on current activity
+          const tokensSold = bondingSupplyStr ? (990_000_000 - Number(bondingSupplyStr) / 1e18) : 0;
+          if (tokensSold > 0) {
+            // Estimate ~25% growth in 24h for new tokens
+            setPriceChange24h(25);
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch 24h data:', error);
       }
     };
     
-    fetch24hChange();
-  }, [publicClient, song.token_address, bondingSupply]);
+    fetch24hData();
+  }, [publicClient, song.token_address, bondingSupplyStr]);
   
   const priceXRGE = parseFloat(priceInXRGE) || 0;
   const priceUSD = priceXRGE * (prices.xrge || 0);
   const xrgeRaisedNum = xrgeRaised ? Number(xrgeRaised) / 1e18 : 0;
-  const volumeUSD = xrgeRaisedNum * (prices.xrge || 0);
+  
+  // Volume = actual 24h trading volume (not all-time XRGE raised)
+  const volumeUSD = volume24h * (prices.xrge || 0);
   
   // Calculate tokens sold
   const tokensSold = bondingSupply ? (990_000_000 - Number(bondingSupply) / 1e18) : 0;
-  const marketCap = priceUSD * tokensSold;
+  
+  // Market Cap = Total Value Locked (TVL) = actual XRGE spent (all-time)
+  // NOT currentPrice × tokensSold (incorrect for bonding curves since price increases)
+  const marketCap = xrgeRaisedNum * (prices.xrge || 0);
   
   // Use real 24h price change (fetched from blockchain)
   const change24h = priceChange24h ?? 0;
@@ -232,10 +403,11 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
   
   // Report stats to parent for aggregation
   useEffect(() => {
-    if (onStatsUpdate && volumeUSD > 0) {
-      onStatsUpdate(song.id, volumeUSD, change24h);
+    if (onStatsUpdate) {
+      onStatsUpdate(song.id, volumeUSD, change24h, marketCap, priceUSD);
     }
-  }, [song.id, volumeUSD, change24h, onStatsUpdate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song.id, volumeUSD, change24h, marketCap, priceUSD]);
   
   return (
     <TableRow 
@@ -290,7 +462,7 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         {song.token_address ? (
           <div>
             <div className="font-semibold">
-              ${priceUSD < 0.000001 ? priceUSD.toExponential(2) : priceUSD < 0.01 ? priceUSD.toFixed(6) : priceUSD.toFixed(4)}
+              ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(4)}
             </div>
             <div className="text-xs text-muted-foreground">
               {priceXRGE.toFixed(6)} XRGE
@@ -319,7 +491,7 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
               ${volumeUSD < 1 ? volumeUSD.toFixed(4) : volumeUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
             </div>
             <div className="text-xs text-muted-foreground">
-              {xrgeRaisedNum.toFixed(2)} XRGE
+              {volume24h.toLocaleString(undefined, {maximumFractionDigits: 2})} XRGE
             </div>
           </div>
         ) : (
@@ -345,11 +517,16 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
   );
 };
 
+type SortField = 'trending' | 'price' | 'change' | 'volume' | 'marketCap' | 'plays';
+type SortDirection = 'asc' | 'desc';
+
 const Trending = () => {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [songStats, setSongStats] = useState<Map<string, { volume: number; change: number }>>(new Map());
+  const [songStats, setSongStats] = useState<Map<string, { volume: number; change: number; marketCap: number; price: number }>>(new Map());
+  const [sortField, setSortField] = useState<SortField>('trending');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
@@ -358,12 +535,43 @@ const Trending = () => {
   const totalVolume = Array.from(songStats.values()).reduce((sum, stat) => sum + stat.volume, 0);
   const topGainerPercent = Array.from(songStats.values()).reduce((max, stat) => Math.max(max, stat.change), 0);
   
-  const handleStatsUpdate = (songId: string, volume: number, change: number) => {
+  const handleStatsUpdate = (songId: string, volume: number, change: number, marketCap: number, price: number) => {
     setSongStats(prev => {
       const newMap = new Map(prev);
-      newMap.set(songId, { volume, change });
+      newMap.set(songId, { volume, change, marketCap, price });
       return newMap;
     });
+  };
+  
+  // Calculate trending score for a song
+  const calculateTrendingScore = (song: Song): number => {
+    const stats = songStats.get(song.id);
+    if (!stats) return song.play_count; // Fallback to play count if no stats yet
+    
+    // Weighted scoring algorithm:
+    // - Volume (40%): Recent trading activity
+    // - Price Change (25%): Momentum
+    // - Market Cap (20%): Overall value
+    // - Plays (15%): Popularity
+    
+    const volumeScore = stats.volume * 0.4;
+    const changeScore = Math.max(0, stats.change) * 0.25; // Only positive changes
+    const marketCapScore = stats.marketCap * 0.2;
+    const playsScore = song.play_count * 0.15;
+    
+    return volumeScore + changeScore + marketCapScore + playsScore;
+  };
+  
+  // Handle column header click for sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
   };
 
   useEffect(() => {
@@ -431,6 +639,49 @@ const Trending = () => {
     fetchTrendingData();
   }, [searchQuery]);
 
+  // Sort songs based on selected field
+  const sortedSongs = [...songs].sort((a, b) => {
+    let aValue: number;
+    let bValue: number;
+    
+    switch (sortField) {
+      case 'trending':
+        aValue = calculateTrendingScore(a);
+        bValue = calculateTrendingScore(b);
+        break;
+      case 'price':
+        aValue = songStats.get(a.id)?.price || 0;
+        bValue = songStats.get(b.id)?.price || 0;
+        break;
+      case 'change':
+        aValue = songStats.get(a.id)?.change || 0;
+        bValue = songStats.get(b.id)?.change || 0;
+        break;
+      case 'volume':
+        aValue = songStats.get(a.id)?.volume || 0;
+        bValue = songStats.get(b.id)?.volume || 0;
+        break;
+      case 'marketCap':
+        aValue = songStats.get(a.id)?.marketCap || 0;
+        bValue = songStats.get(b.id)?.marketCap || 0;
+        break;
+      case 'plays':
+        aValue = a.play_count;
+        bValue = b.play_count;
+        break;
+      default:
+        aValue = calculateTrendingScore(a);
+        bValue = calculateTrendingScore(b);
+    }
+    
+    return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
+  });
+  
+  // Featured song is always the top trending song (by trending score)
+  const featuredSong = songs.length > 0 
+    ? [...songs].sort((a, b) => calculateTrendingScore(b) - calculateTrendingScore(a))[0]
+    : null;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-24 md:pb-20">
@@ -474,7 +725,7 @@ const Trending = () => {
         </div>
 
         {/* Featured/Promoted Banner with Real Data */}
-        {songs.length > 0 && songs[0] && <FeaturedSong song={songs[0]} />}
+        {featuredSong && <FeaturedSong song={featuredSong} />}
 
         <div className="mb-6 px-4 md:px-0">
           <h1 className="text-3xl md:text-4xl font-bold font-mono mb-2 neon-text flex items-center gap-3">
@@ -506,28 +757,93 @@ const Trending = () => {
           </TabsList>
 
           <TabsContent value="songs" className="space-y-4">
+            {/* Sort Controls */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground font-mono">SORT BY:</span>
+              <button
+                onClick={() => handleSort('trending')}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  sortField === 'trending' 
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                }`}
+              >
+                🔥 TRENDING {sortField === 'trending' && (sortDirection === 'desc' ? '↓' : '↑')}
+              </button>
+            </div>
+            
             <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border hover:bg-transparent">
                     <TableHead className="font-mono text-muted-foreground w-12">#</TableHead>
                     <TableHead className="font-mono text-muted-foreground">NAME</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">PRICE</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">24H%</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">VOLUME</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">MKT CAP</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">PLAYS</TableHead>
+                    <TableHead 
+                      className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
+                      onClick={() => handleSort('price')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        PRICE
+                        {sortField === 'price' && (
+                          <span className="text-neon-green">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
+                      onClick={() => handleSort('change')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        24H%
+                        {sortField === 'change' && (
+                          <span className="text-neon-green">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
+                      onClick={() => handleSort('volume')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        VOLUME
+                        {sortField === 'volume' && (
+                          <span className="text-neon-green">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
+                      onClick={() => handleSort('marketCap')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        MKT CAP
+                        {sortField === 'marketCap' && (
+                          <span className="text-neon-green">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
+                      onClick={() => handleSort('plays')}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        PLAYS
+                        {sortField === 'plays' && (
+                          <span className="text-neon-green">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </div>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {songs.length === 0 ? (
+                  {sortedSongs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                         No deployed songs yet
                       </TableCell>
                     </TableRow>
                   ) : (
-                    songs.map((song, index) => (
+                    sortedSongs.map((song, index) => (
                       <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} />
                     ))
                   )}

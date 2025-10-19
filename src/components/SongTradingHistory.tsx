@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
 import { Loader2 } from 'lucide-react';
-import { getIPFSGatewayUrl } from '@/lib/ipfs';
 
 interface TradeData {
   timestamp: number;
@@ -12,6 +11,7 @@ interface TradeData {
   type: 'buy' | 'sell';
   amount: number;
   priceUSD: number;
+  trader?: string; // Wallet address of buyer/seller
   xrgeAmount?: number; // Actual XRGE transferred
 }
 
@@ -26,13 +26,29 @@ interface SongTradingHistoryProps {
   xrgeUsdPrice: number;
   songTicker?: string;
   coverCid?: string;
+  currentPriceInXRGE?: number;
+  onVolumeCalculated?: (volume24h: number) => void; // Callback to pass 24h volume
 }
 
-const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }: SongTradingHistoryProps) => {
+const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, currentPriceInXRGE, songTicker, coverCid, onVolumeCalculated }: SongTradingHistoryProps) => {
   const [trades, setTrades] = useState<TradeData[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const publicClient = usePublicClient();
+
+  // Calculate 24h volume whenever trades change
+  useEffect(() => {
+    if (trades.length > 0 && onVolumeCalculated) {
+      const now = Date.now();
+      const oneDayAgo = now - (24 * 60 * 60 * 1000);
+      
+      const volume24h = trades
+        .filter(trade => trade.timestamp >= oneDayAgo)
+        .reduce((sum, trade) => sum + (trade.xrgeAmount || 0), 0);
+      
+      onVolumeCalculated(volume24h);
+    }
+  }, [trades, onVolumeCalculated]);
 
   useEffect(() => {
     fetchTradingHistory();
@@ -42,214 +58,148 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
     if (!publicClient || !tokenAddress) return;
     
     setLoading(true);
+    
     try {
-      console.log('Fetching trade history for token:', tokenAddress);
+      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
+      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
 
-      // XRGE token address on Base
-      const XRGE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e' as Address;
+      // Fetch Transfer events
+      const transferLogs = await publicClient.getLogs({
+        address: tokenAddress,
+        event: {
+          type: 'event',
+          name: 'Transfer',
+          inputs: [
+            { indexed: true, name: 'from', type: 'address' },
+            { indexed: true, name: 'to', type: 'address' },
+            { indexed: false, name: 'value', type: 'uint256' }
+          ]
+        },
+        fromBlock: 'earliest',
+        toBlock: 'latest'
+      });
 
-      // Fetch Transfer events directly from blockchain
-      const TRANSFER_EVENT = {
-        type: 'event',
-        name: 'Transfer',
-        inputs: [
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'value', type: 'uint256', indexed: false }
-        ]
-      } as const;
+      // Fetch XRGE transfers
+      const xrgeLogs = await publicClient.getLogs({
+        address: XRGE_ADDRESS,
+        event: {
+          type: 'event',
+          name: 'Transfer',
+          inputs: [
+            { indexed: true, name: 'from', type: 'address' },
+            { indexed: true, name: 'to', type: 'address' },
+            { indexed: false, name: 'value', type: 'uint256' }
+          ]
+        },
+        fromBlock: 'earliest',
+        toBlock: 'latest'
+      });
 
-      const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = currentBlock - BigInt(100000);
+      // Group XRGE transfers by transaction
+      // For BUYS: only count user -> bonding curve (not bonding -> user refunds)
+      // For SELLS: only count bonding curve -> user (not user -> bonding curve)
+      const xrgeByTx = new Map<string, { buy: number; sell: number }>();
+      for (const log of xrgeLogs) {
+        const { args } = log as any;
+        const from = (args.from as string).toLowerCase();
+        const to = (args.to as string).toLowerCase();
+        const amount = Number(args.value as bigint) / 1e18;
+        
+        const isFeeAddress = from === '0xb787433e138893a0ed84d99e82c7da260a940b1e' || to === '0xb787433e138893a0ed84d99e82c7da260a940b1e';
+        
+        if (isFeeAddress) continue; // Skip fee transfers
+        
+        const existing = xrgeByTx.get(log.transactionHash) || { buy: 0, sell: 0 };
+        
+        // User -> Bonding Curve = BUY (user pays XRGE)
+        if (to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+          existing.buy += amount;
+        }
+        // Bonding Curve -> User = SELL (user receives XRGE)
+        else if (from === BONDING_CURVE_ADDRESS.toLowerCase()) {
+          existing.sell += amount;
+        }
+        
+        xrgeByTx.set(log.transactionHash, existing);
+      }
 
-      // Fetch both song token and XRGE token transfers
-      const [transferLogs, xrgeTransferLogs] = await Promise.all([
-        publicClient.getLogs({
-          address: tokenAddress,
-          event: TRANSFER_EVENT,
-          fromBlock,
-          toBlock: 'latest'
-        }),
-        publicClient.getLogs({
-          address: XRGE_ADDRESS,
-          event: TRANSFER_EVENT,
-          fromBlock,
-          toBlock: 'latest'
-        })
-      ]);
-
-      console.log(`Found ${transferLogs.length} total transfer events`);
-
-      // Find the bonding curve address by looking for the address that appears most as 'from'
-      const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
-      const fromCounts = new Map<string, number>();
+      // Process trades
+      const allTrades: TradeData[] = [];
       
       for (const log of transferLogs) {
         const { args } = log as any;
-        const from = (args.from as Address).toLowerCase();
+        const from = (args.from as string).toLowerCase();
+        const to = (args.to as string).toLowerCase();
         const amount = Number(args.value as bigint) / 1e18;
         
-        if (from !== ZERO_ADDRESS.toLowerCase() && amount < 5_000_000) {
-          fromCounts.set(from, (fromCounts.get(from) || 0) + 1);
-        }
-      }
-      
-      // The address with most transfers is likely the bonding curve
-      let bondingCurveAddress = '';
-      let maxCount = 0;
-      for (const [addr, count] of fromCounts) {
-        if (count > maxCount) {
-          maxCount = count;
-          bondingCurveAddress = addr;
-        }
-      }
-      
-      console.log(`Detected bonding curve address: ${bondingCurveAddress} (${maxCount} transfers)`);
-
-      // Build a map of XRGE transfers by transaction hash
-      // Only include transfers involving the bonding curve
-      const xrgeByTx = new Map<string, { amount: number; to: Address; from: Address }[]>();
-      for (const xrgeLog of xrgeTransferLogs) {
-        const { args } = xrgeLog as any;
-        const txHash = xrgeLog.transactionHash;
-        const xrgeAmount = Number(args.value as bigint) / 1e18;
-        const xrgeFrom = (args.from as Address).toLowerCase();
-        const xrgeTo = (args.to as Address).toLowerCase();
-        
-        // Only include XRGE transfers that involve the bonding curve
-        if (xrgeFrom === bondingCurveAddress || xrgeTo === bondingCurveAddress) {
-          if (!xrgeByTx.has(txHash)) {
-            xrgeByTx.set(txHash, []);
-          }
-          xrgeByTx.get(txHash)!.push({
-            amount: xrgeAmount,
-            to: args.to as Address,
-            from: args.from as Address
+        if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+          const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+          const timestamp = Number(block.timestamp) * 1000;
+          const isBuy = from === BONDING_CURVE_ADDRESS.toLowerCase();
+          const trader = isBuy ? to : from; // Buyer or seller address
+          
+          // Get the correct XRGE amount based on trade type
+          const xrgeData = xrgeByTx.get(log.transactionHash);
+          const xrgeAmount = isBuy ? (xrgeData?.buy || 0) : (xrgeData?.sell || 0);
+          
+          const priceInXRGE = amount > 0 ? xrgeAmount / amount : 0;
+          const priceUSD = priceInXRGE * xrgeUsdPrice;
+          
+          allTrades.push({
+            timestamp,
+            price: priceInXRGE,
+            type: isBuy ? 'buy' : 'sell',
+            amount,
+            priceUSD,
+            trader,
+            xrgeAmount // Store the actual XRGE amount
           });
         }
       }
 
-      // Process transfers into trades
-      const INITIAL_PRICE = 0.001;
-      const PRICE_INCREMENT = 0.000001;
+      allTrades.sort((a, b) => a.timestamp - b.timestamp);
+      setTrades(allTrades);
       
-      const allTrades: TradeData[] = [];
-      let trackedSupply = 0;
+      // Aggregate to 5-minute intervals
+      const intervalMs = 5 * 60 * 1000;
+      const intervalMap = new Map<number, { prices: number[]; volume: number }>();
 
-      for (const log of transferLogs) {
-        const { args } = log as any;
-        const from = args.from as Address;
-        const to = args.to as Address;
-        const value = args.value as bigint;
-        const amount = Number(value) / 1e18;
+      allTrades.forEach(trade => {
+        const intervalKey = Math.floor(trade.timestamp / intervalMs);
+        const existing = intervalMap.get(intervalKey) || { prices: [], volume: 0 };
+        existing.prices.push(trade.priceUSD);
+        existing.volume += trade.amount;
+        intervalMap.set(intervalKey, existing);
+      });
 
-        console.log(`Transfer: ${amount.toLocaleString()} tokens from ${from.slice(0,10)}... to ${to.slice(0,10)}...`);
+      const chartPoints = Array.from(intervalMap.entries())
+        .map(([intervalKey, data]) => {
+          const timestamp = intervalKey * intervalMs;
+          const date = new Date(timestamp);
+          const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          
+          return {
+            time: timeStr,
+            price: data.prices[data.prices.length - 1], // Last price in interval
+            volume: data.volume
+          };
+        })
+        .slice(-288);
 
-        // Skip zero address minting/burning
-        if (from === ZERO_ADDRESS || to === ZERO_ADDRESS) {
-          console.log(`  ⏭️ Skipping: zero address`);
-          continue;
-        }
-
-        // Skip massive transfers (initial bonding curve setup)
-        if (amount > 5_000_000) {
-          console.log(`  ⏭️ Skipping: setup transfer`);
-          continue;
-        }
-
-        // Only process transfers involving the bonding curve
-        if (from.toLowerCase() !== bondingCurveAddress && to.toLowerCase() !== bondingCurveAddress) {
-          console.log(`  ⏭️ Skipping: doesn't involve bonding curve`);
-          continue;
-        }
-
-        // Get block timestamp - fallback to estimated time if RPC doesn't support getBlock
-        let timestamp: number;
-        try {
-          const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
-          timestamp = Number(block.timestamp) * 1000;
-        } catch (error) {
-          // If getBlock not supported, estimate timestamp from block number
-          // Base has ~2 second block time
-          const currentBlock = await publicClient.getBlockNumber();
-          const blockDiff = Number(currentBlock - log.blockNumber);
-          timestamp = Date.now() - (blockDiff * 2000);
-        }
+      // Add current price
+      if (currentPriceInXRGE && currentPriceInXRGE > 0) {
+        const currentPriceUSD = currentPriceInXRGE * xrgeUsdPrice;
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         
-        // BUY: FROM bonding curve TO user
-        // SELL: FROM user TO bonding curve
-        const isBuy = from.toLowerCase() === bondingCurveAddress;
-        
-        // Find corresponding XRGE transfer in the same transaction
-        const xrgeTransfers = xrgeByTx.get(log.transactionHash) || [];
-        let actualXrgeAmount = 0;
-        
-        if (isBuy) {
-          // For BUY: Find XRGE going TO the bonding curve (user paying)
-          const buyerPayment = xrgeTransfers.find(
-            xrge => xrge.to.toLowerCase() === bondingCurveAddress
-          );
-          if (buyerPayment) {
-            actualXrgeAmount = buyerPayment.amount;
-            console.log(`  💰 BUY - User paid: ${actualXrgeAmount.toLocaleString()} XRGE`);
-          }
-        } else {
-          // For SELL: Find XRGE going FROM bonding curve TO the seller (not to protocol)
-          // The seller is the "from" address in the song token transfer
-          const sellerAddress = from.toLowerCase();
-          const sellerPayment = xrgeTransfers.find(
-            xrge => xrge.from.toLowerCase() === bondingCurveAddress && 
-                    xrge.to.toLowerCase() === sellerAddress
-          );
-          if (sellerPayment) {
-            // Sum all XRGE transfers to the seller (might be split into multiple)
-            actualXrgeAmount = xrgeTransfers
-              .filter(xrge => 
-                xrge.from.toLowerCase() === bondingCurveAddress && 
-                xrge.to.toLowerCase() === sellerAddress
-              )
-              .reduce((sum, xrge) => sum + xrge.amount, 0);
-            console.log(`  💰 SELL - User received: ${actualXrgeAmount.toLocaleString()} XRGE`);
-          }
-        }
-        
-        // Update supply
-        if (isBuy) {
-          trackedSupply += amount;
-        } else {
-          trackedSupply = Math.max(0, trackedSupply - amount);
-        }
-        
-        console.log(`  ✅ COUNTED: ${isBuy ? 'BUY' : 'SELL'}`);
-        
-        // Calculate price using bonding curve formula
-        const priceInXRGE = INITIAL_PRICE + (trackedSupply * PRICE_INCREMENT);
-        const priceUSD = priceInXRGE * xrgeUsdPrice;
-        
-        console.log(`📊 ${isBuy ? 'BUY' : 'SELL'}: ${amount.toLocaleString()} tokens`);
-        console.log(`   Supply: ${trackedSupply.toLocaleString()} (${(trackedSupply/990_000_000*100).toFixed(2)}% of bonding curve)`);
-        console.log(`   Price: ${priceInXRGE.toFixed(6)} XRGE = $${priceUSD.toFixed(8)}`);
-        console.log(`   Time: ${new Date(timestamp).toLocaleString()}`);
-        
-        allTrades.push({
-          timestamp,
-          price: priceInXRGE,
-          type: isBuy ? 'buy' : 'sell',
-          amount,
-          priceUSD,
-          xrgeAmount: actualXrgeAmount > 0 ? actualXrgeAmount : undefined
+        chartPoints.push({
+          time: timeStr + ' (Now)',
+          price: currentPriceUSD,
+          volume: 0
         });
       }
 
-      // Sort by timestamp
-      allTrades.sort((a, b) => a.timestamp - b.timestamp);
-      setTrades(allTrades);
-
-      // Create chart data (hourly aggregation)
-      const hourlyData = aggregateToHourly(allTrades);
-      setChartData(hourlyData);
-
-      console.log(`Loaded ${allTrades.length} trades`);
+      setChartData(chartPoints);
     } catch (error) {
       console.error('Error fetching trading history:', error);
     } finally {
@@ -257,50 +207,12 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
     }
   };
 
-  const aggregateToHourly = (trades: TradeData[]): ChartDataPoint[] => {
-    if (trades.length === 0) return [];
-
-    const hourlyMap = new Map<number, { prices: number[]; volume: number }>();
-
-    trades.forEach(trade => {
-      const hourKey = Math.floor(trade.timestamp / (1000 * 60 * 60));
-      const existing = hourlyMap.get(hourKey) || { prices: [], volume: 0 };
-      
-      existing.prices.push(trade.priceUSD);
-      existing.volume += trade.amount;
-      
-      hourlyMap.set(hourKey, existing);
-    });
-
-    return Array.from(hourlyMap.entries())
-      .map(([hourKey, data]) => ({
-        time: new Date(hourKey * 1000 * 60 * 60).toLocaleTimeString('en-US', { 
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit'
-        }),
-        price: data.prices[data.prices.length - 1], // Last price in hour
-        volume: data.volume
-      }))
-      .slice(-48); // Last 48 hours
-  };
-
   if (loading) {
     return (
       <Card className="p-6 console-bg tech-border">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-neon-green" />
-          <span className="ml-3 font-mono text-muted-foreground">Loading trade history...</span>
-        </div>
-      </Card>
-    );
-  }
-
-  if (trades.length === 0) {
-    return (
-      <Card className="p-6 console-bg tech-border">
-        <div className="text-center py-12">
-          <p className="font-mono text-muted-foreground">No trades yet. Be the first to trade!</p>
+          <span className="ml-3 font-mono text-muted-foreground">Loading chart...</span>
         </div>
       </Card>
     );
@@ -308,18 +220,25 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
 
   return (
     <div className="space-y-4">
-      {/* Price Chart */}
       <Card className="p-4 md:p-6 console-bg tech-border">
-        <h3 className="font-mono font-bold text-lg mb-4 neon-text">PRICE HISTORY</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-mono font-bold text-lg neon-text">PRICE HISTORY (5m)</h3>
+          {currentPriceInXRGE && (
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <div className="w-3 h-3 rounded-full bg-yellow-400 border-2 border-neon-green"></div>
+              <span className="text-muted-foreground">Current Price</span>
+            </div>
+          )}
+        </div>
+        <ResponsiveContainer width="100%" height={350}>
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00ff00" stopOpacity={0.3}/>
+                <stop offset="5%" stopColor="#00ff00" stopOpacity={0.4}/>
                 <stop offset="95%" stopColor="#00ff00" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
             <XAxis 
               dataKey="time" 
               stroke="#666"
@@ -328,7 +247,7 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
             <YAxis 
               stroke="#666"
               style={{ fontSize: '12px', fontFamily: 'monospace' }}
-              tickFormatter={(value) => `$${value.toFixed(6)}`}
+              tickFormatter={(value) => value < 0.000001 ? `$${value.toFixed(10)}` : `$${value.toFixed(8)}`}
             />
             <Tooltip
               contentStyle={{
@@ -338,31 +257,45 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
                 fontFamily: 'monospace',
                 fontSize: '12px'
               }}
-              formatter={(value: any) => [`$${Number(value).toFixed(6)}`, 'Price']}
+              formatter={(value: any) => {
+                const num = Number(value);
+                return num < 0.000001 ? [`$${num.toFixed(10)}`, 'Price'] : [`$${num.toFixed(8)}`, 'Price'];
+              }}
             />
             <Area 
-              type="monotone" 
+              type="monotone"
               dataKey="price" 
               stroke="#00ff00" 
-              strokeWidth={2}
-              fill="url(#priceGradient)" 
+              strokeWidth={2.5}
+              fill="url(#priceGradient)"
+              dot={(props: any) => {
+                const { cx, cy, payload, index } = props;
+                const isCurrent = payload.time?.includes('(Now)');
+                if (!isCurrent) return null;
+                return (
+                  <g key={`current-price-${index}`}>
+                    <circle cx={cx} cy={cy} r={6} fill="#ffff00" stroke="#00ff00" strokeWidth={2} />
+                    <circle cx={cx} cy={cy} r={3} fill="#ffff00" className="animate-pulse" />
+                  </g>
+                );
+              }}
+              activeDot={{ r: 6, fill: '#00ff00', stroke: '#000', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
       </Card>
 
-      {/* Volume Chart */}
       <Card className="p-4 md:p-6 console-bg tech-border">
         <h3 className="font-mono font-bold text-lg mb-4 text-purple-400">VOLUME</h3>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={150}>
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3}/>
+                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
                 <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
             <XAxis 
               dataKey="time" 
               stroke="#666"
@@ -388,7 +321,7 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
               dataKey="volume" 
               stroke="#a855f7" 
               strokeWidth={2}
-              fill="url(#volumeGradient)" 
+              fill="url(#volumeGradient)"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -398,52 +331,61 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
       <Card className="p-4 md:p-6 console-bg tech-border">
         <h3 className="font-mono font-bold text-lg mb-4 text-cyan-400">RECENT TRADES</h3>
         <div className="space-y-2 max-h-64 overflow-y-auto">
-          {trades.slice(-10).reverse().map((trade, i) => (
-            <div 
-              key={i}
-              className="flex justify-between items-center p-3 bg-black/30 rounded border border-white/5 hover:border-white/10 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`px-2 py-1 rounded text-xs font-mono font-bold ${
-                  trade.type === 'buy' 
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                }`}>
-                  {trade.type.toUpperCase()}
-                </div>
-                <div className="flex items-center gap-2">
-                  {coverCid && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-neon-green/30 flex-shrink-0">
-                      <img 
-                        src={getIPFSGatewayUrl(coverCid)}
-                        alt={songTicker || 'Song'}
-                        className="w-full h-full object-cover"
-                      />
+          {trades.length === 0 ? (
+            <p className="text-muted-foreground font-mono text-sm text-center py-4">No trades yet</p>
+          ) : (
+            trades.slice(-10).reverse().map((trade, i) => {
+              const coverUrl = coverCid ? `https://ipfs.io/ipfs/${coverCid}` : '/placeholder-cover.png';
+              const xrgeAmount = trade.xrgeAmount 
+                ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
+                : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
+              const shortAddress = trade.trader 
+                ? `${trade.trader.slice(0, 6)}...${trade.trader.slice(-4)}`
+                : 'Unknown';
+              
+              return (
+                <div 
+                  key={i}
+                  className="flex items-center justify-between p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`px-2 py-1 rounded font-mono text-xs font-bold ${
+                      trade.type === 'buy' 
+                        ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
+                        : 'bg-red-500/20 text-red-500 border border-red-500/30'
+                    }`}>
+                      {trade.type.toUpperCase()}
                     </div>
-                  )}
-                  <div className="text-sm font-mono">
-                    <div className="text-foreground font-semibold">
-                      {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} {songTicker ? `$${songTicker}` : 'tokens'}
+                    <img 
+                      src={coverUrl} 
+                      alt={songTicker || 'Song'} 
+                      className="w-8 h-8 rounded object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/placeholder-cover.png';
+                      }}
+                    />
+                    <div>
+                      <div className="font-mono text-sm font-bold">
+                        {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${songTicker?.toUpperCase() || 'SONG'}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+                        <span>{new Date(trade.timestamp).toLocaleString()}</span>
+                        <span className="text-cyan-400">by {shortAddress}</span>
+                      </div>
                     </div>
-                    <div className="text-muted-foreground text-xs">
-                      {new Date(trade.timestamp).toLocaleTimeString()}
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono text-sm font-bold text-neon-green">
+                      ${trade.priceUSD < 0.000001 ? trade.priceUSD.toFixed(10) : trade.priceUSD.toFixed(8)}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {xrgeAmount} XRGE
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="text-neon-green font-mono font-bold">
-                  ${(trade.priceUSD * trade.amount).toFixed(2)}
-                </div>
-                <div className="text-muted-foreground text-xs font-mono">
-                  {trade.xrgeAmount 
-                    ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 0})
-                    : (trade.price * trade.amount).toLocaleString(undefined, {maximumFractionDigits: 2})
-                  } XRGE
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       </Card>
     </div>
@@ -451,4 +393,3 @@ const SongTradingHistory = ({ tokenAddress, xrgeUsdPrice, songTicker, coverCid }
 };
 
 export default SongTradingHistory;
-

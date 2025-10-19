@@ -100,16 +100,37 @@ const AudioPlayer = ({
 
   // Computed values (must come before handlers that use them)
   const isAd = !!currentAd;
-  const displayTitle = isAd ? currentAd.title : currentSong?.title || "";
+  const displayTitle = isAd ? currentAd?.title || "" : currentSong?.title || "";
   const displayArtist = isAd ? "Advertisement" : currentSong?.artist || "Unknown Artist";
-  const coverCid = isAd ? currentAd.image_cid : currentSong?.cover_cid;
-  const displayCover = coverCid ? getIPFSGatewayUrl(coverCid) : "";
+  const coverCid = isAd ? currentAd?.image_cid : currentSong?.cover_cid;
+  const displayCover = coverCid ? (() => {
+    try {
+      return getIPFSGatewayUrl(coverCid);
+    } catch (error) {
+      console.warn('Failed to get IPFS gateway URL:', error);
+      return "";
+    }
+  })() : "";
 
   // Get multiple fallback URLs for the cover image
-  const coverFallbackUrls = coverCid ? getIPFSGatewayUrls(coverCid, 3, false) : [];
+  const coverFallbackUrls = coverCid ? (() => {
+    try {
+      return getIPFSGatewayUrls(coverCid, 3, false);
+    } catch (error) {
+      console.warn('Failed to get IPFS gateway URLs:', error);
+      return [];
+    }
+  })() : [];
 
-  // Get current cover URL to try
-  const currentCoverUrl = coverFallbackUrls[currentCoverUrlIndex] || displayCover;
+  // Get current cover URL to try - use a more defensive approach
+  const currentCoverUrl = (() => {
+    try {
+      return coverFallbackUrls[currentCoverUrlIndex] || displayCover;
+    } catch (error) {
+      console.warn('Failed to get current cover URL:', error);
+      return displayCover;
+    }
+  })();
 
   // Handle cover image load success
   const handleCoverImageLoad = () => {
@@ -123,9 +144,13 @@ const AudioPlayer = ({
     setCoverImageError(true);
 
     // Try next fallback URL if available
-    if (coverFallbackUrls.length > 0 && currentCoverUrlIndex < coverFallbackUrls.length - 1) {
-      setCurrentCoverUrlIndex(prev => prev + 1);
-      setCoverImageError(false); // Reset error state to try next URL
+    try {
+      if (coverFallbackUrls && coverFallbackUrls.length > 0 && currentCoverUrlIndex < coverFallbackUrls.length - 1) {
+        setCurrentCoverUrlIndex(prev => prev + 1);
+        setCoverImageError(false); // Reset error state to try next URL
+      }
+    } catch (error) {
+      console.warn('Failed to check fallback URLs:', error);
     }
   };
 
@@ -340,7 +365,14 @@ const AudioPlayer = ({
               className="relative w-16 h-16 rounded-lg overflow-hidden border border-neon-green/30 shadow-lg flex-shrink-0 cursor-pointer hover:border-neon-green/60 transition-colors"
               onClick={() => !isAd && currentSong && navigate(`/song/${currentSong.id}`)}
             >
-              {coverImageError && currentCoverUrlIndex >= coverFallbackUrls.length - 1 ? (
+              {coverImageError && (() => {
+                try {
+                  return currentCoverUrlIndex >= (coverFallbackUrls?.length || 0) - 1;
+                } catch (error) {
+                  console.warn('Failed to check cover fallback URLs in JSX:', error);
+                  return true; // Show fallback icon if there's an error
+                }
+              })() ? (
                 // Fallback: Show music icon when all URLs fail
                 <div className="w-full h-full bg-primary/20 flex items-center justify-center">
                   <Music className="h-8 w-8 text-neon-green" />
