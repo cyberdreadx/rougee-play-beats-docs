@@ -765,6 +765,8 @@ const AudioPlayer = ({
         src={fallbackUrls[currentAudioUrlIndex] || audioSource}
         preload="metadata"
         playsInline
+        crossOrigin="anonymous"
+        controlsList="nodownload"
         
         onError={handleAudioError}
         onCanPlay={() => {

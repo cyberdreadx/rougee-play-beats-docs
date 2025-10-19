@@ -548,7 +548,7 @@ export default function Feed() {
 
           {/* Feed with Tabs */}
           <Tabs defaultValue="posts" className="w-full md:max-w-2xl md:mx-auto">
-            <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6 mx-4 md:mx-0 md:rounded-lg rounded-md">
+            <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6 mx-auto max-w-xs md:max-w-full md:mx-0 md:rounded-lg rounded-md">
               <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="songs">Songs</TabsTrigger>
             </TabsList>

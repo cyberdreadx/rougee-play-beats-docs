@@ -1,11 +1,11 @@
 // ROUGEE PLAY PWA Service Worker
 // Optimized for XMTP messaging and blockchain music platform
 
-const CACHE_NAME = 'rougee-play-v4';
-const STATIC_CACHE = 'rougee-play-static-v4';
-const DYNAMIC_CACHE = 'rougee-play-dynamic-v4';
-const IPFS_CACHE = 'rougee-play-ipfs-v4'; // Immutable IPFS content
-const API_CACHE = 'rougee-play-api-v4'; // API responses
+const CACHE_NAME = 'rougee-play-v5';
+const STATIC_CACHE = 'rougee-play-static-v5';
+const DYNAMIC_CACHE = 'rougee-play-dynamic-v5';
+const IPFS_CACHE = 'rougee-play-ipfs-v5'; // Immutable IPFS content
+const API_CACHE = 'rougee-play-api-v5'; // API responses
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -66,35 +66,23 @@ self.addEventListener('fetch', (event) => {
   
   // Handle different types of requests
   if (request.method === 'GET') {
-    // IPFS Audio files - Network first with range request support (for streaming)
-    if ((url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) && 
-        (url.pathname.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i) || request.headers.get('range'))) {
-      event.respondWith(
-        fetch(request)
-          .then((response) => {
-            // Don't cache partial responses (range requests)
-            if (response.status === 200 && !request.headers.get('range')) {
-              const responseClone = response.clone();
-              caches.open(IPFS_CACHE)
-                .then((cache) => {
-                  cache.put(request, responseClone);
-                  console.log('💾 Cached audio:', url.pathname.slice(0, 50));
-                });
-            }
-            return response;
-          })
-          .catch((error) => {
-            console.log('🔴 Audio fetch failed, trying cache:', error);
-            // Fallback to cache only if network fails completely
-            return caches.match(request).then((cachedResponse) => {
-              if (cachedResponse) {
-                console.log('📦 Serving cached audio:', url.pathname.slice(0, 50));
-                return cachedResponse;
-              }
-              throw error;
-            });
-          })
-      );
+    // IPFS Audio files & Proxy - BYPASS service worker for better streaming
+    // Check for audio by: file extension, range header, content-type, or Supabase proxy
+    const isAudioRequest = 
+      url.pathname.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i) ||
+      request.headers.get('range') ||
+      request.headers.get('accept')?.includes('audio') ||
+      url.pathname.includes('ipfs-proxy') ||
+      url.hostname.includes('supabase.co');
+    
+    if ((url.hostname.includes('ipfs') || 
+         url.hostname.includes('lighthouse') || 
+         url.hostname.includes('supabase.co') ||
+         url.pathname.includes('ipfs-proxy') ||
+         url.pathname.includes('/functions/')) && isAudioRequest) {
+      // Don't intercept audio requests at all - let browser handle directly
+      console.log('🎵 Bypassing SW for audio:', url.href.slice(0, 80));
+      return; // Let the request pass through without SW intervention
     }
     // IPFS Images/Other - Cache first (immutable content)
     else if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
@@ -140,6 +128,12 @@ self.addEventListener('fetch', (event) => {
             return caches.match(request);
           })
       );
+    }
+    
+    // Supabase Edge Functions - BYPASS completely (includes IPFS proxy)
+    else if (url.pathname.includes('/functions/')) {
+      console.log('🔧 Bypassing SW for Supabase function:', url.pathname);
+      return; // Let the request pass through without SW intervention
     }
     
     // API requests - network first, with stale-while-revalidate strategy
