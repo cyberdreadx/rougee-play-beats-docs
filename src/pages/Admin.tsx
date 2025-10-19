@@ -76,6 +76,7 @@ const Admin = () => {
   // Content management state
   const [songs, setSongs] = useState<any[]>([]);
   const [feedPosts, setFeedPosts] = useState<any[]>([]);
+  const [updatingAiUsage, setUpdatingAiUsage] = useState<Set<string>>(new Set());
   
   // Security monitoring state
   const [ipLogs, setIpLogs] = useState<any[]>([]);
@@ -420,6 +421,44 @@ const Admin = () => {
     }
   };
 
+  const handleUpdateAiUsage = async (songId: string, aiUsage: 'none' | 'partial' | 'full') => {
+    setUpdatingAiUsage(new Set(updatingAiUsage).add(songId));
+
+    try {
+      const token = await getAccessToken();
+      const { error } = await supabase.functions.invoke('admin-update-song-ai-usage', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'x-wallet-address': fullAddress.toLowerCase(),
+        },
+        body: { songId, aiUsage },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "AI Usage Updated",
+        description: `Song AI label updated to: ${aiUsage}`,
+      });
+
+      // Update local state
+      setSongs(songs.map(song => 
+        song.id === songId ? { ...song, ai_usage: aiUsage } : song
+      ));
+    } catch (error) {
+      console.error('Error updating AI usage:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update AI usage",
+        variant: "destructive",
+      });
+    } finally {
+      const newSet = new Set(updatingAiUsage);
+      newSet.delete(songId);
+      setUpdatingAiUsage(newSet);
+    }
+  };
+
   const getReportTypeBadge = (type: string) => {
     const variants = {
       copyright: "destructive",
@@ -639,6 +678,7 @@ const Admin = () => {
                     <TableHead className="font-mono">TITLE</TableHead>
                     <TableHead className="font-mono">ARTIST</TableHead>
                     <TableHead className="font-mono">GENRE</TableHead>
+                    <TableHead className="font-mono">AI USAGE</TableHead>
                     <TableHead className="font-mono">PLAYS</TableHead>
                     <TableHead className="font-mono">UPLOADED</TableHead>
                     <TableHead className="font-mono">ACTIONS</TableHead>
@@ -653,6 +693,18 @@ const Admin = () => {
                         <Badge variant="outline" className="font-mono text-xs">
                           {song.genre || 'N/A'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <select
+                          value={song.ai_usage || 'none'}
+                          onChange={(e) => handleUpdateAiUsage(song.id, e.target.value as 'none' | 'partial' | 'full')}
+                          disabled={updatingAiUsage.has(song.id)}
+                          className="h-8 w-28 rounded border border-border bg-background px-2 text-xs font-mono disabled:opacity-50"
+                        >
+                          <option value="none">No AI</option>
+                          <option value="partial">Partial</option>
+                          <option value="full">Full AI</option>
+                        </select>
                       </TableCell>
                       <TableCell className="font-mono">{song.play_count || 0}</TableCell>
                       <TableCell className="font-mono text-xs">
