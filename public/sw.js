@@ -1,11 +1,11 @@
 // ROUGEE PLAY PWA Service Worker
 // Optimized for XMTP messaging and blockchain music platform
 
-const CACHE_NAME = 'rougee-play-v5';
-const STATIC_CACHE = 'rougee-play-static-v5';
-const DYNAMIC_CACHE = 'rougee-play-dynamic-v5';
-const IPFS_CACHE = 'rougee-play-ipfs-v5'; // Immutable IPFS content
-const API_CACHE = 'rougee-play-api-v5'; // API responses
+const CACHE_NAME = 'rougee-play-v6';
+const STATIC_CACHE = 'rougee-play-static-v6';
+const DYNAMIC_CACHE = 'rougee-play-dynamic-v6';
+const IPFS_CACHE = 'rougee-play-ipfs-v6'; // Immutable IPFS content
+const API_CACHE = 'rougee-play-api-v6'; // API responses
 
 // Files to cache for offline functionality
 const STATIC_FILES = [
@@ -66,26 +66,21 @@ self.addEventListener('fetch', (event) => {
   
   // Handle different types of requests
   if (request.method === 'GET') {
-    // IPFS Audio files & Proxy - BYPASS service worker for better streaming
-    // Check for audio by: file extension, range header, content-type, or Supabase proxy
-    const isAudioRequest = 
-      url.pathname.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i) ||
+    // STRICT MEDIA BYPASS: Never intercept any audio/video or proxy requests
+    const isMedia =
+      url.pathname.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm|mp4|mkv|mov)$/i) ||
       request.headers.get('range') ||
-      request.headers.get('accept')?.includes('audio') ||
+      request.headers.get('accept')?.match(/audio|video/i) ||
       url.pathname.includes('ipfs-proxy') ||
       url.hostname.includes('supabase.co');
-    
-    if ((url.hostname.includes('ipfs') || 
-         url.hostname.includes('lighthouse') || 
-         url.hostname.includes('supabase.co') ||
-         url.pathname.includes('ipfs-proxy') ||
-         url.pathname.includes('/functions/')) && isAudioRequest) {
-      // Don't intercept audio requests at all - let browser handle directly
-      console.log('🎵 Bypassing SW for audio:', url.href.slice(0, 80));
-      return; // Let the request pass through without SW intervention
+
+    if (isMedia) {
+      // Let the browser stream media directly with proper Range support
+      return;
     }
+
     // IPFS Images/Other - Cache first (immutable content)
-    else if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
+    if (url.hostname.includes('ipfs') || url.hostname.includes('lighthouse')) {
       event.respondWith(
         caches.match(request)
           .then((cachedResponse) => {
