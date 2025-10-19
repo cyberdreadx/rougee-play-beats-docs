@@ -333,22 +333,22 @@ const AudioPlayer = ({
   const baseFallbacks = isAd 
     ? getIPFSGatewayUrls(currentAd.audio_cid, 4, false) // Direct IPFS gateways
     : (currentSong ? getIPFSGatewayUrls(currentSong.audio_cid, 4, false) : []);
-  const audioSource = proxyUrl || directPrimaryUrl;
-  // Ensure primary direct URL is first in fallbacks, followed by other gateways
-  const fallbackUrls = [directPrimaryUrl, ...baseFallbacks].filter(Boolean);
+  // Build ordered sources: proxy first, then direct Lighthouse, then other gateways
+  const sourceUrls = [proxyUrl, directPrimaryUrl, ...baseFallbacks]
+    .filter((u): u is string => Boolean(u))
+    .filter((url, idx, arr) => arr.indexOf(url) === idx); // dedupe
 
-  // Handle audio loading errors with fallback
   const handleAudioError = () => {
-    if (currentAudioUrlIndex < fallbackUrls.length - 1) {
+    if (currentAudioUrlIndex < sourceUrls.length - 1) {
       const nextIndex = currentAudioUrlIndex + 1;
-      console.log(`🔄 Audio failed, trying fallback ${nextIndex + 1}/${fallbackUrls.length}...`);
+      console.log(`🔄 Audio failed, trying fallback ${nextIndex + 1}/${sourceUrls.length}...`);
       setCurrentAudioUrlIndex(nextIndex);
       
       // Update the audio source
       const audio = audioRef.current;
       if (audio) {
         try { audio.pause(); } catch {}
-        audio.src = fallbackUrls[nextIndex];
+        audio.src = sourceUrls[nextIndex];
         audio.load();
         if (isPlaying) {
           const p = audio.play();
@@ -804,7 +804,7 @@ const AudioPlayer = ({
       <audio
         key={(currentSong?.id || currentAd?.id) ?? 'no-media'}
         ref={audioRef}
-        src={fallbackUrls[currentAudioUrlIndex] || audioSource}
+        src={sourceUrls[currentAudioUrlIndex] || ''}
         preload="metadata"
         playsInline
         controlsList="nodownload"
