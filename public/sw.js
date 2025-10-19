@@ -72,7 +72,9 @@ self.addEventListener('fetch', (event) => {
       request.headers.get('range') ||
       request.headers.get('accept')?.match(/audio|video/i) ||
       url.pathname.includes('ipfs-proxy') ||
-      url.hostname.includes('supabase.co');
+      url.hostname.includes('supabase.co') ||
+      url.hostname.includes('lighthouse.storage') ||
+      url.hostname.includes('gateway.lighthouse.storage');
 
     if (isMedia) {
       // Let the browser stream media directly with proper Range support

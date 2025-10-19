@@ -7,6 +7,7 @@ import { Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Shuffle, Repeat, 
 import { supabase } from "@/integrations/supabase/client";
 import { getIPFSGatewayUrl, getIPFSGatewayUrls } from "@/lib/ipfs";
 import { useToast } from "@/hooks/use-toast";
+import { usePWAAudio } from "@/hooks/usePWAAudio";
 interface Song {
   id: string;
   title: string;
@@ -71,6 +72,7 @@ const AudioPlayer = ({
   const [currentCoverUrlIndex, setCurrentCoverUrlIndex] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
   const { toast } = useToast();
+  const { isPWA, audioSupported, handlePWAAudioPlay } = usePWAAudio();
 
   // Reset cover image state when song changes
   useEffect(() => {
@@ -206,21 +208,44 @@ const AudioPlayer = ({
     const audio = audioRef.current;
     if (!audio) return;
 
+    // PWA-specific: Initialize audio context on first interaction
+    if (audio.context && audio.context.state === 'suspended') {
+      audio.context.resume().catch(console.error);
+    }
+
     if (isPlaying) {
       const title = currentAd?.title || currentSong?.title || 'Audio';
       toast({
         title: '▶️ Playing',
         description: title,
       });
-      const playPromise = audio.play();
+      
+      // PWA-specific: Enhanced error handling for autoplay
+      const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(error => {
-          console.error("Playback error:", error);
-          toast({
-            title: '❌ Playback failed',
-            description: error.message || 'Could not play audio',
-            variant: 'destructive',
-          });
+          console.error("PWA Playback error:", error);
+          
+          // PWA-specific error messages
+          if (error.name === 'NotAllowedError') {
+            toast({
+              title: '🔒 Autoplay blocked in PWA',
+              description: 'Please tap the play button to start audio',
+              variant: 'destructive',
+            });
+          } else if (error.name === 'NotSupportedError') {
+            toast({
+              title: '❌ Audio format not supported',
+              description: 'This audio format may not work in PWA mode',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: '❌ Playback failed',
+              description: error.message || 'Could not play audio in PWA mode',
+              variant: 'destructive',
+            });
+          }
         });
       }
     } else {
@@ -253,22 +278,49 @@ const AudioPlayer = ({
     setIsMuted(!isMuted);
   };
   
-  // Ensure play/pause runs in a direct user gesture (iOS Safari requirement)
+  // Ensure play/pause runs in a direct user gesture (iOS Safari and PWA requirement)
   const handlePlayPauseClick = () => {
     const audio = audioRef.current;
     if (!audio) {
       onPlayPause();
       return;
     }
+    
+    // PWA-specific: Ensure audio context is resumed if needed
+    if (audio.context && audio.context.state === 'suspended') {
+      audio.context.resume().catch(console.error);
+    }
+    
     if (isPlaying) {
       try { audio.pause(); } catch {}
       onPlayPause();
     } else {
-      const p = audio.play();
-      if (p && typeof (p as any).catch === 'function') {
-        (p as Promise<void>).catch((error) => {
-          console.error('Playback error (direct):', error);
-          toast({ title: '❌ Playback failed', description: error.message || 'Could not play audio', variant: 'destructive' });
+      // PWA-specific: Add user gesture detection
+      const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch((error) => {
+          console.error('Playback error (PWA):', error);
+          
+          // PWA-specific error handling
+          if (error.name === 'NotAllowedError') {
+            toast({ 
+              title: '🔒 Audio blocked', 
+              description: 'Please tap the play button to start audio playback', 
+              variant: 'destructive' 
+            });
+          } else if (error.name === 'NotSupportedError') {
+            toast({ 
+              title: '❌ Audio not supported', 
+              description: 'This audio format is not supported in PWA mode', 
+              variant: 'destructive' 
+            });
+          } else {
+            toast({ 
+              title: '❌ Playback failed', 
+              description: error.message || 'Could not play audio in PWA mode', 
+              variant: 'destructive' 
+            });
+          }
         });
       }
       onPlayPause();
@@ -767,13 +819,40 @@ const AudioPlayer = ({
         playsInline
         crossOrigin="anonymous"
         controlsList="nodownload"
+        // PWA-specific attributes
+        webkit-playsinline="true"
+        x-webkit-airplay="allow"
+        // Ensure proper MIME type for PWA compatibility
+        type="audio/mpeg"
         
-        onError={handleAudioError}
+        onError={(e) => {
+          console.error('Audio error in PWA:', e);
+          handleAudioError();
+        }}
         onCanPlay={() => {
           const audio = audioRef.current;
           if (isPlaying && audio && audio.paused) {
-            audio.play().catch(() => {});
+            // PWA-specific: Ensure user gesture before autoplay
+            const playPromise = isPWA ? handlePWAAudioPlay(audio) : audio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+              playPromise.catch((error) => {
+                console.error('PWA autoplay blocked:', error);
+                if (error.name === 'NotAllowedError') {
+                  toast({
+                    title: '🔒 Autoplay blocked',
+                    description: 'Tap play to start audio in PWA mode',
+                    variant: 'destructive'
+                  });
+                }
+              });
+            }
           }
+        }}
+        onLoadStart={() => {
+          console.log('Audio loading started in PWA mode');
+        }}
+        onLoadedData={() => {
+          console.log('Audio data loaded in PWA mode');
         }}
       />
     </>

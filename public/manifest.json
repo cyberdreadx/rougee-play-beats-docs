@@ -75,6 +75,9 @@
     }
   ],
   "categories": ["music", "entertainment", "social"],
+  "permissions": [
+    "audio"
+  ],
   "shortcuts": [
     {
       "name": "Discover Music",
