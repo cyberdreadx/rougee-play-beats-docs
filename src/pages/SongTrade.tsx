@@ -554,16 +554,118 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           }
         }
       } catch (error: any) {
-        // Fallback to estimate based on trading activity
-        const tokensSold = 990_000_000 - Number(bondingSupply) / 1e18;
-        if (tokensSold > 1000) {
-          setPriceChange24h(15); // Conservative estimate for active tokens
-        } else if (tokensSold > 100) {
-          setPriceChange24h(25); // Higher estimate for moderately active tokens
-        } else if (tokensSold > 0) {
-          setPriceChange24h(35); // Even higher for very new tokens
-        } else {
-          setPriceChange24h(0);
+        // Fallback: Calculate from actual trades in the last 24h
+        console.log('⚠️ Historical price query not supported, calculating from trades');
+        
+        try {
+          const currentBlock = await publicClient.getBlockNumber();
+          const blocksIn24h = 43200;
+          const fromBlock = currentBlock - BigInt(blocksIn24h);
+          
+          const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
+          const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
+          
+          // Fetch song token Transfer events for 24h
+          const songTokenLogs = await publicClient.getLogs({
+            address: songTokenAddress,
+            event: {
+              type: 'event',
+              name: 'Transfer',
+              inputs: [
+                { type: 'address', indexed: true, name: 'from' },
+                { type: 'address', indexed: true, name: 'to' },
+                { type: 'uint256', indexed: false, name: 'value' }
+              ]
+            },
+            fromBlock,
+            toBlock: currentBlock
+          });
+          
+          // Fetch XRGE Transfer events for 24h
+          const xrgeLogs = await publicClient.getLogs({
+            address: XRGE_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'Transfer',
+              inputs: [
+                { type: 'address', indexed: true, name: 'from' },
+                { type: 'address', indexed: true, name: 'to' },
+                { type: 'uint256', indexed: false, name: 'value' }
+              ]
+            },
+            fromBlock,
+            toBlock: currentBlock
+          });
+          
+          // Build a map of XRGE transfers by transaction hash
+          const xrgeByTx = new Map<string, number>();
+          
+          for (const log of xrgeLogs) {
+            const { args } = log as any;
+            const from = (args.from as string).toLowerCase();
+            const to = (args.to as string).toLowerCase();
+            const amount = Number(args.value as bigint) / 1e18;
+            
+            // Skip fee transfers
+            if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
+            
+            // Only count XRGE going to or from bonding curve
+            if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
+              const existing = xrgeByTx.get(log.transactionHash) || 0;
+              xrgeByTx.set(log.transactionHash, existing + amount);
+            }
+          }
+          
+          // Calculate price change from actual trades
+          if (songTokenLogs.length > 0) {
+            const trades: { timestamp: number; priceXRGE: number }[] = [];
+            
+            for (const log of songTokenLogs) {
+              const { args } = log as any;
+              const from = (args.from as string).toLowerCase();
+              const to = (args.to as string).toLowerCase();
+              const amount = Number(args.value as bigint) / 1e18;
+              
+              if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+                const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+                const timestamp = Number(block.timestamp) * 1000;
+                const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+                const priceXRGE = amount > 0 ? xrgeAmount / amount : 0;
+                
+                if (priceXRGE > 0) {
+                  trades.push({ timestamp, priceXRGE });
+                }
+              }
+            }
+            
+            if (trades.length >= 2) {
+              trades.sort((a, b) => a.timestamp - b.timestamp);
+              const firstPrice = trades[0].priceXRGE;
+              const lastPrice = trades[trades.length - 1].priceXRGE;
+              const change = ((lastPrice - firstPrice) / firstPrice) * 100;
+              setPriceChange24h(change);
+              console.log('📊 24h price change from trades:', {
+                firstPrice: firstPrice.toFixed(6),
+                lastPrice: lastPrice.toFixed(6),
+                change: change.toFixed(2) + '%',
+                tradeCount: trades.length
+              });
+            } else {
+              // If only one trade or none, estimate from bonding curve position
+              const tokensSold = 990_000_000 - Number(bondingSupply) / 1e18;
+              if (tokensSold > 1000) {
+                const estimatedChange = Math.min(tokensSold / 1000, 500);
+                setPriceChange24h(estimatedChange);
+              }
+            }
+          }
+        } catch (tradeError) {
+          console.error('Failed to calculate from trades:', tradeError);
+          // Final fallback
+          const tokensSold = 990_000_000 - Number(bondingSupply) / 1e18;
+          if (tokensSold > 1000) {
+            setPriceChange24h(Math.min(tokensSold / 1000, 500));
+          }
         }
       }
     };
