@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import Header from "./Header";
 import Navigation from "./Navigation";
 
@@ -9,9 +9,15 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <Navigation />
-      <div className="pb-20 md:pb-0">
+      <Header />
+      {/* Main content with sidebar offset on desktop - CSS variable handles the transition */}
+      <div 
+        className="pb-20 md:pb-0 transition-all duration-300"
+        style={{
+          paddingLeft: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'var(--sidebar-width, 16rem)' : '0'
+        }}
+      >
         {children}
       </div>
     </div>

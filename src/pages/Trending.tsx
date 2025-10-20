@@ -18,7 +18,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { useSongPrice } from "@/hooks/useSongBondingCurve";
 import { useReadContract, usePublicClient } from "wagmi";
-import { Address } from "viem";
+import { Address, formatEther } from "viem";
 import { AiBadge } from "@/components/AiBadge";
 import { SongPriceSparkline } from "@/components/SongPriceSparkline";
 
@@ -178,7 +178,7 @@ const FeaturedSong = ({ song }: { song: Song }) => {
   const volumeUSD = volume24h * (prices.xrge || 0);
   
   return (
-    <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-neon-green/30 bg-gradient-to-br from-neon-green/5 via-transparent to-purple-500/5 backdrop-blur-xl p-6">
+    <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-white/20 bg-white/5 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,255,159,0.15)] p-6 hover:bg-white/8 transition-all duration-300">
       {/* Faded background album cover */}
       {song.cover_cid && (
         <div 
@@ -501,7 +501,7 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
                 e.stopPropagation();
                 playSong(song);
               }}
-              className="w-8 h-8 rounded-full bg-neon-green hover:bg-neon-green/80 flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
+              className="w-8 h-8 rounded-full bg-neon-green hover:bg-neon-green/80 active:bg-neon-green/70 flex items-center justify-center transition-all hover:scale-110 active:scale-95 flex-shrink-0"
             >
               {isThisSongPlaying ? (
                 <Pause className="w-4 h-4 text-black fill-black" />
@@ -542,7 +542,15 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
                 </span>
               )}
             </div>
-            <div className="text-sm text-muted-foreground">{song.artist || 'Unknown'}</div>
+            <div 
+              className="text-sm text-muted-foreground hover:text-neon-green transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (song.wallet_address) navigate(`/artist/${song.wallet_address}`);
+              }}
+            >
+              {song.artist || 'Unknown'}
+            </div>
           </div>
         </div>
       </TableCell>
@@ -732,11 +740,233 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
     </div>
   );
 
+  // Return only desktop view (to be used in table)
+  // Mobile view will be handled separately in parent
+  return desktopView;
+};
+
+// Separate mobile card component
+const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void; playSong?: (song: any) => void; currentSong?: any; isPlaying?: boolean }) => {
+  const navigate = useNavigate();
+  const { prices } = useTokenPrices();
+  const publicClient = usePublicClient();
+  
+  const isCurrentSong = currentSong?.id === song.id;
+  const isThisSongPlaying = isCurrentSong && isPlaying;
+  const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
+  const [volume24h, setVolume24h] = useState<number>(0);
+  
+  const { price: priceInXRGENumber } = useSongPrice(song.token_address as Address);
+  const priceInXRGE = priceInXRGENumber !== null ? priceInXRGENumber : null;
+  
+  const { data: xrgeRaised } = useReadContract({
+    address: song.token_address as Address,
+    abi: SONG_TOKEN_ABI,
+    functionName: 'totalXRGERaised',
+    query: { enabled: !!song.token_address }
+  });
+  
+  const { data: bondingSupply } = useReadContract({
+    address: song.token_address as Address,
+    abi: SONG_TOKEN_ABI,
+    functionName: 'bondingCurveSupply',
+    query: { enabled: !!song.token_address }
+  });
+  
+  const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : null;
+  
+  // Same 24h data fetching logic
+  useEffect(() => {
+    const fetch24hData = async () => {
+      if (!publicClient || !song.token_address || !bondingSupplyStr) return;
+      
+      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
+      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
+      
+      try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const blocksIn24h = 43200;
+        const fromBlock = currentBlock - BigInt(blocksIn24h);
+        
+        const songTokenLogs = await publicClient.getLogs({
+          address: song.token_address as Address,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          fromBlock,
+          toBlock: 'latest'
+        });
+
+        const xrgeLogs = await publicClient.getLogs({
+          address: XRGE_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'Transfer',
+            inputs: [
+              { type: 'address', indexed: true, name: 'from' },
+              { type: 'address', indexed: true, name: 'to' },
+              { type: 'uint256', indexed: false, name: 'value' }
+            ]
+          },
+          args: {
+            from: BONDING_CURVE_ADDRESS
+          },
+          fromBlock,
+          toBlock: 'latest'
+        });
+
+        const trades: any[] = [];
+        for (const songLog of songTokenLogs) {
+          if (songLog.args.to === BONDING_CURVE_ADDRESS) {
+            const xrgeLog = xrgeLogs.find(log => log.transactionHash === songLog.transactionHash);
+            if (xrgeLog) {
+              const songAmount = Number(formatEther(songLog.args.value as bigint));
+              const xrgeAmount = Number(formatEther(xrgeLog.args.value as bigint));
+              const priceXRGE = xrgeAmount / songAmount;
+              trades.push({
+                timestamp: Number(songLog.blockNumber),
+                priceXRGE,
+                volumeXRGE: xrgeAmount
+              });
+            }
+          }
+        }
+
+        if (trades.length >= 2) {
+          trades.sort((a, b) => a.timestamp - b.timestamp);
+          const firstPrice = trades[0].priceXRGE;
+          const lastPrice = trades[trades.length - 1].priceXRGE;
+          const change = ((lastPrice - firstPrice) / firstPrice) * 100;
+          setPriceChange24h(change);
+          
+          const totalVolume = trades.reduce((sum, t) => sum + t.volumeXRGE, 0);
+          setVolume24h(totalVolume);
+        } else if (priceInXRGE) {
+          setPriceChange24h(0);
+        }
+      } catch (error) {
+        console.error('Error fetching 24h data:', error);
+      }
+    };
+
+    fetch24hData();
+  }, [publicClient, song.token_address, bondingSupplyStr, priceInXRGE]);
+  
+  const xrgeRaisedNum = xrgeRaised ? Number(formatEther(xrgeRaised)) : 0;
+  const priceUSD = (priceInXRGE || 0) * (prices.xrge || 0);
+  const volumeUSD = volume24h * (prices.xrge || 0);
+  const marketCap = xrgeRaisedNum * (prices.xrge || 0);
+  const change24h = priceChange24h ?? 0;
+  const isPositive = change24h > 0;
+  
+  useEffect(() => {
+    if (onStatsUpdate) {
+      onStatsUpdate(song.id, volumeUSD, change24h, marketCap, priceUSD);
+    }
+  }, [song.id, volumeUSD, change24h, marketCap, priceUSD]);
+  
   return (
-    <>
-      <div className="hidden md:contents">{desktopView}</div>
-      <div className="md:hidden">{mobileView}</div>
-    </>
+    <div
+      onClick={() => navigate(`/song/${song.id}`)}
+      className="relative flex items-center gap-2 p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl hover:bg-white/8 active:bg-white/10 active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_16px_0_rgba(0,255,159,0.05)]"
+    >
+      <div className="flex-shrink-0 text-xs font-mono text-muted-foreground w-6">
+        #{index + 1}
+      </div>
+      
+      <div className="relative flex-shrink-0">
+        {song.cover_cid ? (
+          <img
+            src={getIPFSGatewayUrl(song.cover_cid)}
+            alt={song.title}
+            className="w-12 h-12 rounded object-cover"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded bg-neon-green/10 flex items-center justify-center">
+            <Music className="w-6 h-6 text-neon-green" />
+          </div>
+        )}
+        {playSong && song.audio_cid && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              playSong(song);
+            }}
+            className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-neon-green hover:bg-neon-green/80 active:bg-neon-green/70 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+          >
+            {isThisSongPlaying ? (
+              <Pause className="w-3 h-3 text-black fill-black" />
+            ) : (
+              <Play className="w-3 h-3 text-black fill-black ml-0.5" />
+            )}
+          </button>
+        )}
+        {index < 3 && (
+          <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1">
+            <Flame className="w-2 h-2 text-white" />
+          </div>
+        )}
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+          <span className="text-xs font-semibold truncate">{song.title}</span>
+          {song.ticker && (
+            <span className="text-[10px] text-neon-green font-mono flex-shrink-0">${song.ticker}</span>
+          )}
+          <AiBadge aiUsage={song.ai_usage} size="sm" />
+          {change24h > 50 && (
+            <span className="text-[9px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-mono font-bold flex-shrink-0">
+              🚀
+            </span>
+          )}
+        </div>
+        <div 
+          className="text-[10px] text-muted-foreground hover:text-neon-green transition-colors cursor-pointer truncate"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (song.wallet_address) navigate(`/artist/${song.wallet_address}`);
+          }}
+        >
+          {song.artist || 'Unknown'}
+        </div>
+        
+        <div className="flex items-center gap-3 mt-1.5">
+          <div className="flex items-center gap-1">
+            <Flame className="w-3 h-3 text-orange-500" />
+            <span className="text-[10px] font-mono">{song.play_count || 0}</span>
+          </div>
+          
+          <div className={`text-[10px] font-mono font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+            {isPositive ? '+' : ''}{change24h.toFixed(1)}%
+          </div>
+          
+          <div className="text-[10px] font-mono text-muted-foreground">
+            ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+          </div>
+        </div>
+        
+        {bondingSupplyStr && (
+          <div className="mt-2 bg-black/30 rounded-lg p-1.5 border border-neon-green/10">
+            <SongPriceSparkline 
+              tokenAddress={song.token_address || undefined}
+              bondingSupply={bondingSupplyStr}
+              priceInXRGE={typeof priceInXRGE === 'number' ? priceInXRGE : undefined}
+              height={24}
+              showPercentChange={false}
+              timeframeHours={24}
+              percentChange={priceChange24h !== null ? priceChange24h : undefined}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -962,25 +1192,25 @@ const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
       <main className="w-full px-0 md:container md:mx-auto md:px-4 py-6 md:py-8">
         {/* Live Stats Ticker */}
         <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 px-4 md:px-0">
-          <div className="bg-gradient-to-br from-neon-green/10 to-transparent border border-neon-green/20 rounded-xl p-4 backdrop-blur-sm">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] hover:bg-white/8 transition-all duration-300">
             <div className="text-xs text-muted-foreground font-mono mb-1">TOTAL SONGS</div>
-            <div className="text-2xl font-bold font-mono neon-text">{songs.length}</div>
+            <div className="text-2xl font-bold font-mono neon-text drop-shadow-[0_0_8px_rgba(0,255,159,0.6)]">{songs.length}</div>
           </div>
-          <div className="bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20 rounded-xl p-4 backdrop-blur-sm">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-[0_4px_16px_0_rgba(168,85,247,0.1)] hover:bg-white/8 transition-all duration-300">
             <div className="text-xs text-muted-foreground font-mono mb-1">TOTAL VOLUME</div>
-            <div className="text-2xl font-bold font-mono text-purple-400">
+            <div className="text-2xl font-bold font-mono text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]">
               ${totalVolume > 0 ? totalVolume.toLocaleString(undefined, {maximumFractionDigits: 0}) : '...'}
             </div>
           </div>
-          <div className="bg-gradient-to-br from-orange-500/10 to-transparent border border-orange-500/20 rounded-xl p-4 backdrop-blur-sm">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-[0_4px_16px_0_rgba(249,115,22,0.1)] hover:bg-white/8 transition-all duration-300">
             <div className="text-xs text-muted-foreground font-mono mb-1">TOP GAINER</div>
-            <div className="text-2xl font-bold font-mono text-orange-400">
+            <div className="text-2xl font-bold font-mono text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.6)]">
               {loading ? '...' : topGainerPercent > 0 ? `+${topGainerPercent.toFixed(1)}%` : '0%'}
             </div>
           </div>
-          <div className="bg-gradient-to-br from-blue-500/10 to-transparent border border-blue-500/20 rounded-xl p-4 backdrop-blur-sm">
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-[0_4px_16px_0_rgba(59,130,246,0.1)] hover:bg-white/8 transition-all duration-300">
             <div className="text-xs text-muted-foreground font-mono mb-1">ARTISTS</div>
-            <div className="text-2xl font-bold font-mono text-blue-400">{artists.length}</div>
+            <div className="text-2xl font-bold font-mono text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]">{artists.length}</div>
           </div>
         </div>
 
@@ -1168,7 +1398,7 @@ const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
                 </div>
               ) : (
                 sortedSongs.map((song, index) => (
-                  <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />
+                  <SongCard key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />
                 ))
               )}
             </div>

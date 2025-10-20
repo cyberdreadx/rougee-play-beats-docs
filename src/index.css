@@ -187,15 +187,15 @@
   }
   
   .glass {
-    background: hsl(var(--glass-bg));
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid hsl(var(--glass-border));
-    box-shadow: var(--glass-shadow);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px 0 rgba(0, 255, 159, 0.1);
   }
   
   .glass-card {
-    @apply glass rounded-lg;
+    @apply glass rounded-2xl;
   }
   
   .visualizer-bar {

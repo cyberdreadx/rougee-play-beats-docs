@@ -140,7 +140,7 @@ const ArtistCard = ({
       </div>
 
       {/* Hover Effect */}
-      <div className="absolute inset-0 bg-neon-green/0 group-hover:bg-neon-green/5 transition-colors duration-300" />
+      <div className="absolute inset-0 bg-neon-green/0 group-hover:bg-neon-green/5 group-active:bg-neon-green/10 transition-colors duration-300" />
     </Card>
   );
 };

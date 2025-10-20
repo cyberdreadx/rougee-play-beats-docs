@@ -115,7 +115,7 @@ interface SongTokenItemProps {
   
   return (
     <div
-      className="group flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-background/80 to-background/40 hover:from-neon-green/10 hover:to-purple-500/10 transition-all duration-300 border border-border hover:border-neon-green/50 cursor-pointer hover:shadow-lg hover:shadow-neon-green/10 hover:scale-[1.02]"
+      className="group flex items-center justify-between p-4 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] hover:bg-white/8 active:bg-white/10 transition-all duration-300 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
       onClick={onClick}
     >
       <div className="flex items-center gap-3 flex-1">
@@ -481,7 +481,7 @@ const Wallet = () => {
         </div>
 
         {/* Connected Wallet Card */}
-        <Card className="p-3 mb-3 bg-card/50 backdrop-blur border-neon-green/20">
+        <Card className="p-3 mb-3 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] rounded-2xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground font-mono mb-1">Connected Wallet</p>
@@ -538,7 +538,7 @@ const Wallet = () => {
         {activeTab === 'balances' && (
           <>
             {/* Quick Actions */}
-            <Card className="p-3 mb-3 bg-card/50 backdrop-blur border-neon-green/20">
+            <Card className="p-3 mb-3 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] rounded-2xl">
               <p className="text-xs text-muted-foreground font-mono mb-2">Quick Actions</p>
               <div className="grid grid-cols-4 gap-2">
                 <Button
@@ -583,7 +583,7 @@ const Wallet = () => {
             {/* Token Balances Grid - Mobile Optimized */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
           {/* XRGE Token */}
-          <Card className="p-4 bg-gradient-to-br from-neon-green/5 to-transparent backdrop-blur border-neon-green/30 hover:border-neon-green/50 transition-colors">
+          <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] rounded-2xl hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
             <div className="flex items-start justify-between mb-2">
               <img src={xrgeLogo} alt="XRGE" className="h-10 w-10 object-contain" />
               <Button
@@ -622,7 +622,7 @@ const Wallet = () => {
           </Card>
 
           {/* KTA Token */}
-          <Card className="p-4 bg-gradient-to-br from-purple-500/5 to-transparent backdrop-blur border-purple-500/30 hover:border-purple-500/50 transition-colors">
+          <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(168,85,247,0.1)] rounded-2xl hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
             <div className="flex items-start justify-between mb-2">
               <img src={ktaLogo} alt="KTA" className="h-10 w-10 object-contain" />
               <Button
@@ -659,7 +659,7 @@ const Wallet = () => {
           </Card>
 
           {/* ETH */}
-          <Card className="p-4 bg-gradient-to-br from-blue-500/5 to-transparent backdrop-blur border-blue-500/30 hover:border-blue-500/50 transition-colors">
+          <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(59,130,246,0.1)] rounded-2xl hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
             <div className="flex items-start justify-between mb-2">
               <img src={ethLogo} alt="ETH" className="h-10 w-10 object-contain" />
             </div>
@@ -682,7 +682,7 @@ const Wallet = () => {
           </Card>
 
           {/* USDC */}
-          <Card className="p-4 bg-gradient-to-br from-green-500/5 to-transparent backdrop-blur border-green-500/30 hover:border-green-500/50 transition-colors">
+          <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(34,197,94,0.1)] rounded-2xl hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
             <div className="flex items-start justify-between mb-2">
               <div className="h-10 w-10 rounded-full bg-green-500/10 backdrop-blur flex items-center justify-center p-0.5">
                 <img src={usdcLogo} alt="USDC" className="h-full w-full object-contain rounded-full" style={{ filter: 'brightness(1.2) contrast(1.1)' }} />
@@ -727,7 +727,7 @@ const Wallet = () => {
         {activeTab === 'music' && (
           <>
             {/* Purchased Songs */}
-        <Card className="p-4 bg-card/50 backdrop-blur border-neon-green/20">
+        <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-base font-bold font-mono text-foreground flex items-center gap-2">

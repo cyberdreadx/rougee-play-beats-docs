@@ -245,7 +245,7 @@ const fetchSongs = async () => {
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-2 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg hover:bg-white/10 hover:border-white hover:border-2 hover:scale-[1.02] hover:shadow-[0_25px_50px_-12px_rgba(0,255,0,0.25)] group gap-1.5 md:gap-3 active:scale-95 transition-all duration-300"
+              className="flex items-center justify-between p-2 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg hover:bg-white/10 active:bg-white/15 hover:border-white hover:border-2 hover:scale-[1.02] active:scale-[0.98] hover:shadow-[0_25px_50px_-12px_rgba(0,255,0,0.25)] group gap-1.5 md:gap-3 transition-all duration-300"
             >
               <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                 <span className="text-neon-green font-mono font-bold text-xs md:text-lg w-5 md:w-8 flex-shrink-0 group-hover:scale-110 group-hover:drop-shadow-lg group-hover:drop-shadow-neon-green/50 transition-all duration-300">
@@ -326,7 +326,7 @@ const fetchSongs = async () => {
                     console.log('TopSongs play button clicked for song:', song.title);
                     handlePlayClick(song);
                   }}
-                  className={`h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}
+                  className={`h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 active:bg-white/30 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 active:scale-95 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}
                 >
                   {isCurrentSong(song) && isPlaying ? (
                     <Pause className="w-3 h-3 md:w-5 md:h-5 text-neon-green" />

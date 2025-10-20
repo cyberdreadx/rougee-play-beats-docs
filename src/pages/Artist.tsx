@@ -23,6 +23,8 @@ import { HoldersModal } from "@/components/HoldersModal";
 import { XRGETierBadge } from "@/components/XRGETierBadge";
 import { AiBadge } from "@/components/AiBadge";
 import { SongComments } from "@/components/SongComments";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
+import { useSongPrice } from "@/hooks/useSongBondingCurve";
 
 interface Song {
   id: string;
@@ -65,6 +67,112 @@ interface ArtistProps {
   currentSong: Song | null;
   isPlaying: boolean;
 }
+
+// Song Card Component with Price
+const ArtistSongCard = ({ song, coverUrl, isThisSongPlaying, navigate, playSong, toggleSongComments, expandedSongComments }: {
+  song: Song;
+  coverUrl: string | null;
+  isThisSongPlaying: boolean;
+  navigate: any;
+  playSong: (song: Song) => void;
+  toggleSongComments: (id: string) => void;
+  expandedSongComments: Set<string>;
+}) => {
+  const { prices } = useTokenPrices();
+  const { price: priceInXRGENumber } = useSongPrice(song.token_address as Address);
+  const priceInXRGE = priceInXRGENumber !== null ? Number(priceInXRGENumber) : 0;
+  const priceUSD = priceInXRGE * (prices.xrge || 0);
+
+  return (
+    <Card
+      className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_16px_0_rgba(0,255,159,0.1)] p-4 md:p-6 hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300 group rounded-2xl cursor-pointer"
+      onClick={() => navigate(`/song/${song.id}`)}
+    >
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        {/* Album Artwork with Play Button */}
+        <div className="relative flex-shrink-0 mx-auto md:mx-0">
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden bg-black/30">
+            {coverUrl ? (
+              <img 
+                src={coverUrl} 
+                alt={song.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="h-8 w-8 md:h-10 md:w-10 text-neon-green" />
+              </div>
+            )}
+          </div>
+          {/* Play Button */}
+          <button
+            className="absolute bottom-1 right-1 w-8 h-8 md:w-10 md:h-10 rounded-full bg-neon-green hover:bg-neon-green/80 active:bg-neon-green/70 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              playSong(song); 
+            }}
+            aria-label="Play"
+          >
+            {isThisSongPlaying ? (
+              <Pause className="h-4 w-4 md:h-5 md:w-5 text-black fill-black" />
+            ) : (
+              <Play className="h-4 w-4 md:h-5 md:w-5 text-black fill-black ml-0.5" />
+            )}
+          </button>
+        </div>
+        
+        {/* Song Info */}
+        <div className="flex-1 min-w-0 text-center md:text-left">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+            <h3 className="font-mono font-bold text-base md:text-lg truncate group-hover:text-neon-green transition-colors">
+              {song.title}
+            </h3>
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              {song.ticker && (
+                <span className="text-neon-green text-xs md:text-sm font-mono flex-shrink-0">${song.ticker}</span>
+              )}
+              <AiBadge aiUsage={song.ai_usage} size="sm" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs md:text-sm font-mono text-muted-foreground">
+              {song.play_count} plays • uploaded {new Date(song.created_at).toLocaleDateString()}
+            </p>
+            {song.token_address && priceUSD > 0 && (
+              <p className="text-xs md:text-sm font-mono text-neon-green font-bold">
+                ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3 flex-shrink-0">
+          <LikeButton songId={song.id} size="sm" showCount={true} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSongComments(song.id);
+            }}
+            className="gap-1"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </Button>
+          <ReportButton songId={song.id} />
+        </div>
+      </div>
+
+      {/* Comments Section */}
+      {expandedSongComments.has(song.id) && (
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <SongComments songId={song.id} />
+        </div>
+      )}
+    </Card>
+  );
+};
 
 const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
   const { walletAddress } = useParams<{ walletAddress: string }>();
@@ -731,88 +839,19 @@ const Artist = ({ playSong, currentSong, isPlaying }: ArtistProps) => {
               <div className="space-y-4">
                 {songs.map((song) => {
                   const coverUrl = song.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : null;
+                  const isThisSongPlaying = currentSong?.id === song.id && isPlaying;
                   
                   return (
-                    <Card
+                    <ArtistSongCard 
                       key={song.id}
-                      className="console-bg tech-border p-4 hover:border-neon-green transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        {/* Album Artwork */}
-                        <div className="relative flex-shrink-0">
-                          <div className="w-16 h-16 rounded tech-border overflow-hidden bg-primary/20">
-                            {coverUrl ? (
-                              <img 
-                                src={coverUrl} 
-                                alt={song.title}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Music className="h-6 w-6 text-neon-green" />
-                              </div>
-                            )}
-                          </div>
-                          {/* Play Button Overlay */}
-                          <button
-                            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              console.log('Play button clicked for song:', song.title);
-                              playSong(song); 
-                            }}
-                            aria-label="Play"
-                          >
-                            {currentSong?.id === song.id && isPlaying ? (
-                              <Pause className="h-6 w-6 text-neon-green" />
-                            ) : (
-                              <Play className="h-6 w-6 text-neon-green" />
-                            )}
-                          </button>
-                        </div>
-                        
-                        {/* Song Info (click to details) */}
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
-                          console.log('Song info clicked, navigating to:', `/song/${song.id}`);
-                          navigate(`/song/${song.id}`);
-                        }}>
-                          <p className="font-mono font-bold text-lg truncate group-hover:text-neon-green transition-colors flex items-center gap-2">
-                            <span className="truncate">{song.title}</span>
-                            {song.ticker && (
-                              <span className="text-neon-green text-sm flex-shrink-0">${song.ticker}</span>
-                            )}
-                            <AiBadge aiUsage={song.ai_usage} size="sm" />
-                          </p>
-                          <p className="text-sm font-mono text-muted-foreground">
-                            {song.play_count} plays • uploaded {formatTimeAgo(song.created_at)}
-                          </p>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2">
-                          <LikeButton songId={song.id} size="sm" showCount={true} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSongComments(song.id);
-                            }}
-                            className="gap-1"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
-                          <ReportButton songId={song.id} />
-                        </div>
-                      </div>
-
-                      {/* Comments Section */}
-                      {expandedSongComments.has(song.id) && (
-                        <div className="mt-4 pt-4 border-t border-primary/10">
-                          <SongComments songId={song.id} />
-                        </div>
-                      )}
-                    </Card>
+                      song={song}
+                      coverUrl={coverUrl}
+                      isThisSongPlaying={isThisSongPlaying}
+                      navigate={navigate}
+                      playSong={playSong}
+                      toggleSongComments={toggleSongComments}
+                      expandedSongComments={expandedSongComments}
+                    />
                   );
                 })}
                 

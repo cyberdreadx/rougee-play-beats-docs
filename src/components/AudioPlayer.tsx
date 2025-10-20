@@ -47,7 +47,7 @@ interface AudioPlayerProps {
 const AudioPlayer = ({ 
   currentSong, 
   currentAd, 
-  isPlaying, 
+  isPlaying,
   onPlayPause, 
   onSongEnd,
   onNext,
@@ -71,8 +71,36 @@ const AudioPlayer = ({
   const [coverImageLoaded, setCoverImageLoaded] = useState(false);
   const [currentCoverUrlIndex, setCurrentCoverUrlIndex] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const { toast } = useToast();
   const { isPWA, audioSupported, handlePWAAudioPlay } = usePWAAudio();
+
+  // Track mobile nav visibility on scroll
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Only apply on mobile
+      if (window.innerWidth >= 768) {
+        setIsMobileNavVisible(true);
+        return;
+      }
+      
+      // Show nav when scrolling up, hide when scrolling down
+      if (currentScrollY < lastScrollY) {
+        setIsMobileNavVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsMobileNavVisible(false);
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Reset cover image state when song changes
   useEffect(() => {
@@ -438,7 +466,7 @@ const AudioPlayer = ({
 
       {/* Full player view */}
       {!isMinimized && (
-    <Card className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300">
+    <Card className={`fixed ${isMobileNavVisible ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-0'} md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300`}>
 
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />

@@ -17,6 +17,7 @@ import { XRGETierBadge } from '@/components/XRGETierBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SongComments } from '@/components/SongComments';
 import { AiBadge } from '@/components/AiBadge';
+import gltchLogo from '@/assets/gltch-logo.png';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -502,15 +503,23 @@ export default function Feed() {
   };
   return <>
       <StoriesBar />
-      <div className="min-h-screen bg-background pt-20 md:pt-32 pb-24 md:pb-32 px-0 md:px-4">
+      <div className="min-h-screen bg-background pt-0 pb-24 md:pb-32 px-0 md:px-4">
         <div className="w-full md:max-w-7xl md:mx-auto">
-          <div className="text-center mb-6 md:mb-8 px-4">
-            <h1 className="text-4xl font-bold mb-2 glitch-text">GLTCH Feed</h1>
-            <p className="text-muted-foreground">Decentralized social feed on IPFS</p>
+          <div className="text-center mb-8 md:mb-12 px-4 pt-0 pb-8 md:pb-12">
+            <div className="flex justify-center items-center mb-6">
+              <img 
+                src={gltchLogo} 
+                alt="GLTCH" 
+                className="h-32 md:h-48 w-auto drop-shadow-[0_0_40px_rgba(0,255,159,0.8)] hover:drop-shadow-[0_0_60px_rgba(0,255,159,1)] transition-all duration-300 hover:scale-105"
+              />
+            </div>
+            <p className="text-base md:text-lg text-muted-foreground font-mono tracking-wide">
+              Decentralized social feed on IPFS
+            </p>
           </div>
 
           {/* Post Creator */}
-          {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-card/50 backdrop-blur-sm border-tech-border w-full md:max-w-2xl md:mx-auto mb-6 md:rounded-lg rounded-none border-x-0 md:border-x">
+          {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] w-full md:max-w-2xl md:mx-auto mb-6 md:rounded-2xl rounded-none border-x-0 md:border-x">
               <TagAutocomplete
                 value={contentText}
                 onChange={setContentText}
@@ -557,7 +566,7 @@ export default function Feed() {
             <TabsContent value="posts" className="space-y-0 md:space-y-4">
               {loading ? <div className="text-center py-8 text-muted-foreground px-4">Loading feed...</div> : posts.length === 0 ? <div className="text-center py-8 text-muted-foreground px-4">
                   No posts yet. Be the first to post!
-                </div> : posts.map(post => <Card key={post.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border flex flex-col w-full md:rounded-lg rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4">
+                </div> : posts.map(post => <Card key={post.id} className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] flex flex-col w-full md:rounded-2xl rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4 hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
                   {/* Post Header */}
                   <div className="flex items-center gap-2 mb-3">
                     <div 
@@ -715,7 +724,7 @@ export default function Feed() {
                 </div>
               ) : (
                 songs.map(song => (
-                  <Card key={song.id} className="p-4 bg-card/50 backdrop-blur-sm border-tech-border w-full md:rounded-lg rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4">
+                  <Card key={song.id} className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] w-full md:rounded-2xl rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4 hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
                     {/* Song Post Header */}
                     <div className="flex items-start gap-3 mb-3">
                       {/* Artist Avatar */}

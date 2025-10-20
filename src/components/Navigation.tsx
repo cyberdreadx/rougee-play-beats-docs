@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCurrentUserProfile } from "@/hooks/useCurrentUserProfile";
 import { useWallet } from "@/hooks/useWallet";
-import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music, MessageSquare, Search } from "lucide-react";
+import { Compass, TrendingUp, User, Wallet, Upload, Radio, ArrowLeftRight, HelpCircle, Music, MessageSquare, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import MusicBars from "./MusicBars";
 import { useState, useEffect } from "react";
 
 interface NavigationProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  onSidebarToggle?: (collapsed: boolean) => void;
 }
 
 const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) => {
@@ -16,6 +17,19 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   const location = useLocation();
   const { fullAddress } = useWallet();
   const { isArtist } = useCurrentUserProfile();
+  
+  // Sidebar collapse state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Update CSS variable when sidebar state changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.style.setProperty(
+        '--sidebar-width',
+        isSidebarCollapsed ? '5rem' : '16rem'
+      );
+    }
+  }, [isSidebarCollapsed]);
   
   // Mobile navigation scroll behavior
   const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
@@ -115,28 +129,80 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
 
   return (
     <>
-      {/* Desktop Navigation */}
-      <nav className="hidden md:block w-full px-6 py-4">
-        <div className="flex items-center space-x-2 bg-black/10 backdrop-blur-xl border border-neon-green/30 rounded-2xl p-2 shadow-2xl">
-          <MusicBars bars={4} className="mr-3 text-neon-green/80" />
-          {desktopTabs.map((tab) => (
-            <Button
-              key={tab.name}
-              variant="ghost"
-              size="sm"
-              className={`
-                font-mono text-sm px-4 py-2 rounded-xl transition-all duration-300 backdrop-blur-sm
-                ${isActive(tab) 
-                  ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 shadow-lg shadow-neon-green/40 font-bold' 
-                  : 'text-white/70 hover:text-neon-green hover:bg-neon-green/5 hover:border-neon-green/20 border border-transparent'
-                }
-              `}
-              onClick={() => handleTabClick(tab)}
-            >
-              [{tab.name}]
-            </Button>
-          ))}
-          <MusicBars bars={4} className="ml-3 text-neon-green/80" />
+      {/* Desktop Sidebar Navigation */}
+      <nav className={`hidden md:flex fixed left-0 top-0 bottom-0 z-40 flex-col bg-black/40 backdrop-blur-2xl border-r border-white/10 shadow-[4px_0_32px_0_rgba(0,255,159,0.1)] transition-all duration-300 ${
+        isSidebarCollapsed ? 'w-20' : 'w-64'
+      }`}>
+        {/* Logo/Header */}
+        <div className="p-6 border-b border-white/10 relative">
+          {!isSidebarCollapsed ? (
+            <>
+              <div className="flex items-center gap-3">
+                <MusicBars bars={4} className="text-neon-green/80" />
+                <h1 className="font-mono font-bold text-xl text-neon-green tracking-wider">ROUGEE</h1>
+              </div>
+              <p className="text-[10px] font-mono text-white/50 mt-2 tracking-widest">DECENTRALIZED MUSIC</p>
+            </>
+          ) : (
+            <div className="flex justify-center">
+              <MusicBars bars={4} className="text-neon-green/80" />
+            </div>
+          )}
+          
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 hover:border-neon-green/50 flex items-center justify-center text-white/70 hover:text-neon-green transition-all hover:scale-110 active:scale-95 shadow-lg"
+          >
+            {isSidebarCollapsed ? (
+              <ChevronRight className="h-3 w-3" />
+            ) : (
+              <ChevronLeft className="h-3 w-3" />
+            )}
+          </button>
+        </div>
+
+        {/* Navigation Links */}
+        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+          {desktopTabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = isActive(tab);
+            return (
+              <button
+                key={tab.name}
+                onClick={() => handleTabClick(tab)}
+                className={`
+                  w-full flex items-center gap-3 px-4 py-3 rounded-xl font-mono text-sm transition-all duration-300 group relative
+                  ${active 
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 shadow-lg shadow-neon-green/20 font-bold' 
+                    : 'text-white/70 hover:text-neon-green hover:bg-neon-green/5 active:bg-neon-green/10 hover:border-neon-green/20 active:scale-[0.98] border border-transparent'
+                  }
+                  ${isSidebarCollapsed ? 'justify-center' : ''}
+                `}
+                title={isSidebarCollapsed ? tab.name : undefined}
+              >
+                <Icon className={`h-5 w-5 flex-shrink-0 ${active ? 'drop-shadow-[0_0_8px_rgba(0,255,159,0.8)]' : ''}`} />
+                {!isSidebarCollapsed && (
+                  <>
+                    <span className="truncate">{tab.name}</span>
+                    {active && (
+                      <div className="ml-auto w-1 h-1 bg-neon-green rounded-full shadow-[0_0_8px_rgba(0,255,159,1)] animate-pulse" />
+                    )}
+                  </>
+                )}
+                {isSidebarCollapsed && active && (
+                  <div className="absolute right-1 top-1 w-1 h-1 bg-neon-green rounded-full shadow-[0_0_8px_rgba(0,255,159,1)] animate-pulse" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer - Music Bars Animation */}
+        <div className="p-4 border-t border-white/10">
+          <div className="flex justify-center">
+            <MusicBars bars={isSidebarCollapsed ? 3 : 5} className="text-neon-green/50" />
+          </div>
         </div>
       </nav>
 
@@ -148,9 +214,9 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-green to-transparent opacity-50" />
         
         {/* Main nav container */}
-        <div className="relative bg-gradient-to-b from-black/80 to-black/95 backdrop-blur-2xl">
+        <div className="relative bg-white/5 backdrop-blur-2xl border-t border-white/10">
           {/* Glow effect background */}
-          <div className="absolute inset-0 bg-gradient-to-t from-neon-green/5 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-neon-green/5 via-transparent to-transparent pointer-events-none" />
           
           <div className="relative flex justify-around items-center px-3 py-2">
             {mobileTabs.map((tab) => {

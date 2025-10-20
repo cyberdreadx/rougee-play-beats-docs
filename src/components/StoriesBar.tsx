@@ -100,7 +100,7 @@ const StoriesBar = () => {
 
   return (
     <>
-      <div className="w-full overflow-x-auto pb-4 mb-6">
+      <div className="w-full overflow-x-auto pb-4 mb-0">
         <div className="flex gap-4 px-4">
           {/* Current User's Story/Add Button */}
           {fullAddress && (
