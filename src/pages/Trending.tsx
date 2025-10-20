@@ -392,13 +392,47 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         } catch (error: any) {
           // Silently handle historical state query errors (common with basic RPC providers)
           if (!error?.message?.includes('not supported') && !error?.code) {
-            console.warn('Historical price data not available, using estimate');
+            console.warn('Historical price data not available, calculating from trades');
           }
-          // Fallback to estimated change based on current activity
-          const tokensSold = bondingSupplyStr ? (990_000_000 - Number(bondingSupplyStr) / 1e18) : 0;
-          if (tokensSold > 0) {
-            // Estimate ~25% growth in 24h for new tokens
-            setPriceChange24h(25);
+          
+          // Calculate price change from actual trades instead of hardcoded fallback
+          if (songTokenLogs.length > 0) {
+            // Find first and last trade prices
+            const trades: { timestamp: number; priceXRGE: number }[] = [];
+            
+            for (const log of songTokenLogs) {
+              const { args } = log as any;
+              const from = (args.from as string).toLowerCase();
+              const to = (args.to as string).toLowerCase();
+              const amount = Number(args.value as bigint) / 1e18;
+              
+              if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+                const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+                const timestamp = Number(block.timestamp) * 1000;
+                const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+                const priceXRGE = amount > 0 ? xrgeAmount / amount : 0;
+                
+                if (priceXRGE > 0) {
+                  trades.push({ timestamp, priceXRGE });
+                }
+              }
+            }
+            
+            if (trades.length >= 2) {
+              trades.sort((a, b) => a.timestamp - b.timestamp);
+              const firstPrice = trades[0].priceXRGE;
+              const lastPrice = trades[trades.length - 1].priceXRGE;
+              const change = ((lastPrice - firstPrice) / firstPrice) * 100;
+              setPriceChange24h(change);
+            } else if (priceInXRGE) {
+              // If only one trade, estimate from bonding curve position
+              const tokensSold = bondingSupplyStr ? (990_000_000 - Number(bondingSupplyStr) / 1e18) : 0;
+              if (tokensSold > 1000) {
+                // Estimate based on tokens sold (more sold = higher growth)
+                const estimatedChange = Math.min(tokensSold / 1000, 500); // Cap at 500%
+                setPriceChange24h(estimatedChange);
+              }
+            }
           }
         }
       } catch (error) {
