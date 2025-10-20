@@ -406,7 +406,7 @@ const AudioPlayer = ({
     <>
       {/* Minimized tab view */}
       {isMinimized && (
-        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40">
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50 md:right-0">
           <div className="relative">
             <Button
               onClick={() => setIsMinimized(false)}
@@ -466,7 +466,7 @@ const AudioPlayer = ({
 
       {/* Full player view */}
       {!isMinimized && (
-    <Card className={`fixed ${isMobileNavVisible ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-0'} md:bottom-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300`}>
+    <Card className={`fixed ${isMobileNavVisible ? 'bottom-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'bottom-0'} md:bottom-0 md:left-[var(--sidebar-width,16rem)] right-0 z-50 bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden transition-all duration-300`}>
 
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-r from-neon-green/10 via-transparent to-neon-green/10 animate-pulse opacity-60" />

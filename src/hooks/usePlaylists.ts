@@ -179,6 +179,26 @@ export const usePlaylists = () => {
     }
 
     try {
+      // Check if song is already in the playlist
+      console.log('🎵 Checking for existing song in playlist...');
+      const { data: existingSong, error: checkError } = await supabase
+        .from('playlist_songs')
+        .select('id')
+        .eq('playlist_id', playlistId)
+        .eq('song_id', songId)
+        .limit(1);
+
+      if (checkError) {
+        console.error('🎵 Error checking for existing song:', checkError);
+        throw checkError;
+      }
+
+      if (existingSong && existingSong.length > 0) {
+        console.log('🎵 Song already in playlist!');
+        toast.error('Song is already in this playlist');
+        return false;
+      }
+
       console.log('🎵 Getting current max position...');
       // Get the current max position in the playlist
       const { data: maxPosData, error: maxPosError } = await supabase

@@ -128,7 +128,8 @@ export const PlaylistModal = ({
   );
 
   const availableSongs = filteredPurchasedSongs.filter(purchasedSong => 
-    !songs.some(playlistSong => playlistSong.song_id === purchasedSong.song_id)
+    !songs.some(playlistSong => playlistSong.song_id === purchasedSong.song_id) &&
+    !selectedSongs.includes(purchasedSong.song_id) // Also exclude already selected songs for new playlists
   );
 
   if (!isOpen) return null;
@@ -407,9 +408,13 @@ export const PlaylistModal = ({
                               // If editing existing playlist, add song immediately
                               onAddSong(song.song_id);
                             } else {
-                              // If creating new playlist, add to selected songs
-                              setSelectedSongs(prev => [...prev, song.song_id]);
-                              console.log('🎵 Added to selected songs:', song.song_id);
+                              // If creating new playlist, check for duplicates before adding
+                              if (!selectedSongs.includes(song.song_id)) {
+                                setSelectedSongs(prev => [...prev, song.song_id]);
+                                console.log('🎵 Added to selected songs:', song.song_id);
+                              } else {
+                                console.log('🎵 Song already selected:', song.song_id);
+                              }
                             }
                           }}
                         >
