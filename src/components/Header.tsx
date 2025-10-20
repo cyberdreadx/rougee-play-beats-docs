@@ -39,9 +39,9 @@ const Header = () => {
 
   return (
     <header 
-      className="w-full glass sticky top-0 z-40 border-b border-neon-green/10 pt-safe px-4 transition-all duration-300"
+      className="w-full glass sticky top-0 z-30 border-b border-neon-green/10 pt-safe px-4 transition-all duration-300"
       style={{
-        paddingLeft: window.innerWidth >= 768 ? 'calc(var(--sidebar-width, 16rem) + 1.5rem)' : '1rem'
+        paddingLeft: typeof window !== 'undefined' && window.innerWidth >= 768 ? 'var(--sidebar-width, 16rem)' : '1rem'
       }}
     >
       <div className="flex items-center justify-between h-14 md:h-16">
