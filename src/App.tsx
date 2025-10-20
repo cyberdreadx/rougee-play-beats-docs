@@ -63,6 +63,16 @@ const AppContent = () => {
           <Route 
             path="/" 
             element={
+              <Trending 
+                playSong={handlePlaySong} 
+                currentSong={activeSong} 
+                isPlaying={activeIsPlaying}
+              />
+            }
+          />
+          <Route 
+            path="/discover" 
+            element={
               <Index 
                 playSong={handlePlaySong} 
                 currentSong={activeSong} 
@@ -78,7 +88,6 @@ const AppContent = () => {
               />
             } 
           />
-          <Route path="/trending" element={<Trending />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/become-artist" element={<BecomeArtist />} />
           <Route path="/wallet" element={<Wallet />} />

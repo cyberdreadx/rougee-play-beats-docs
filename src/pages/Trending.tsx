@@ -2,8 +2,10 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NetworkInfo from "@/components/NetworkInfo";
-import { Loader2, TrendingUp, TrendingDown, Flame, Music } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Flame, Music, Play, Pause } from "lucide-react";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import logo from "@/assets/logo.png";
+import MusicBars from "@/components/MusicBars";
 import {
   Table,
   TableBody,
@@ -35,6 +37,7 @@ interface Song {
   title: string;
   artist: string | null;
   wallet_address: string;
+  audio_cid: string;
   cover_cid: string | null;
   play_count: number;
   token_address?: string | null;
@@ -176,10 +179,20 @@ const FeaturedSong = ({ song }: { song: Song }) => {
   
   return (
     <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-neon-green/30 bg-gradient-to-br from-neon-green/5 via-transparent to-purple-500/5 backdrop-blur-xl p-6">
-      <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-mono font-bold px-3 py-1 rounded-full flex items-center gap-1">
-        <Flame className="w-3 h-3" />
-        #1 TRENDING
-      </div>
+      {/* Faded background album cover */}
+      {song.cover_cid && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-10 blur-sm"
+          style={{ backgroundImage: `url(${getIPFSGatewayUrl(song.cover_cid)})` }}
+        />
+      )}
+      
+      {/* Content overlay */}
+      <div className="relative z-10">
+        <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-mono font-bold px-3 py-1 rounded-full flex items-center gap-1">
+          <Flame className="w-3 h-3" />
+          #1 TRENDING
+        </div>
       <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
         <div className="relative group">
           {song.cover_cid ? (
@@ -245,15 +258,19 @@ const FeaturedSong = ({ song }: { song: Song }) => {
           TRADE NOW →
         </button>
       </div>
+      </div>
     </div>
   );
 };
 
 // Component for individual song row with real-time data
-const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void }) => {
+const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void; playSong?: (song: any) => void; currentSong?: any; isPlaying?: boolean }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
   const publicClient = usePublicClient();
+  
+  const isCurrentSong = currentSong?.id === song.id;
+  const isThisSongPlaying = isCurrentSong && isPlaying;
   const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
   const [volume24h, setVolume24h] = useState<number>(0); // Track actual 24h volume in XRGE
   
@@ -477,6 +494,23 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
       
       <TableCell>
         <div className="flex items-center gap-3">
+          {/* Play button */}
+          {playSong && song.audio_cid && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playSong(song);
+              }}
+              className="w-8 h-8 rounded-full bg-neon-green hover:bg-neon-green/80 flex items-center justify-center transition-all hover:scale-110 flex-shrink-0"
+            >
+              {isThisSongPlaying ? (
+                <Pause className="w-4 h-4 text-black fill-black" />
+              ) : (
+                <Play className="w-4 h-4 text-black fill-black ml-0.5" />
+              )}
+            </button>
+          )}
+          
           <div className="relative flex-shrink-0">
             {song.cover_cid ? (
               <img
@@ -518,7 +552,7 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
           tokenAddress={song.token_address || undefined}
           bondingSupply={bondingSupplyStr || undefined}
           priceInXRGE={typeof priceInXRGE === 'number' ? priceInXRGE : undefined}
-          height={30}
+          height={18}
           showPercentChange={true}
           timeframeHours={24}
           percentChange={priceChange24h !== null ? priceChange24h : undefined}
@@ -610,6 +644,22 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
                 <Flame className="w-3 h-3 text-white" />
               </div>
             )}
+            {/* Play button overlay */}
+            {playSong && song.audio_cid && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playSong(song);
+                }}
+                className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-neon-green hover:bg-neon-green/80 flex items-center justify-center transition-all hover:scale-110"
+              >
+                {isThisSongPlaying ? (
+                  <Pause className="w-3 h-3 text-black fill-black" />
+                ) : (
+                  <Play className="w-3 h-3 text-black fill-black ml-0.5" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -664,12 +714,12 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
 
           {/* Sparkline Chart */}
           {song.token_address && (
-            <div className="mt-1 bg-black/30 rounded-lg p-2 border border-neon-green/10">
+            <div className="mt-1 bg-black/30 rounded-lg p-1.5 border border-neon-green/10">
               <SongPriceSparkline 
                 tokenAddress={song.token_address || undefined}
                 bondingSupply={bondingSupplyStr || undefined}
                 priceInXRGE={typeof priceInXRGE === 'number' ? priceInXRGE : undefined}
-                height={40}
+                height={24}
                 showPercentChange={true}
                 timeframeHours={24}
                 percentChange={priceChange24h !== null ? priceChange24h : undefined}
@@ -693,7 +743,13 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
 type SortField = 'trending' | 'price' | 'change' | 'volume' | 'marketCap' | 'plays';
 type SortDirection = 'asc' | 'desc';
 
-const Trending = () => {
+interface TrendingProps {
+  playSong?: (song: any) => void;
+  currentSong?: any;
+  isPlaying?: boolean;
+}
+
+const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
   const [artists, setArtists] = useState<Artist[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -767,7 +823,7 @@ const Trending = () => {
               .limit(50),
             supabase
               .from("songs")
-              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
+              .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
               .not("token_address", "is", null) // Only show deployed songs
               .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%`)
               .order("play_count", { ascending: false })
@@ -791,7 +847,7 @@ const Trending = () => {
               .limit(50),
             supabase
               .from("songs")
-              .select("id, title, artist, wallet_address, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
+              .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
               .not("token_address", "is", null) // Only show deployed songs
               .order("play_count", { ascending: false })
               .limit(50)
@@ -887,6 +943,21 @@ const Trending = () => {
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-20">
       <NetworkInfo />
+      
+      {/* Compact hero header with logo */}
+      <div className="text-center px-4 md:px-6 pt-2 md:pt-3 pb-4">
+        <div className="mb-2 flex justify-center items-center gap-3">
+          <MusicBars bars={6} className="h-6 md:h-8 flex-shrink-0" />
+          <img src={logo} alt="ROUGEE PLAY Logo" className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-primary/20" />
+          <MusicBars bars={6} className="h-6 md:h-8 flex-shrink-0" />
+        </div>
+        <h1 className="text-lg md:text-xl font-bold mb-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">
+          ROUGEE PLAY
+        </h1>
+        <p className="text-[11px] md:text-sm text-muted-foreground mb-0">
+          The decentralized music platform where artists own their content and fans discover amazing beats
+        </p>
+      </div>
       
       <main className="w-full px-0 md:container md:mx-auto md:px-4 py-6 md:py-8">
         {/* Live Stats Ticker */}
@@ -1082,7 +1153,7 @@ const Trending = () => {
                     </TableRow>
                   ) : (
                     sortedSongs.map((song, index) => (
-                      <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} />
+                      <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />
                     ))
                   )}
                 </TableBody>
@@ -1097,7 +1168,7 @@ const Trending = () => {
                 </div>
               ) : (
                 sortedSongs.map((song, index) => (
-                  <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} />
+                  <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />
                 ))
               )}
             </div>

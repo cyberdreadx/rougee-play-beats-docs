@@ -9,7 +9,6 @@ import LikeButton from "@/components/LikeButton";
 import { ReportButton } from "@/components/ReportButton";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { AiBadge } from "@/components/AiBadge";
-import { SongPriceSparkline } from "@/components/SongPriceSparkline";
 import { useReadContract } from "wagmi";
 import { Address } from "viem";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
@@ -54,16 +53,6 @@ const SongCardSparkline = ({ tokenAddress }: { tokenAddress: string }) => {
           ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
         </div>
       )}
-      {/* Sparkline */}
-      <SongPriceSparkline 
-        tokenAddress={tokenAddress}
-        bondingSupply={bondingSupplyStr}
-        priceInXRGE={priceInXRGE}
-        height={24}
-        showPercentChange={true}
-        timeframeHours={24}
-        className="w-full"
-      />
     </div>
   );
 };
