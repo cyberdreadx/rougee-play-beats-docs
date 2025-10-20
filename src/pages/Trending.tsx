@@ -474,46 +474,49 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
       className="cursor-pointer hover:bg-muted/50 transition-colors"
       onClick={() => navigate(`/song/${song.id}`)}
     >
-      <TableCell className="font-mono text-muted-foreground w-12">
+      <TableCell className="font-mono text-muted-foreground w-8 md:w-12 text-xs md:text-sm px-2 md:px-4">
         #{index + 1}
       </TableCell>
       
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+      <TableCell className="px-2 md:px-4">
+        <div className="flex items-center gap-1.5 md:gap-3">
+          <div className="relative flex-shrink-0">
             {song.cover_cid ? (
               <img
                 src={getIPFSGatewayUrl(song.cover_cid)}
                 alt={song.title}
-                className="w-10 h-10 rounded object-cover"
+                className="w-8 h-8 md:w-10 md:h-10 rounded object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded bg-neon-green/10 flex items-center justify-center">
-                <Music className="w-5 h-5 text-neon-green" />
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded bg-neon-green/10 flex items-center justify-center">
+                <Music className="w-4 h-4 md:w-5 md:h-5 text-neon-green" />
               </div>
             )}
             {/* Hot indicator for top 3 */}
             {index < 3 && (
-              <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1">
-                <Flame className="w-3 h-3 text-white" />
+              <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-0.5 md:p-1">
+                <Flame className="w-2 h-2 md:w-3 md:h-3 text-white" />
               </div>
             )}
           </div>
-          <div>
-            <div className="font-semibold flex items-center gap-2">
-              {song.title}
+          <div className="min-w-0 flex-1">
+            <div className="text-xs md:text-sm font-semibold flex items-center gap-1 md:gap-2 flex-wrap">
+              <span className="truncate max-w-[80px] md:max-w-none">{song.title}</span>
               {song.ticker && (
-                <span className="text-xs text-neon-green font-mono">${song.ticker}</span>
+                <span className="text-[10px] md:text-xs text-neon-green font-mono flex-shrink-0">${song.ticker}</span>
               )}
               <AiBadge aiUsage={song.ai_usage} size="sm" />
               {/* Top gainer badge */}
               {change24h > 50 && (
-                <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-mono font-bold">
+                <span className="text-[8px] md:text-[10px] bg-green-500/20 text-green-400 px-1 md:px-2 py-0.5 rounded-full font-mono font-bold flex-shrink-0">
                   🚀 HOT
                 </span>
               )}
             </div>
-            <div className="text-sm text-muted-foreground">{song.artist || 'Unknown'}</div>
+            <div className="text-[10px] md:text-sm text-muted-foreground truncate max-w-[100px] md:max-w-none">{song.artist || 'Unknown'}</div>
+            <div className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:hidden">
+              {song.play_count} plays
+            </div>
           </div>
         </div>
       </TableCell>
@@ -531,10 +534,10 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         />
       </TableCell>
       
-      <TableCell className="font-mono text-right">
+      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
         {song.token_address ? (
           <div>
-            <div className="font-semibold">
+            <div className="font-semibold text-xs md:text-sm">
               ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(4)}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -542,25 +545,25 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
             </div>
           </div>
         ) : (
-          <span className="text-muted-foreground text-sm">Not deployed</span>
+          <span className="text-muted-foreground text-xs md:text-sm">Not deployed</span>
         )}
       </TableCell>
       
-      <TableCell className={`font-mono text-right font-semibold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+      <TableCell className={`font-mono text-right font-semibold px-2 md:px-4 text-xs md:text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
         {song.token_address ? (
-          <div className="flex items-center justify-end gap-1">
-            {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            {isPositive ? '+' : ''}{change24h.toFixed(2)}%
+          <div className="flex items-center justify-end gap-0.5 md:gap-1">
+            {isPositive ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
+            <span className="whitespace-nowrap">{isPositive ? '+' : ''}{change24h.toFixed(1)}%</span>
           </div>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right">
+      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
         {song.token_address && volumeUSD > 0 ? (
           <div>
-            <div className="font-semibold">
+            <div className="font-semibold text-xs md:text-sm">
               ${volumeUSD < 1 ? volumeUSD.toFixed(4) : volumeUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -568,21 +571,21 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
             </div>
           </div>
         ) : (
-          <span className="text-muted-foreground">$0</span>
+          <span className="text-muted-foreground text-xs">$0</span>
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right">
+      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
         {song.token_address && marketCap > 0 ? (
-          <div className="font-semibold">
+          <div className="font-semibold text-xs md:text-sm">
             ${marketCap < 1 ? marketCap.toFixed(6) : marketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
           </div>
         ) : (
-          <span className="text-muted-foreground">$0</span>
+          <span className="text-muted-foreground text-xs">$0</span>
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right text-muted-foreground">
+      <TableCell className="font-mono text-right text-muted-foreground px-2 md:px-4 hidden md:table-cell">
         <Flame className="w-4 h-4 inline mr-1 text-orange-500" />
         {song.play_count}
       </TableCell>
@@ -600,6 +603,7 @@ const Trending = () => {
   const [songStats, setSongStats] = useState<Map<string, { volume: number; change: number; marketCap: number; price: number }>>(new Map());
   const [sortField, setSortField] = useState<SortField>('trending');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [displayLimit, setDisplayLimit] = useState<number | null>(10); // null = show all
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search');
@@ -714,7 +718,7 @@ const Trending = () => {
 
   // Sort songs based on selected field (reactive to songStats changes)
   const sortedSongs = useMemo(() => {
-    return [...songs].sort((a, b) => {
+    const sorted = [...songs].sort((a, b) => {
       let aValue: number;
       let bValue: number;
       
@@ -750,7 +754,10 @@ const Trending = () => {
       
       return sortDirection === 'desc' ? bValue - aValue : aValue - bValue;
     });
-  }, [songs, sortField, sortDirection, songStats, calculateTrendingScore]);
+    
+    // Apply display limit if set
+    return displayLimit ? sorted.slice(0, displayLimit) : sorted;
+  }, [songs, sortField, sortDirection, songStats, calculateTrendingScore, displayLimit]);
   
   // Featured song is always the top trending song (by trending score)
   const featuredSong = useMemo(() => {
@@ -842,19 +849,66 @@ const Trending = () => {
           </TabsList>
 
           <TabsContent value="songs" className="space-y-4">
-            {/* Sort Controls */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs text-muted-foreground font-mono">SORT BY:</span>
-              <button
-                onClick={() => handleSort('trending')}
-                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
-                  sortField === 'trending' 
-                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
-                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
-                }`}
-              >
-                🔥 TRENDING {sortField === 'trending' && (sortDirection === 'desc' ? '↓' : '↑')}
-              </button>
+            {/* Sort & Filter Controls */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-mono">SORT BY:</span>
+                <button
+                  onClick={() => handleSort('trending')}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                    sortField === 'trending' 
+                      ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                      : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                  }`}
+                >
+                  🔥 TRENDING {sortField === 'trending' && (sortDirection === 'desc' ? '↓' : '↑')}
+                </button>
+              </div>
+              
+              {/* Display Limit Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground font-mono">SHOW:</span>
+                <button
+                  onClick={() => setDisplayLimit(10)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                    displayLimit === 10
+                      ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                      : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                  }`}
+                >
+                  TOP 10
+                </button>
+                <button
+                  onClick={() => setDisplayLimit(20)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                    displayLimit === 20
+                      ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                      : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                  }`}
+                >
+                  TOP 20
+                </button>
+                <button
+                  onClick={() => setDisplayLimit(50)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                    displayLimit === 50
+                      ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                      : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                  }`}
+                >
+                  TOP 50
+                </button>
+                <button
+                  onClick={() => setDisplayLimit(null)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                    displayLimit === null
+                      ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                      : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                  }`}
+                >
+                  ALL
+                </button>
+              </div>
             </div>
             
             <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -939,15 +993,60 @@ const Trending = () => {
           </TabsContent>
 
           <TabsContent value="artists" className="space-y-4">
+            {/* Display Limit Filter for Artists */}
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+              <span className="text-xs text-muted-foreground font-mono">SHOW:</span>
+              <button
+                onClick={() => setDisplayLimit(10)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  displayLimit === 10
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                }`}
+              >
+                TOP 10
+              </button>
+              <button
+                onClick={() => setDisplayLimit(20)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  displayLimit === 20
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                }`}
+              >
+                TOP 20
+              </button>
+              <button
+                onClick={() => setDisplayLimit(50)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  displayLimit === 50
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                }`}
+              >
+                TOP 50
+              </button>
+              <button
+                onClick={() => setDisplayLimit(null)}
+                className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+                  displayLimit === null
+                    ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                    : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+                }`}
+              >
+                ALL
+              </button>
+            </div>
+            
             <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border hover:bg-transparent">
-                    <TableHead className="font-mono text-muted-foreground w-12">#</TableHead>
-                    <TableHead className="font-mono text-muted-foreground">ARTIST</TableHead>
-                    <TableHead className="font-mono text-muted-foreground">TICKER</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">SONGS</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-right">PLAYS</TableHead>
+                    <TableHead className="font-mono text-muted-foreground w-8 md:w-12 text-xs md:text-sm px-2 md:px-4">#</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-xs md:text-sm px-2 md:px-4">ARTIST</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-xs md:text-sm px-2 md:px-4 hidden md:table-cell">TICKER</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-right text-xs md:text-sm px-2 md:px-4">SONGS</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-right text-xs md:text-sm px-2 md:px-4">PLAYS</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -958,45 +1057,53 @@ const Trending = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    artists.map((artist, index) => (
+                    artists.slice(0, displayLimit || undefined).map((artist, index) => (
                       <TableRow
                         key={artist.wallet_address}
                         className="cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() => navigate(`/artist/${artist.wallet_address}`)}
                       >
-                        <TableCell className="font-mono text-muted-foreground">
+                        <TableCell className="font-mono text-muted-foreground text-xs md:text-sm px-2 md:px-4">
                           #{index + 1}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
+                        <TableCell className="px-2 md:px-4">
+                          <div className="flex items-center gap-2 md:gap-3">
                             {artist.avatar_cid ? (
                               <img
                                 src={getIPFSGatewayUrl(artist.avatar_cid)}
                                 alt={artist.artist_name}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-full bg-neon-green/10 flex items-center justify-center">
-                                <span className="font-bold text-neon-green">
+                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-neon-green/10 flex items-center justify-center flex-shrink-0">
+                                <span className="font-bold text-neon-green text-xs md:text-base">
                                   {artist.artist_name[0]}
                                 </span>
                               </div>
                             )}
-                            <div className="font-semibold">{artist.artist_name}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-xs md:text-sm truncate">{artist.artist_name}</div>
+                              {/* Show ticker on mobile under name */}
+                              {artist.artist_ticker && (
+                                <div className="md:hidden text-[10px] font-mono text-neon-green">
+                                  ${artist.artist_ticker}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2 md:px-4 hidden md:table-cell">
                           {artist.artist_ticker && (
                             <span className="text-xs font-mono text-neon-green">
                               ${artist.artist_ticker}
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-right">
+                        <TableCell className="font-mono text-right text-xs md:text-sm px-2 md:px-4">
                           {artist.total_songs}
                         </TableCell>
-                        <TableCell className="font-mono text-right">
-                          <Flame className="w-4 h-4 inline mr-1 text-orange-500" />
+                        <TableCell className="font-mono text-right text-xs md:text-sm px-2 md:px-4">
+                          <Flame className="w-3 h-3 md:w-4 md:h-4 inline mr-1 text-orange-500" />
                           {artist.total_plays}
                         </TableCell>
                       </TableRow>

@@ -83,11 +83,12 @@ const [songs, setSongs] = useState<Song[]>([]);
 const [loading, setLoading] = useState(true);
 const [isAdmin, setIsAdmin] = useState(false);
 const [verifiedMap, setVerifiedMap] = useState<Record<string, boolean>>({});
+const [displayLimit, setDisplayLimit] = useState<number>(10);
 
   useEffect(() => {
     fetchSongs();
     checkAdminStatus();
-  }, []);
+  }, [displayLimit]);
 
   useImperativeHandle(ref, () => ({
     refreshSongs: fetchSongs,
@@ -116,7 +117,7 @@ const fetchSongs = async () => {
       .from('songs')
       .select('id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, ai_usage, token_address')
       .order('play_count', { ascending: false })
-      .limit(10);
+      .limit(displayLimit);
 
     if (error) throw error;
     setSongs(data || []);
@@ -188,6 +189,41 @@ const fetchSongs = async () => {
   return (
     <section className="w-full overflow-x-hidden">
       <div className="glass-card p-3 md:p-4 space-y-2 mx-0 md:mx-4">
+        {/* Display Limit Filter */}
+        <div className="flex items-center justify-center gap-2 mb-3 pb-3 border-b border-white/10">
+          <span className="text-xs text-muted-foreground font-mono">SHOW:</span>
+          <button
+            onClick={() => setDisplayLimit(10)}
+            className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+              displayLimit === 10
+                ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+            }`}
+          >
+            TOP 10
+          </button>
+          <button
+            onClick={() => setDisplayLimit(20)}
+            className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+              displayLimit === 20
+                ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+            }`}
+          >
+            TOP 20
+          </button>
+          <button
+            onClick={() => setDisplayLimit(50)}
+            className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${
+              displayLimit === 50
+                ? 'bg-neon-green/20 text-neon-green border border-neon-green/50' 
+                : 'bg-background/50 text-muted-foreground border border-border hover:border-neon-green/30'
+            }`}
+          >
+            TOP 50
+          </button>
+        </div>
+        
         {loading ? (
           <div className="text-muted-foreground font-mono">Loading songs...</div>
         ) : songs.length === 0 ? (
@@ -201,15 +237,15 @@ const fetchSongs = async () => {
             <div 
               key={song.id} 
               onClick={() => navigate(`/song/${song.id}`)}
-              className="flex items-center justify-between p-3 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg hover:bg-white/10 hover:border-white hover:border-2 hover:scale-[1.02] hover:shadow-[0_25px_50px_-12px_rgba(0,255,0,0.25)] group gap-2 md:gap-3 active:scale-95 transition-all duration-300"
+              className="flex items-center justify-between p-2 md:p-4 bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl cursor-pointer shadow-lg hover:bg-white/10 hover:border-white hover:border-2 hover:scale-[1.02] hover:shadow-[0_25px_50px_-12px_rgba(0,255,0,0.25)] group gap-1.5 md:gap-3 active:scale-95 transition-all duration-300"
             >
-              <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                <span className="text-neon-green font-mono font-bold text-base md:text-lg w-6 md:w-8 flex-shrink-0 group-hover:scale-110 group-hover:drop-shadow-lg group-hover:drop-shadow-neon-green/50 transition-all duration-300">
+              <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                <span className="text-neon-green font-mono font-bold text-xs md:text-lg w-5 md:w-8 flex-shrink-0 group-hover:scale-110 group-hover:drop-shadow-lg group-hover:drop-shadow-neon-green/50 transition-all duration-300">
                   #{index + 1}
                 </span>
                 {song.cover_cid && (
                 <div 
-                    className="relative w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden border border-neon-green/30 shadow-md flex-shrink-0 hover:scale-105 hover:shadow-[0_0_20px_rgba(0,255,0,0.3)] transition-all duration-300 group/cover"
+                    className="relative w-10 h-10 md:w-14 md:h-14 rounded-lg overflow-hidden border border-neon-green/30 shadow-md flex-shrink-0 hover:scale-105 hover:shadow-[0_0_20px_rgba(0,255,0,0.3)] transition-all duration-300 group/cover"
                   >
                     <img 
                       src={getIPFSGatewayUrl(song.cover_cid)}
@@ -230,39 +266,40 @@ const fetchSongs = async () => {
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-sm md:text-base text-foreground font-semibold flex items-center gap-2 group-hover:text-neon-green transition-colors duration-300 group-hover:!text-neon-green">
-                    <span className="truncate">{song.title}</span>
+                  <div className="font-mono text-[11px] md:text-base text-foreground font-semibold flex items-center gap-1 md:gap-2 flex-wrap group-hover:text-neon-green transition-colors duration-300 group-hover:!text-neon-green">
+                    <span className="break-words max-w-full">{song.title}</span>
                     {song.ticker && (
-                      <span className="text-neon-green text-xs md:text-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110">${song.ticker}</span>
+                      <span className="text-neon-green text-[10px] md:text-sm flex-shrink-0 group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110">${song.ticker}</span>
                     )}
                     <AiBadge aiUsage={song.ai_usage} size="sm" />
                   </div>
                   {song.artist && (
                     <Link
                       to={`/artist/${song.wallet_address}`}
-                      className="font-mono text-xs md:text-sm text-muted-foreground hover:text-neon-green transition-colors truncate flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300 group-hover:!translate-x-1"
+                      className="font-mono text-[10px] md:text-sm text-muted-foreground hover:text-neon-green transition-colors flex items-center gap-1 group-hover:translate-x-1 transition-transform duration-300 group-hover:!translate-x-1 max-w-full"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="truncate">{song.artist}</span>
+                      <span className="break-words">{song.artist}</span>
                       {verifiedMap[song.wallet_address.toLowerCase()] && (
-                        <CheckCircle className="h-3 w-3 text-neon-green group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110" aria-label="Verified artist" />
+                        <CheckCircle className="h-2.5 w-2.5 md:h-3 md:w-3 text-neon-green group-hover:scale-110 transition-transform duration-300 group-hover:!scale-110 flex-shrink-0" aria-label="Verified artist" />
                       )}
                     </Link>
                   )}
-                  <div className="font-mono text-xs text-muted-foreground group-hover:text-white/80 transition-colors duration-300 group-hover:!text-white/80">
+                  <div className="font-mono text-[10px] md:text-xs text-muted-foreground group-hover:text-white/80 transition-colors duration-300 group-hover:!text-white/80">
                     {song.play_count} plays
                   </div>
                   {/* Sparkline Chart */}
                   {song.token_address && (
-                    <div className="mt-1">
+                    <div className="mt-0.5 md:mt-1">
                       <SongCardSparkline tokenAddress={song.token_address} />
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
                 {/* Mobile: Show like button */}
-                <div className="md:hidden">
-                  <LikeButton songId={song.id} size="sm" showCount={true} />
+                <div className="md:hidden scale-90">
+                  <LikeButton songId={song.id} size="sm" showCount={false} />
                 </div>
                 {/* Desktop: Show like and report buttons */}
                 <div className="hidden md:flex items-center gap-2">
@@ -277,12 +314,12 @@ const fetchSongs = async () => {
                     console.log('TopSongs play button clicked for song:', song.title);
                     handlePlayClick(song);
                   }}
-                  className={`h-10 w-10 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}
+                  className={`h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 border border-neon-green/30 hover:border-neon-green/50 hover:shadow-2xl hover:shadow-neon-green/30 transition-all hover:scale-110 group-hover:scale-110 shadow-lg ${isCurrentSong(song) && isPlaying ? 'animate-pulse shadow-neon-green/50' : 'shadow-white/10'}`}
                 >
                   {isCurrentSong(song) && isPlaying ? (
-                    <Pause className="w-4 h-4 md:w-5 md:h-5 text-neon-green" />
+                    <Pause className="w-3 h-3 md:w-5 md:h-5 text-neon-green" />
                   ) : (
-                    <Play className="w-4 h-4 md:w-5 md:h-5 text-neon-green fill-neon-green" />
+                    <Play className="w-3 h-3 md:w-5 md:h-5 text-neon-green fill-neon-green" />
                   )}
                 </Button>
                 {isAdmin && (
