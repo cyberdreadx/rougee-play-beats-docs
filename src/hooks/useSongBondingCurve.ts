@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient, useSwitchChain } from 'wagmi';
 import { Address, parseEther, formatEther } from 'viem';
 import { toast } from 'sonner';
+import { base } from 'wagmi/chains';
 
 // Contract addresses on Base mainnet
 export const SONG_FACTORY_ADDRESS = '0xA69ab1E008Fb6003D5B73b7b1b6887C0aC86d1ec' as Address;
@@ -185,14 +186,30 @@ const SONG_TOKEN_ABI = [
 
 // Hook for creating songs
 export const useCreateSong = () => {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
 
-  const createSong = (name: string, symbol: string, ipfsHash: string) => {
+  const createSong = async (name: string, symbol: string, ipfsHash: string) => {
     if (!address) {
       toast.error('Please connect your wallet');
       return;
+    }
+
+    // Check if user is on the correct network
+    if (chainId !== base.id) {
+      toast.error('Wrong network detected. Switching to Base...');
+      try {
+        await switchChain({ chainId: base.id });
+        toast.success('Switched to Base network');
+        // Wait a bit for the switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        console.error('Failed to switch network:', err);
+        toast.error('Please manually switch to Base network in your wallet');
+        return;
+      }
     }
 
     try {
@@ -201,6 +218,7 @@ export const useCreateSong = () => {
         abi: SONG_FACTORY_ABI,
         functionName: 'createSong',
         args: [name, symbol, ipfsHash],
+        chainId: base.id, // Explicitly specify Base chain
       } as any);
     } catch (err) {
       console.error('Error creating song:', err);
@@ -221,7 +239,8 @@ export const useCreateSong = () => {
 
 // Hook for buying song tokens
 export const useBuySongTokens = () => {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -231,6 +250,18 @@ export const useBuySongTokens = () => {
       throw new Error('Wallet not connected');
     }
 
+    // Check network
+    if (chainId !== base.id) {
+      toast.error('Wrong network. Switching to Base...');
+      try {
+        await switchChain({ chainId: base.id });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        toast.error('Please switch to Base network in your wallet');
+        throw new Error('Wrong network');
+      }
+    }
+
     try {
       const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
@@ -238,6 +269,7 @@ export const useBuySongTokens = () => {
         functionName: 'buyWithETH',
         args: [songTokenAddress, 0n, BigInt(slippageBps)],
         value: parseEther(ethAmount),
+        chainId: base.id,
       } as any);
       return txHash;
     } catch (err) {
@@ -251,6 +283,18 @@ export const useBuySongTokens = () => {
     if (!address) {
       toast.error('Please connect your wallet');
       throw new Error('Wallet not connected');
+    }
+
+    // Check network
+    if (chainId !== base.id) {
+      toast.error('Wrong network. Switching to Base...');
+      try {
+        await switchChain({ chainId: base.id });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        toast.error('Please switch to Base network in your wallet');
+        throw new Error('Wrong network');
+      }
     }
 
     try {
@@ -273,6 +317,7 @@ export const useBuySongTokens = () => {
         abi: BONDING_CURVE_ABI,
         functionName: 'buyWithXRGE',
         args: [songTokenAddress, xrgeAmountWei, minTokensWei],
+        chainId: base.id,
       } as any);
       
       console.log('Song token purchase transaction hash:', txHash);
@@ -315,7 +360,8 @@ export const useBuySongTokens = () => {
 
 // Hook for selling song tokens
 export const useSellSongTokens = () => {
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -325,12 +371,25 @@ export const useSellSongTokens = () => {
       throw new Error('Wallet not connected');
     }
 
+    // Check network
+    if (chainId !== base.id) {
+      toast.error('Wrong network. Switching to Base...');
+      try {
+        await switchChain({ chainId: base.id });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        toast.error('Please switch to Base network in your wallet');
+        throw new Error('Wrong network');
+      }
+    }
+
     try {
       const txHash = await writeContractAsync({
         address: BONDING_CURVE_ADDRESS,
         abi: BONDING_CURVE_ABI,
         functionName: 'sell',
         args: [songTokenAddress, parseEther(tokenAmount), parseEther(minXRGE)],
+        chainId: base.id,
       } as any);
       return txHash;
     } catch (err) {
@@ -355,11 +414,24 @@ export const useApproveToken = () => {
   const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
   const publicClient = usePublicClient();
-  const { address: accountAddress } = useAccount();
+  const { address: accountAddress, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
 
   const approve = async (tokenAddress: Address, amount: string) => {
     if (!accountAddress || !publicClient) {
       throw new Error("Wallet not connected");
+    }
+
+    // Check network
+    if (chainId !== base.id) {
+      toast.error('Wrong network. Switching to Base...');
+      try {
+        await switchChain({ chainId: base.id });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (err) {
+        toast.error('Please switch to Base network in your wallet');
+        throw new Error('Wrong network');
+      }
     }
 
     try {
@@ -378,6 +450,7 @@ export const useApproveToken = () => {
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [BONDING_CURVE_ADDRESS, BigInt(0)],
+          chainId: base.id,
         } as any);
         
         // Wait for reset transaction to be mined
@@ -399,6 +472,7 @@ export const useApproveToken = () => {
         abi: ERC20_ABI,
         functionName: 'approve',
         args: [BONDING_CURVE_ADDRESS, parseEther(amount)],
+        chainId: base.id,
       } as any);
       return txHash;
     } catch (err) {
