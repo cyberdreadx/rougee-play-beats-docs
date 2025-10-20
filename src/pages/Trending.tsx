@@ -425,13 +425,9 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
               const change = ((lastPrice - firstPrice) / firstPrice) * 100;
               setPriceChange24h(change);
             } else if (priceInXRGE) {
-              // If only one trade, estimate from bonding curve position
-              const tokensSold = bondingSupplyStr ? (990_000_000 - Number(bondingSupplyStr) / 1e18) : 0;
-              if (tokensSold > 1000) {
-                // Estimate based on tokens sold (more sold = higher growth)
-                const estimatedChange = Math.min(tokensSold / 1000, 500); // Cap at 500%
-                setPriceChange24h(estimatedChange);
-              }
+              // If fewer than 2 trades in 24h but token has history,
+              // show 0% (no 24h activity = no change in last 24h)
+              setPriceChange24h(0);
             }
           }
         }
@@ -469,60 +465,55 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [song.id, volumeUSD, change24h, marketCap, priceUSD]);
   
-  return (
+  // Desktop: Table Row
+  const desktopView = (
     <TableRow 
       className="cursor-pointer hover:bg-muted/50 transition-colors"
       onClick={() => navigate(`/song/${song.id}`)}
     >
-      <TableCell className="font-mono text-muted-foreground w-8 md:w-12 text-xs md:text-sm px-2 md:px-4">
+      <TableCell className="font-mono text-muted-foreground w-12">
         #{index + 1}
       </TableCell>
       
-      <TableCell className="px-2 md:px-4">
-        <div className="flex items-center gap-1.5 md:gap-3">
+      <TableCell>
+        <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
             {song.cover_cid ? (
               <img
                 src={getIPFSGatewayUrl(song.cover_cid)}
                 alt={song.title}
-                className="w-8 h-8 md:w-10 md:h-10 rounded object-cover"
+                className="w-10 h-10 rounded object-cover"
               />
             ) : (
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded bg-neon-green/10 flex items-center justify-center">
-                <Music className="w-4 h-4 md:w-5 md:h-5 text-neon-green" />
+              <div className="w-10 h-10 rounded bg-neon-green/10 flex items-center justify-center">
+                <Music className="w-5 h-5 text-neon-green" />
               </div>
             )}
-            {/* Hot indicator for top 3 */}
             {index < 3 && (
-              <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-0.5 md:p-1">
-                <Flame className="w-2 h-2 md:w-3 md:h-3 text-white" />
+              <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1">
+                <Flame className="w-3 h-3 text-white" />
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs md:text-sm font-semibold flex items-center gap-1 md:gap-2 flex-wrap">
-              <span className="truncate max-w-[80px] md:max-w-none">{song.title}</span>
+            <div className="text-sm font-semibold flex items-center gap-2 flex-wrap">
+              <span>{song.title}</span>
               {song.ticker && (
-                <span className="text-[10px] md:text-xs text-neon-green font-mono flex-shrink-0">${song.ticker}</span>
+                <span className="text-xs text-neon-green font-mono flex-shrink-0">${song.ticker}</span>
               )}
               <AiBadge aiUsage={song.ai_usage} size="sm" />
-              {/* Top gainer badge */}
               {change24h > 50 && (
-                <span className="text-[8px] md:text-[10px] bg-green-500/20 text-green-400 px-1 md:px-2 py-0.5 rounded-full font-mono font-bold flex-shrink-0">
+                <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-mono font-bold flex-shrink-0">
                   🚀 HOT
                 </span>
               )}
             </div>
-            <div className="text-[10px] md:text-sm text-muted-foreground truncate max-w-[100px] md:max-w-none">{song.artist || 'Unknown'}</div>
-            <div className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:hidden">
-              {song.play_count} plays
-            </div>
+            <div className="text-sm text-muted-foreground">{song.artist || 'Unknown'}</div>
           </div>
         </div>
       </TableCell>
       
-      {/* Sparkline Chart */}
-      <TableCell className="hidden md:table-cell">
+      <TableCell>
         <SongPriceSparkline 
           tokenAddress={song.token_address || undefined}
           bondingSupply={bondingSupplyStr || undefined}
@@ -534,10 +525,10 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         />
       </TableCell>
       
-      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
+      <TableCell className="font-mono text-right">
         {song.token_address ? (
           <div>
-            <div className="font-semibold text-xs md:text-sm">
+            <div className="font-semibold text-sm">
               ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(4)}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -545,14 +536,14 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
             </div>
           </div>
         ) : (
-          <span className="text-muted-foreground text-xs md:text-sm">Not deployed</span>
+          <span className="text-muted-foreground text-sm">Not deployed</span>
         )}
       </TableCell>
       
-      <TableCell className={`font-mono text-right font-semibold px-2 md:px-4 text-xs md:text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+      <TableCell className={`font-mono text-right font-semibold text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
         {song.token_address ? (
-          <div className="flex items-center justify-end gap-0.5 md:gap-1">
-            {isPositive ? <TrendingUp className="w-3 h-3 md:w-4 md:h-4" /> : <TrendingDown className="w-3 h-3 md:w-4 md:h-4" />}
+          <div className="flex items-center justify-end gap-1">
+            {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="whitespace-nowrap">{isPositive ? '+' : ''}{change24h.toFixed(1)}%</span>
           </div>
         ) : (
@@ -560,10 +551,10 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
+      <TableCell className="font-mono text-right">
         {song.token_address && volumeUSD > 0 ? (
           <div>
-            <div className="font-semibold text-xs md:text-sm">
+            <div className="font-semibold text-sm">
               ${volumeUSD < 1 ? volumeUSD.toFixed(4) : volumeUSD.toLocaleString(undefined, {maximumFractionDigits: 2})}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -575,9 +566,9 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right px-2 md:px-4 hidden md:table-cell">
+      <TableCell className="font-mono text-right">
         {song.token_address && marketCap > 0 ? (
-          <div className="font-semibold text-xs md:text-sm">
+          <div className="font-semibold text-sm">
             ${marketCap < 1 ? marketCap.toFixed(6) : marketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
           </div>
         ) : (
@@ -585,11 +576,117 @@ const SongRow = ({ song, index, onStatsUpdate }: { song: Song; index: number; on
         )}
       </TableCell>
       
-      <TableCell className="font-mono text-right text-muted-foreground px-2 md:px-4 hidden md:table-cell">
+      <TableCell className="font-mono text-right text-muted-foreground">
         <Flame className="w-4 h-4 inline mr-1 text-orange-500" />
         {song.play_count}
       </TableCell>
     </TableRow>
+  );
+
+  // Mobile: Card View
+  const mobileView = (
+    <div
+      onClick={() => navigate(`/song/${song.id}`)}
+      className="bg-black/10 backdrop-blur-xl border border-white/10 rounded-xl p-3 cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all"
+    >
+      <div className="flex items-start gap-3">
+        {/* Rank & Cover */}
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <span className="text-neon-green font-mono font-bold text-xs">#{index + 1}</span>
+          <div className="relative">
+            {song.cover_cid ? (
+              <img
+                src={getIPFSGatewayUrl(song.cover_cid)}
+                alt={song.title}
+                className="w-16 h-16 rounded object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded bg-neon-green/10 flex items-center justify-center">
+                <Music className="w-8 h-8 text-neon-green" />
+              </div>
+            )}
+            {index < 3 && (
+              <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1">
+                <Flame className="w-3 h-3 text-white" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Song Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm flex items-center gap-1 flex-wrap mb-0.5">
+                <span className="break-words">{song.title}</span>
+                {song.ticker && (
+                  <span className="text-[10px] text-neon-green font-mono flex-shrink-0">${song.ticker}</span>
+                )}
+                <AiBadge aiUsage={song.ai_usage} size="sm" />
+              </div>
+              <div className="text-xs text-muted-foreground mb-2">{song.artist || 'Unknown'}</div>
+            </div>
+            
+            {/* 24H% Badge */}
+            {song.token_address && (
+              <div className={`flex items-center gap-0.5 font-mono font-bold text-xs px-2 py-1 rounded-lg ${
+                isPositive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{isPositive ? '+' : ''}{change24h.toFixed(1)}%</span>
+              </div>
+            )}
+          </div>
+
+          {/* Stats Row */}
+          <div className="flex items-center gap-3 text-xs font-mono mb-2">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Flame className="w-3 h-3 text-orange-500" />
+              <span>{song.play_count}</span>
+            </div>
+            {song.token_address && (
+              <>
+                <div className="text-muted-foreground">•</div>
+                <div className="text-neon-green">
+                  ${priceUSD < 0.000001 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+                </div>
+              </>
+            )}
+            {change24h > 50 && (
+              <>
+                <div className="text-muted-foreground">•</div>
+                <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-bold">
+                  🚀 HOT
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Sparkline Chart */}
+          {song.token_address && (
+            <div className="mt-1 bg-black/30 rounded-lg p-2 border border-neon-green/10">
+              <SongPriceSparkline 
+                tokenAddress={song.token_address || undefined}
+                bondingSupply={bondingSupplyStr || undefined}
+                priceInXRGE={typeof priceInXRGE === 'number' ? priceInXRGE : undefined}
+                height={40}
+                showPercentChange={true}
+                timeframeHours={24}
+                percentChange={priceChange24h !== null ? priceChange24h : undefined}
+                className="w-full"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="hidden md:contents">{desktopView}</div>
+      <div className="md:hidden">{mobileView}</div>
+    </>
   );
 };
 
@@ -911,13 +1008,14 @@ const Trending = () => {
               </div>
             </div>
             
-            <div className="md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
+            {/* Desktop Table View */}
+            <div className="hidden md:block md:rounded-xl border border-border bg-card/50 backdrop-blur-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border hover:bg-transparent">
                     <TableHead className="font-mono text-muted-foreground w-12">#</TableHead>
                     <TableHead className="font-mono text-muted-foreground">NAME</TableHead>
-                    <TableHead className="font-mono text-muted-foreground text-center w-32 hidden md:table-cell">CHART</TableHead>
+                    <TableHead className="font-mono text-muted-foreground text-center w-32">CHART</TableHead>
                     <TableHead 
                       className="font-mono text-muted-foreground text-right cursor-pointer hover:text-neon-green transition-colors select-none"
                       onClick={() => handleSort('price')}
@@ -989,6 +1087,19 @@ const Trending = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-2">
+              {sortedSongs.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No deployed songs yet
+                </div>
+              ) : (
+                sortedSongs.map((song, index) => (
+                  <SongRow key={song.id} song={song} index={index} onStatsUpdate={handleStatsUpdate} />
+                ))
+              )}
             </div>
           </TabsContent>
 

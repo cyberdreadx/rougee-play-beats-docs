@@ -82,6 +82,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const [volume24h, setVolume24h] = useState<number>(0);
   const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const [recentTrades, setRecentTrades] = useState<TradeData[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   // Fetch artist profile from IPFS
   const { profile: artistProfile } = useArtistProfile(song?.wallet_address || null);
@@ -212,6 +213,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         refetchMetadata();
         refetchSupply();
         refetchBalance();
+        
+        // Trigger refresh of trading history
+        setRefreshTrigger(prev => prev + 1);
+        
         toast({
           title: "Data refreshed!",
           description: "Your balance and prices have been updated",
@@ -651,21 +656,15 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 tradeCount: trades.length
               });
             } else {
-              // If only one trade or none, estimate from bonding curve position
-              const tokensSold = 990_000_000 - Number(bondingSupply) / 1e18;
-              if (tokensSold > 1000) {
-                const estimatedChange = Math.min(tokensSold / 1000, 500);
-                setPriceChange24h(estimatedChange);
-              }
+              // If fewer than 2 trades in 24h, show 0% change
+              // (Don't show inception-to-now gains as "24h change")
+              setPriceChange24h(0);
             }
           }
         } catch (tradeError) {
           console.error('Failed to calculate from trades:', tradeError);
-          // Final fallback
-          const tokensSold = 990_000_000 - Number(bondingSupply) / 1e18;
-          if (tokensSold > 1000) {
-            setPriceChange24h(Math.min(tokensSold / 1000, 500));
-          }
+          // Final fallback - no 24h data available
+          setPriceChange24h(0);
         }
       }
     };
@@ -1549,6 +1548,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
               onVolumeCalculated={setVolume24h}
               showRecentTrades={false}
               onTradesLoaded={setRecentTrades}
+              refreshTrigger={refreshTrigger}
             />
           )}
         </div>
@@ -1988,7 +1988,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {recentTrades.slice(-10).reverse().map((trade, i) => {
-                    const coverUrl = song?.cover_cid ? `https://ipfs.io/ipfs/${song.cover_cid}` : '/placeholder-cover.png';
+                    const coverUrl = song?.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : '/placeholder-cover.png';
                     const xrgeAmount = trade.xrgeAmount 
                       ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
                       : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
@@ -1999,16 +1999,20 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                     return (
                       <div 
                         key={i}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                        className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
                       >
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                          <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold flex-shrink-0 ${
-                            trade.type === 'buy' 
-                              ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
-                              : 'bg-red-500/20 text-red-500 border border-red-500/30'
-                          }`}>
-                            {trade.type.toUpperCase()}
-                          </div>
+                        {/* Badge in bottom-left corner */}
+                        <div className={`absolute bottom-2 left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold ${
+                          trade.type === 'buy' 
+                            ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
+                            : trade.type === 'deploy'
+                            ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                            : 'bg-red-500/20 text-red-500 border border-red-500/30'
+                        }`}>
+                          {trade.type.toUpperCase()}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 sm:ml-20">
                           <img 
                             src={coverUrl} 
                             alt={song?.ticker || 'Song'} 

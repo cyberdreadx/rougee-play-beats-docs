@@ -6,11 +6,12 @@ import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getIPFSGatewayUrl } from '@/lib/ipfs';
 
 export interface TradeData {
   timestamp: number;
   price: number;
-  type: 'buy' | 'sell';
+  type: 'buy' | 'sell' | 'deploy';
   amount: number;
   priceUSD: number;
   trader?: string; // Wallet address of buyer/seller
@@ -32,6 +33,7 @@ interface SongTradingHistoryProps {
   onVolumeCalculated?: (volume24h: number) => void; // Callback to pass 24h volume
   showRecentTrades?: boolean; // Whether to show the recent trades section
   onTradesLoaded?: (trades: TradeData[]) => void; // Callback to pass trades data
+  refreshTrigger?: number; // Increment this to trigger a refetch
 }
 
 const SongTradingHistory = ({ 
@@ -42,7 +44,8 @@ const SongTradingHistory = ({
   coverCid, 
   onVolumeCalculated,
   showRecentTrades = true,
-  onTradesLoaded
+  onTradesLoaded,
+  refreshTrigger
 }: SongTradingHistoryProps) => {
   const [trades, setTrades] = useState<TradeData[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -73,7 +76,7 @@ const SongTradingHistory = ({
 
   useEffect(() => {
     fetchTradingHistory();
-  }, [tokenAddress]);
+  }, [tokenAddress, refreshTrigger]);
 
   const fetchTradingHistory = async () => {
     if (!publicClient || !tokenAddress) return;
@@ -179,6 +182,13 @@ const SongTradingHistory = ({
       }
 
       allTrades.sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Mark the first sell as "deploy" (bonding curve initialization)
+      const firstSellIndex = allTrades.findIndex(trade => trade.type === 'sell');
+      if (firstSellIndex !== -1) {
+        allTrades[firstSellIndex].type = 'deploy';
+      }
+      
       setTrades(allTrades);
       
       // Aggregate to 5-minute intervals
@@ -428,7 +438,7 @@ const SongTradingHistory = ({
             <p className="text-muted-foreground font-mono text-xs sm:text-sm text-center py-4">No trades yet</p>
           ) : (
             trades.slice(-10).reverse().map((trade, i) => {
-              const coverUrl = coverCid ? `https://ipfs.io/ipfs/${coverCid}` : '/placeholder-cover.png';
+              const coverUrl = coverCid ? getIPFSGatewayUrl(coverCid) : '/placeholder-cover.png';
               const xrgeAmount = trade.xrgeAmount 
                 ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
                 : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
@@ -439,16 +449,20 @@ const SongTradingHistory = ({
               return (
                 <div 
                   key={i}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                  className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
                 >
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold flex-shrink-0 ${
-                      trade.type === 'buy' 
-                        ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
-                        : 'bg-red-500/20 text-red-500 border border-red-500/30'
-                    }`}>
-                      {trade.type.toUpperCase()}
-                    </div>
+                  {/* Badge in bottom-left corner */}
+                  <div className={`absolute bottom-2 left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold ${
+                    trade.type === 'buy' 
+                      ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
+                      : trade.type === 'deploy'
+                      ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                      : 'bg-red-500/20 text-red-500 border border-red-500/30'
+                  }`}>
+                    {trade.type.toUpperCase()}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 sm:ml-20">
                     <img 
                       src={coverUrl} 
                       alt={songTicker || 'Song'} 

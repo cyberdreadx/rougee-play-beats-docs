@@ -12,6 +12,8 @@ import { AiBadge } from "@/components/AiBadge";
 import { SongPriceSparkline } from "@/components/SongPriceSparkline";
 import { useReadContract } from "wagmi";
 import { Address } from "viem";
+import { useTokenPrices } from "@/hooks/useTokenPrices";
+import { useSongPrice } from "@/hooks/useSongBondingCurve";
 
 const SONG_TOKEN_ABI = [
   {
@@ -23,8 +25,14 @@ const SONG_TOKEN_ABI = [
   }
 ] as const;
 
-// Mini component to display sparkline for a song card
+// Mini component to display sparkline for a song card with price
 const SongCardSparkline = ({ tokenAddress }: { tokenAddress: string }) => {
+  const { prices } = useTokenPrices();
+  
+  // Get current price from smart contract (same as Trending page)
+  const { price: priceInXRGEString } = useSongPrice(tokenAddress as Address);
+  const priceInXRGE = priceInXRGEString ? parseFloat(priceInXRGEString) : 0;
+  
   const { data: bondingSupply } = useReadContract({
     address: tokenAddress as Address,
     abi: SONG_TOKEN_ABI,
@@ -36,16 +44,27 @@ const SongCardSparkline = ({ tokenAddress }: { tokenAddress: string }) => {
   });
 
   const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : undefined;
+  const priceUSD = priceInXRGE * (prices.xrge || 0);
 
   return (
-    <SongPriceSparkline 
-      tokenAddress={tokenAddress}
-      bondingSupply={bondingSupplyStr}
-      height={20}
-      showPercentChange={true}
-      timeframeHours={24}
-      className="w-full max-w-[120px]"
-    />
+    <div className="space-y-0.5">
+      {/* Price */}
+      {priceUSD > 0 && (
+        <div className="text-[10px] md:text-xs font-mono text-neon-green">
+          ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+        </div>
+      )}
+      {/* Sparkline */}
+      <SongPriceSparkline 
+        tokenAddress={tokenAddress}
+        bondingSupply={bondingSupplyStr}
+        priceInXRGE={priceInXRGE}
+        height={24}
+        showPercentChange={true}
+        timeframeHours={24}
+        className="w-full"
+      />
+    </div>
   );
 };
 
@@ -288,10 +307,14 @@ const fetchSongs = async () => {
                   <div className="font-mono text-[10px] md:text-xs text-muted-foreground group-hover:text-white/80 transition-colors duration-300 group-hover:!text-white/80">
                     {song.play_count} plays
                   </div>
-                  {/* Sparkline Chart */}
-                  {song.token_address && (
-                    <div className="mt-0.5 md:mt-1">
+                  {/* Price & Sparkline Chart */}
+                  {song.token_address ? (
+                    <div className="mt-1 md:mt-2">
                       <SongCardSparkline tokenAddress={song.token_address} />
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-[10px] md:text-xs text-muted-foreground/60 font-mono">
+                      Not deployed
                     </div>
                   )}
                 </div>

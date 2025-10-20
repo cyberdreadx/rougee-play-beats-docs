@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { useTokenPrices } from '@/hooks/useTokenPrices';
 import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
@@ -150,26 +150,12 @@ export const SongPriceSparkline = ({
         
         // If no trades in timeframe but we have bonding curve data, generate fallback
         if (priceData.length < 2 && bondingSupply && priceInXRGE) {
-          console.log('⚠️ No trades in timeframe, using bonding curve fallback');
-          const BONDING_CURVE_TOTAL = 990_000_000;
-          const INITIAL_PRICE = 0.001;
-          const PRICE_INCREMENT = 0.000001;
+          console.log('⚠️ No trades in timeframe, showing flat line (no 24h change)');
           
-          const currentTokensBought = parseFloat(bondingSupply) > 0
-            ? BONDING_CURVE_TOTAL - parseFloat(bondingSupply)
-            : 0;
-          
-          const fallbackPoints = [];
-          const numPoints = 20;
-          
-          // Generate from 80% of current to current (recent trend)
-          const startTokens = currentTokensBought * 0.8;
-          for (let i = 0; i <= numPoints; i++) {
-            const tokensBought = startTokens + ((currentTokensBought - startTokens) / numPoints) * i;
-            const priceXRGE = INITIAL_PRICE + (tokensBought * PRICE_INCREMENT);
-            const priceUSD = priceXRGE * (prices.xrge || 0);
-            fallbackPoints.push({ value: priceUSD });
-          }
+          // No trades in 24h = flat price (0% change)
+          // Show current price as a flat line
+          const currentPriceUSD = priceInXRGE * (prices.xrge || 0);
+          const fallbackPoints = Array(20).fill({ value: currentPriceUSD });
           
           setTradeData(fallbackPoints);
         } else {
@@ -221,16 +207,24 @@ export const SongPriceSparkline = ({
     <div className={`${className} flex items-center gap-2`}>
       <div className="flex-1">
         <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={tradeData} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
-            <Line 
-              type="monotone" 
+          <AreaChart data={tradeData} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+            <defs>
+              <linearGradient id={`sparkline-gradient-${isPositive ? 'green' : 'red'}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={isPositive ? '#00ff00' : '#ef4444'} stopOpacity={0.6} />
+                <stop offset="50%" stopColor={isPositive ? '#00ff00' : '#ef4444'} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={isPositive ? '#00ff00' : '#ef4444'} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <Area 
+              type="linear" 
               dataKey="value" 
               stroke={finalStrokeColor}
-              strokeWidth={1.5}
+              strokeWidth={3}
+              fill={`url(#sparkline-gradient-${isPositive ? 'green' : 'red'})`}
               dot={false}
               isAnimationActive={false}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
       {showPercentChange && (
