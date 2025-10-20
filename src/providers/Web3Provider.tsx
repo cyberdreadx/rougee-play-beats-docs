@@ -4,6 +4,19 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { base } from 'wagmi/chains';
 
 import { config, privyAppId } from '@/config/wallet';
+import { useChainChecker } from '@/hooks/useChainChecker';
+
+// Component to monitor and enforce Base network
+function ChainChecker({ children }: { children: React.ReactNode }) {
+  const { isOnCorrectChain, isPhantom } = useChainChecker();
+  
+  // Extra logging for Phantom users
+  if (isPhantom) {
+    console.log('👻 Phantom wallet active, on correct chain:', isOnCorrectChain);
+  }
+  
+  return <>{children}</>;
+}
 
 // Setup queryClient with aggressive caching for Spotify-level performance
 const queryClient = new QueryClient({
@@ -32,7 +45,10 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
         defaultChain: base,
         supportedChains: [base],
         embeddedWallets: {
-          ethereum: { createOnLogin: 'all-users' },
+          createOnLogin: 'all-users',
+        },
+        externalWallets: {
+          requireUserToSwitchChain: true, // Force users to switch to Base
         },
         appearance: {
           theme: 'dark',
@@ -42,7 +58,9 @@ export default function Web3Provider({ children }: { children: React.ReactNode }
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={config}>
-          {children}
+          <ChainChecker>
+            {children}
+          </ChainChecker>
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>
