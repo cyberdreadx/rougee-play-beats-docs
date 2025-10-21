@@ -79,6 +79,7 @@ const Swap = () => {
   
   // Core swap state
   const [fromAmount, setFromAmount] = useState("");
+  const [usdAmount, setUsdAmount] = useState(""); // Separate state for USD input
   const [fromToken, setFromToken] = useState<string>("ETH");
   const [toToken, setToToken] = useState<string>(XRGE_TOKEN_ADDRESS);
   const [slippage, setSlippage] = useState("5");
@@ -94,7 +95,7 @@ const Swap = () => {
   
   const { prices, calculateUsdValue } = useTokenPrices();
 
-  // Helper to get token price in USD
+  // Helper to get token price in USD (memoized)
   const getTokenPrice = (token: string): number => {
     if (token === 'ETH') return prices.eth || 0;
     if (token === XRGE_TOKEN_ADDRESS) return prices.xrge || 0;
@@ -102,6 +103,40 @@ const Swap = () => {
     if (token === USDC_TOKEN_ADDRESS) return 1; // USDC is $1
     return 0; // Song tokens don't have direct USD price
   };
+
+  // Debug prices
+  useEffect(() => {
+    console.log('💰 Swap Page - Current Prices:', {
+      eth: prices.eth,
+      xrge: prices.xrge,
+      kta: prices.kta,
+      usdc: prices.usdc
+    });
+  }, [prices]);
+
+  // Clear USD amount when switching back to token input
+  useEffect(() => {
+    if (!useUsdInput) {
+      setUsdAmount("");
+    }
+  }, [useUsdInput]);
+
+  // Update USD amount when token amount changes in token mode
+  useEffect(() => {
+    if (!useUsdInput && fromAmount) {
+      const price = getTokenPrice(fromToken);
+      if (price > 0) {
+        const usd = Number(fromAmount) * price;
+        setUsdAmount(usd.toFixed(2));
+      }
+    }
+  }, [fromAmount, fromToken, useUsdInput, prices]);
+
+  // Clear amounts when token changes
+  useEffect(() => {
+    setFromAmount("");
+    setUsdAmount("");
+  }, [fromToken, toToken]);
 
   // Calculate USD value from token amount
   const calculateFromUsd = (): string => {
@@ -114,13 +149,18 @@ const Swap = () => {
 
   // Calculate token amount from USD input
   const handleUsdInput = (usdValue: string) => {
+    setUsdAmount(usdValue); // Update USD state
+    
     const usd = Number(usdValue);
     if (usd <= 0 || !usd) {
       setFromAmount("");
       return;
     }
     const price = getTokenPrice(fromToken);
-    if (price === 0) return;
+    if (price === 0) {
+      setFromAmount("");
+      return;
+    }
     const tokenAmount = usd / price;
     setFromAmount(tokenAmount.toFixed(6));
   };
@@ -713,6 +753,34 @@ const Swap = () => {
           <p className="text-muted-foreground font-mono">
             Swap between native tokens and music tokens
           </p>
+          
+          {/* Price Info Banner */}
+          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <div className="text-muted-foreground mb-1">ETH Price</div>
+                <div className="text-blue-400 font-bold">
+                  ${prices.eth > 0 ? prices.eth.toFixed(2) : '...'}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">XRGE Price</div>
+                <div className="text-neon-green font-bold">
+                  ${prices.xrge > 0 ? prices.xrge.toFixed(8) : '...'}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">KTA Price</div>
+                <div className="text-purple-400 font-bold">
+                  ${prices.kta > 0 ? prices.kta.toFixed(8) : '...'}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">USDC Price</div>
+                <div className="text-green-400 font-bold">$1.00</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Swap Interface */}
@@ -816,6 +884,7 @@ const Swap = () => {
                     <Input
                       type="number"
                       placeholder="$0.00"
+                      value={usdAmount}
                       onChange={(e) => handleUsdInput(e.target.value)}
                       className="font-mono text-2xl h-14 text-right"
                       step="1"

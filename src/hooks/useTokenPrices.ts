@@ -30,14 +30,39 @@ export const useTokenPrices = () => {
           );
           const xrgeData = await xrgeResponse.json();
           
-          // Find the Base chain pair with highest liquidity
-          const basePair = xrgeData.pairs?.find((pair: any) => 
-            pair.chainId === 'base' && pair.quoteToken?.symbol === 'WETH'
-          ) || xrgeData.pairs?.[0];
+          console.log('🔍 XRGE DEX Screener Response:', xrgeData);
           
-          xrgePrice = basePair?.priceUsd ? parseFloat(basePair.priceUsd) : 0;
+          if (xrgeData.pairs && xrgeData.pairs.length > 0) {
+            // Sort pairs by liquidity (highest first) and filter for Base chain
+            const basePairs = xrgeData.pairs
+              .filter((pair: any) => pair.chainId === 'base')
+              .sort((a: any, b: any) => {
+                const aLiq = parseFloat(a.liquidity?.usd || '0');
+                const bLiq = parseFloat(b.liquidity?.usd || '0');
+                return bLiq - aLiq;
+              });
+            
+            console.log('💧 Base pairs sorted by liquidity:', basePairs.map((p: any) => ({
+              pair: p.pairAddress,
+              quote: p.quoteToken?.symbol,
+              price: p.priceUsd,
+              liquidity: p.liquidity?.usd
+            })));
+            
+            // Use the pair with highest liquidity on Base
+            const bestPair = basePairs[0] || xrgeData.pairs[0];
+            
+            if (bestPair?.priceUsd) {
+              xrgePrice = parseFloat(bestPair.priceUsd);
+              console.log('✅ XRGE Price:', xrgePrice, 'from pair:', bestPair.pairAddress);
+            } else {
+              console.warn('⚠️ No valid price found in pairs');
+            }
+          } else {
+            console.warn('⚠️ No pairs found in DEX Screener response');
+          }
         } catch (error) {
-          console.error('Failed to fetch XRGE price from DEX Screener:', error);
+          console.error('❌ Failed to fetch XRGE price from DEX Screener:', error);
         }
 
         // Fetch KTA price from DEX Screener
