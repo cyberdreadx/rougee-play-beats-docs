@@ -218,14 +218,23 @@ const Swap = () => {
   
   useEffect(() => {
     if (isSuccess) {
-      setTimeout(() => {
-        refetchXRGEApproval();
-        refetchUSDCApproval();
-        refetchKTAApproval();
-        refetchKTAAllowance();
-      }, 2000);
+      // Refetch approval states immediately when transaction confirms
+      refetchXRGEApproval();
+      refetchUSDCApproval();
+      refetchKTAApproval();
+      refetchKTAAllowance();
+      
+      // Clear form on successful swap (but not on approvals)
+      setFromAmount("");
+      
+      // Show success message
+      toast({ 
+        title: "✅ Transaction Confirmed", 
+        description: "Your transaction has been confirmed on the blockchain" 
+      });
     }
-  }, [isSuccess, refetchXRGEApproval, refetchUSDCApproval, refetchKTAApproval, refetchKTAAllowance]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuccess]);
 
   // Calculate expected output amount based on from/to tokens
   const getExpectedOutput = (): string => {
@@ -320,6 +329,18 @@ const Swap = () => {
   const xrgeBalanceFormatted = formatTokenBalance(xrgeBalance as bigint | undefined, Number(xrgeDecimals || 18));
   const ktaBalanceFormatted = formatTokenBalance(ktaBalance as bigint | undefined, Number(xrgeDecimals || 18));
   const usdcBalanceFormatted = formatTokenBalance(usdcBalance as bigint | undefined, 6);
+
+  // Refetch balances when transaction succeeds
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => {
+        refetchEthBalance();
+        refetchXrgeBalance();
+        refetchKtaBalance();
+        refetchUsdcBalance();
+      }, 1000);
+    }
+  }, [isSuccess, refetchEthBalance, refetchXrgeBalance, refetchKtaBalance, refetchUsdcBalance]);
 
   // Fetch ALL deployed song tokens (for buying) and user's holdings (for selling)
   useEffect(() => {
@@ -422,20 +443,6 @@ const Swap = () => {
     }
   }, [fromToken, fromTokenType, useUsdInput]);
 
-  useEffect(() => {
-    if (isSuccess) {
-      toast({
-        title: "Swap Successful!",
-        description: "Your transaction has been confirmed.",
-      });
-      setFromAmount("");
-      refetchXRGEApproval();
-      refetchEthBalance();
-      refetchXrgeBalance();
-      refetchKtaBalance();
-      refetchUsdcBalance();
-    }
-  }, [isSuccess]);
 
   useEffect(() => {
     if (error) {
@@ -581,18 +588,22 @@ const Swap = () => {
 
     try {
       if (fromToken === KTA_TOKEN_ADDRESS) {
+        toast({ title: "Approving KTA", description: "Please confirm the transaction in your wallet..." });
         await approveKTA(fromAmount);
-        setTimeout(() => Promise.all([refetchKTAApproval(), refetchKTAAllowance()]), 3000);
+        // Wait for transaction confirmation, then refetch
+        toast({ title: "Confirming approval...", description: "Waiting for blockchain confirmation..." });
       } else if (fromToken === USDC_TOKEN_ADDRESS) {
+        toast({ title: "Approving USDC", description: "Please confirm the transaction in your wallet..." });
         await approveUSDC(fromAmount);
-        setTimeout(() => refetchUSDCApproval(), 3000);
+        toast({ title: "Confirming approval...", description: "Waiting for blockchain confirmation..." });
       } else if (fromToken === XRGE_TOKEN_ADDRESS) {
+        toast({ title: "Approving XRGE", description: "Please confirm the transaction in your wallet..." });
         await approveXRGE(fromAmount);
-        setTimeout(() => refetchXRGEApproval(), 3000);
+        toast({ title: "Confirming approval...", description: "Waiting for blockchain confirmation..." });
       }
-      toast({ title: "✅ Approval Successful", description: "You can now proceed with the swap" });
     } catch (error) {
       console.error("Approval error:", error);
+      toast({ title: "Approval failed", description: error instanceof Error ? error.message : "Transaction failed", variant: "destructive" });
     }
   };
   
