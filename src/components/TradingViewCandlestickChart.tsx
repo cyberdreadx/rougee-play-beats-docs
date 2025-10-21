@@ -82,18 +82,20 @@ export const TradingViewCandlestickChart = ({
         minimumWidth: isMobile ? 50 : 60, // Smaller price scale on mobile
       },
       crosshair: {
-        mode: 0, // Normal crosshair mode
+        mode: 1, // Magnet mode - better for touch on mobile
         vertLine: {
           width: 1,
           color: '#00ff9f',
           style: 3, // Dashed line
           labelBackgroundColor: '#00ff9f',
+          labelVisible: true,
         },
         horzLine: {
           width: 1,
           color: '#00ff9f',
           style: 3,
           labelBackgroundColor: '#00ff9f',
+          labelVisible: true,
         },
       },
       handleScroll: {
@@ -106,6 +108,10 @@ export const TradingViewCandlestickChart = ({
         axisPressedMouseMove: true,
         mouseWheel: true,
         pinch: true,
+      },
+      kineticScroll: {
+        touch: true,
+        mouse: false,
       },
     });
 
@@ -241,9 +247,153 @@ export const TradingViewCandlestickChart = ({
     // Also handle orientation change on mobile
     window.addEventListener('orientationchange', handleResize);
 
+    // Store last tap position and timeout
+    let tapTimeout: NodeJS.Timeout | null = null;
+    let lastTapPosition: { x: number; y: number } | null = null;
+    
+    // Add tap/click handler to show tooltip on mobile
+    const handleTap = (e: MouseEvent | TouchEvent) => {
+      if (!chartRef.current || !chartContainerRef.current || !candlestickSeriesRef.current || !tooltipRef.current) return;
+      
+      const rect = chartContainerRef.current.getBoundingClientRect();
+      let clientX: number, clientY: number;
+      
+      if (e instanceof TouchEvent) {
+        const touch = e.touches[0] || e.changedTouches[0];
+        if (!touch) return;
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+      
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      
+      // Store tap position
+      lastTapPosition = { x, y };
+      
+      // Convert pixel coordinates to time and price
+      const timeScale = chartRef.current.timeScale();
+      const time = timeScale.coordinateToTime(x);
+      
+      if (time === null) return;
+      
+      // Get the data point at this time
+      const dataPoint = candlestickSeriesRef.current.dataByIndex(
+        timeScale.logicalToCoordinate(time as any) as any
+      );
+      
+      // Find the closest candle data
+      const candles = Array.from(tradeDataRef.current.keys());
+      const closestTime = candles.reduce((prev, curr) => {
+        return Math.abs(curr - (time as number)) < Math.abs(prev - (time as number)) ? curr : prev;
+      }, candles[0]);
+      
+      const trades = tradeDataRef.current.get(closestTime) || [];
+      
+      if (trades.length === 0) return;
+      
+      // Calculate OHLC from trades
+      const prices = trades.map(t => t.priceUSD);
+      const candleData = {
+        open: prices[0],
+        close: prices[prices.length - 1],
+        high: Math.max(...prices),
+        low: Math.min(...prices),
+      };
+      
+      // Calculate buy/sell stats
+      const buyTrades = trades.filter(t => t.type === 'buy');
+      const sellTrades = trades.filter(t => t.type === 'sell');
+      const buyVolume = buyTrades.reduce((sum, t) => sum + t.amount, 0);
+      const sellVolume = sellTrades.reduce((sum, t) => sum + t.amount, 0);
+      
+      // Format tooltip HTML
+      const displayTime = new Date(closestTime * 1000);
+      const isMobileTooltip = window.innerWidth < 768;
+      const fontSize = isMobileTooltip ? '9px' : '11px';
+      
+      tooltipRef.current.innerHTML = `
+        <div style="font-family: monospace; font-size: ${fontSize}; line-height: 1.4;">
+          <div style="color: #00ff9f; font-weight: bold; margin-bottom: 4px;">
+            ${displayTime.toLocaleString()}
+          </div>
+          <div style="margin-bottom: 6px;">
+            <div style="color: #888;">O: <span style="color: #fff;">$${candleData.open.toFixed(8)}</span></div>
+            <div style="color: #888;">H: <span style="color: #00ff9f;">$${candleData.high.toFixed(8)}</span></div>
+            <div style="color: #888;">L: <span style="color: #ff4757;">$${candleData.low.toFixed(8)}</span></div>
+            <div style="color: #888;">C: <span style="color: #fff;">$${candleData.close.toFixed(8)}</span></div>
+          </div>
+          <div style="border-top: 1px solid #333; padding-top: 4px; margin-top: 4px;">
+            <div style="color: #00ff9f;">
+              ▲ Buys: ${buyTrades.length} (${buyVolume.toLocaleString(undefined, {maximumFractionDigits: 0})} tokens)
+            </div>
+            <div style="color: #ff4757;">
+              ▼ Sells: ${sellTrades.length} (${sellVolume.toLocaleString(undefined, {maximumFractionDigits: 0})} tokens)
+            </div>
+            <div style="color: #888; margin-top: 2px;">
+              Total: ${trades.length} trades
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Show tooltip
+      tooltipRef.current.style.display = 'block';
+      const tooltipWidth = tooltipRef.current.offsetWidth;
+      const tooltipHeight = tooltipRef.current.offsetHeight;
+      const containerWidth = chartContainerRef.current?.clientWidth || 0;
+      const containerHeight = isMobileTooltip ? 250 : 350;
+      
+      // Position to the right by default, but flip to left if it would go off-screen
+      let left = x + 15;
+      if (left + tooltipWidth > containerWidth) {
+        left = x - tooltipWidth - 15;
+      }
+      
+      // Position below by default, but flip to above if it would go off-screen
+      let top = y + 15;
+      if (top + tooltipHeight > containerHeight) {
+        top = y - tooltipHeight - 15;
+      }
+      
+      tooltipRef.current.style.left = Math.max(0, left) + 'px';
+      tooltipRef.current.style.top = Math.max(0, top) + 'px';
+      
+      // Clear any existing timeout
+      if (tapTimeout) {
+        clearTimeout(tapTimeout);
+      }
+      
+      // Hide tooltip after 5 seconds on mobile
+      if (isMobileTooltip) {
+        tapTimeout = setTimeout(() => {
+          if (tooltipRef.current) {
+            tooltipRef.current.style.display = 'none';
+          }
+        }, 5000);
+      }
+      
+      console.log('📍 Tapped at time:', displayTime, 'showing data for', trades.length, 'trades');
+    };
+    
+    if (chartContainerRef.current) {
+      chartContainerRef.current.addEventListener('click', handleTap);
+      chartContainerRef.current.addEventListener('touchstart', handleTap, { passive: true });
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
+      if (chartContainerRef.current) {
+        chartContainerRef.current.removeEventListener('click', handleTap);
+        chartContainerRef.current.removeEventListener('touchstart', handleTap);
+      }
+      if (tapTimeout) {
+        clearTimeout(tapTimeout);
+      }
       chart.remove();
     };
   }, []);
@@ -416,10 +566,13 @@ export const TradingViewCandlestickChart = ({
       <div style={{ position: 'relative' }} className="w-full overflow-hidden">
         <div 
           ref={chartContainerRef} 
-          className="w-full touch-pan-x touch-pan-y"
+          className="w-full"
           style={{ 
             height: window.innerWidth < 768 ? '250px' : '350px',
             minHeight: '200px',
+            touchAction: 'manipulation', // Enable touch interactions
+            WebkitTapHighlightColor: 'transparent', // Remove tap highlight on mobile
+            cursor: 'crosshair',
           }}
         />
         {/* Custom Tooltip */}
@@ -436,6 +589,7 @@ export const TradingViewCandlestickChart = ({
             zIndex: 1000,
             maxWidth: window.innerWidth < 768 ? '220px' : '280px',
             boxShadow: '0 4px 12px rgba(0, 255, 159, 0.2)',
+            transition: 'opacity 0.2s ease',
           }}
         />
       </div>
