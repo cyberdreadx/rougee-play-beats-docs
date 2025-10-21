@@ -42,6 +42,7 @@ import usdcLogo from "@/assets/tokens/usdc.jpg";
 import xrgeLogo from "@/assets/tokens/xrge.png";
 import { supabase } from "@/integrations/supabase/client";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { NetworkGuard } from "@/components/NetworkGuard";
 
 const ERC20_ABI = [
   {
@@ -664,11 +665,12 @@ const Swap = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 py-6 md:py-8 max-w-2xl mb-24 md:mb-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold font-mono text-neon-green mb-2">
-            [SWAP TOKENS]
+    <NetworkGuard>
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 py-6 md:py-8 max-w-2xl mb-24 md:mb-8">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold font-mono text-neon-green mb-2">
+              [SWAP TOKENS]
           </h1>
           <p className="text-muted-foreground font-mono">
             Swap between native tokens and music tokens
@@ -1165,6 +1167,7 @@ const Swap = () => {
         </div>
       </main>
     </div>
+    </NetworkGuard>
   );
 };
 

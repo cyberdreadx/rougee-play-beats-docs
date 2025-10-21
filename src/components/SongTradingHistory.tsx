@@ -466,7 +466,7 @@ const SongTradingHistory = ({
                     <img 
                       src={coverUrl} 
                       alt={songTicker || 'Song'} 
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover flex-shrink-0"
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder-cover.png';
                       }}

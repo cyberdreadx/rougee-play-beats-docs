@@ -32,6 +32,7 @@ import { usePrivyWagmi } from "@/hooks/usePrivyWagmi";
 import { useFundWallet } from "@privy-io/react-auth";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { Play, TrendingUp, TrendingDown, Users, MessageSquare, ArrowUpRight, ArrowDownRight, Loader2, Rocket, Wallet, Copy, Check, ExternalLink, CreditCard, Share2, Pause } from "lucide-react";
+import { NetworkGuard } from "@/components/NetworkGuard";
 
 interface Song {
   id: string;
@@ -1207,9 +1208,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const pageUrl = `https://rougee.app/song/${song.id}`;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-8">
-      <Helmet>
-        <title>{song.title} - {song.artist || 'Unknown Artist'} | ROUGEE PLAY</title>
+    <NetworkGuard>
+      <div className="min-h-screen bg-background pb-20 md:pb-8">
+        <Helmet>
+          <title>{song.title} - {song.artist || 'Unknown Artist'} | ROUGEE PLAY</title>
         <meta name="description" content={`Listen to ${song.title} by ${song.artist || 'Unknown Artist'} on ROUGEE PLAY. Stream and trade music NFTs on the blockchain.`} />
         
         <meta property="og:title" content={`${song.title} - ${song.artist || 'Unknown Artist'}`} />
@@ -2016,7 +2018,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                           <img 
                             src={coverUrl} 
                             alt={song?.ticker || 'Song'} 
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded object-cover flex-shrink-0"
+                            className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = '/placeholder-cover.png';
                             }}
@@ -2115,6 +2117,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
         </Tabs>
       </div>
     </div>
+    </NetworkGuard>
   );
 };
 

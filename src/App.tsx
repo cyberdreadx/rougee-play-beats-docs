@@ -96,7 +96,7 @@ const AppContent = () => {
           <Route path="/messages" element={<Messages />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/feed" element={<Feed />} />
+          <Route path="/feed" element={<Feed playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />

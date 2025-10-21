@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig, Music, Loader2 } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig, Music, Loader2, Play, Pause } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
@@ -18,6 +18,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SongComments } from '@/components/SongComments';
 import { AiBadge } from '@/components/AiBadge';
 import gltchLogo from '@/assets/gltch-logo.png';
+import { useSongPrice } from '@/hooks/useSongBondingCurve';
+import { useTokenPrices } from '@/hooks/useTokenPrices';
+import { Address } from 'viem';
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -50,6 +53,7 @@ interface SongPost {
   title: string;
   artist: string;
   wallet_address: string;
+  audio_cid: string;
   cover_cid: string | null;
   ticker: string | null;
   token_address: string | null;
@@ -61,7 +65,14 @@ interface SongPost {
     verified: boolean | null;
   };
 }
-export default function Feed() {
+
+interface FeedProps {
+  playSong?: (song: any) => void;
+  currentSong?: any;
+  isPlaying?: boolean;
+}
+
+export default function Feed({ playSong, currentSong, isPlaying }: FeedProps = {}) {
   const navigate = useNavigate();
   const {
     fullAddress,
@@ -199,7 +210,7 @@ export default function Feed() {
 
       const { data: songsData, error } = await supabase
         .from('songs')
-        .select('id, title, artist, wallet_address, cover_cid, ticker, token_address, created_at, ai_usage')
+        .select('id, title, artist, wallet_address, audio_cid, cover_cid, ticker, token_address, created_at, ai_usage')
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -501,6 +512,170 @@ export default function Feed() {
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
   };
+
+  // Song Card Component with Price
+  const SongCard = ({ song }: { song: SongPost }) => {
+    const { prices } = useTokenPrices();
+    const { price: priceInXRGE } = useSongPrice(song.token_address as Address);
+    const priceUSD = (parseFloat(priceInXRGE) || 0) * (prices.xrge || 0);
+
+    return (
+      <Card className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] w-full md:rounded-2xl rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4 hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
+        {/* Song Post Header */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Artist Avatar */}
+          <div 
+            className="flex-shrink-0 cursor-pointer"
+            onClick={() => navigate(`/artist/${song.wallet_address}`)}
+          >
+            {song.profiles?.avatar_cid ? (
+              <img
+                src={getIPFSGatewayUrl(song.profiles.avatar_cid)}
+                alt="Avatar"
+                loading="lazy"
+                decoding="async"
+                className="w-10 h-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-primary text-sm">
+                  {song.profiles?.artist_name?.[0] || '?'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            {/* Artist Name and Action */}
+            <div className="flex items-center gap-1.5 mb-1">
+              <p 
+                className="font-semibold text-sm cursor-pointer hover:text-neon-green transition-colors"
+                onClick={() => navigate(`/artist/${song.wallet_address}`)}
+              >
+                {song.profiles?.artist_name || `${song.wallet_address.slice(0, 6)}...${song.wallet_address.slice(-4)}`}
+              </p>
+              {song.profiles?.verified && (
+                <CircleCheckBig className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Verified artist" />
+              )}
+              <XRGETierBadge walletAddress={song.wallet_address} size="sm" />
+              <span className="text-xs text-muted-foreground">posted a track</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatTimeAgo(song.created_at)}
+            </p>
+          </div>
+        </div>
+
+        {/* Song Content */}
+        <div className="flex gap-3 mb-3">
+          {/* Album Cover with Play Button */}
+          <div className="relative group flex-shrink-0">
+            {song.cover_cid ? (
+              <img
+                src={getIPFSGatewayUrl(song.cover_cid)}
+                alt={song.title}
+                loading="lazy"
+                decoding="async"
+                className="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => song.token_address ? navigate(`/song/${song.id}`) : null}
+              />
+            ) : (
+              <div 
+                className="w-20 h-20 rounded-lg bg-primary/20 flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => song.token_address ? navigate(`/song/${song.id}`) : null}
+              >
+                <Music className="w-8 h-8 text-primary" />
+              </div>
+            )}
+            
+            {/* Play Button Overlay */}
+            {playSong && song.audio_cid && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playSong(song);
+                }}
+                className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-neon-green hover:bg-neon-green/80 active:bg-neon-green/70 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg shadow-neon-green/50 z-10"
+              >
+                {currentSong?.id === song.id && isPlaying ? (
+                  <Pause className="w-4 h-4 text-black fill-black" />
+                ) : (
+                  <Play className="w-4 h-4 text-black fill-black ml-0.5" />
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Song Info */}
+          <div 
+            className="flex-1 min-w-0 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => song.token_address ? navigate(`/song/${song.id}`) : null}
+          >
+            <h3 className="font-bold text-base mb-1 truncate flex items-center gap-2">
+              <span className="truncate">{song.title}</span>
+              <AiBadge aiUsage={song.ai_usage} size="sm" />
+            </h3>
+            <p className="text-sm text-muted-foreground mb-1">
+              {song.artist}
+            </p>
+            {song.ticker && (
+              <p className="text-xs text-neon-green font-mono mb-1">
+                ${song.ticker}
+              </p>
+            )}
+            {song.token_address && priceUSD > 0 && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Price:</span>
+                <span className="font-mono font-semibold text-neon-green">
+                  ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Song Actions */}
+        <div className="flex items-center gap-4 pt-3 border-t border-border">
+          <LikeButton 
+            songId={song.id} 
+            size="sm" 
+            showCount={true} 
+          />
+
+          <button 
+            onClick={() => toggleSongComments(song.id)} 
+            className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>{songCommentCounts[song.id] || 0}</span>
+          </button>
+
+          {song.token_address && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/song/${song.id}`)}
+              className="ml-auto"
+            >
+              Trade
+            </Button>
+          )}
+        </div>
+
+        {/* Comments Section */}
+        {expandedSongComments.has(song.id) && (
+          <div className="mt-4 pt-4 border-t border-primary/10">
+            <SongComments 
+              songId={song.id} 
+              onCommentCountChange={(count) => {
+                setSongCommentCounts(prev => ({ ...prev, [song.id]: count }));
+              }}
+            />
+          </div>
+        )}
+      </Card>
+    );
+  };
   return <>
       <StoriesBar />
       <div className="min-h-screen bg-background pt-0 pb-24 md:pb-32 px-0 md:px-4">
@@ -556,10 +731,10 @@ export default function Feed() {
             </Card>}
 
           {/* Feed with Tabs */}
-          <Tabs defaultValue="posts" className="w-full md:max-w-2xl md:mx-auto">
+          <Tabs defaultValue="songs" className="w-full md:max-w-2xl md:mx-auto">
             <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6 mx-auto max-w-xs md:max-w-full md:mx-0 md:rounded-lg rounded-md">
-              <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="songs">Songs</TabsTrigger>
+              <TabsTrigger value="posts">Posts</TabsTrigger>
             </TabsList>
 
             {/* Posts Tab */}
@@ -723,131 +898,7 @@ export default function Feed() {
                   No songs uploaded yet.
                 </div>
               ) : (
-                songs.map(song => (
-                  <Card key={song.id} className="p-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] w-full md:rounded-2xl rounded-none border-x-0 md:border-x border-b md:border-b mb-0 md:mb-4 hover:bg-white/8 active:bg-white/10 active:scale-[0.99] transition-all duration-300">
-                    {/* Song Post Header */}
-                    <div className="flex items-start gap-3 mb-3">
-                      {/* Artist Avatar */}
-                      <div 
-                        className="flex-shrink-0 cursor-pointer"
-                        onClick={() => navigate(`/artist/${song.wallet_address}`)}
-                      >
-                        {song.profiles?.avatar_cid ? (
-                          <img
-                            src={getIPFSGatewayUrl(song.profiles.avatar_cid)}
-                            alt="Avatar"
-                            loading="lazy"
-                            decoding="async"
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                            <span className="text-primary text-sm">
-                              {song.profiles?.artist_name?.[0] || '?'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        {/* Artist Name and Action */}
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <p 
-                            className="font-semibold text-sm cursor-pointer hover:text-neon-green transition-colors"
-                            onClick={() => navigate(`/artist/${song.wallet_address}`)}
-                          >
-                            {song.profiles?.artist_name || `${song.wallet_address.slice(0, 6)}...${song.wallet_address.slice(-4)}`}
-                          </p>
-                          {song.profiles?.verified && (
-                            <CircleCheckBig className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" aria-label="Verified artist" />
-                          )}
-                          <XRGETierBadge walletAddress={song.wallet_address} size="sm" />
-                          <span className="text-xs text-muted-foreground">posted a track</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTimeAgo(song.created_at)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Song Content */}
-                    <div 
-                      className="flex gap-3 mb-3 cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => song.token_address ? navigate(`/song/${song.id}`) : null}
-                    >
-                      {/* Album Cover */}
-                      {song.cover_cid ? (
-                        <img
-                          src={getIPFSGatewayUrl(song.cover_cid)}
-                          alt={song.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-20 h-20 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-20 h-20 rounded-lg bg-primary/20 flex items-center justify-center">
-                          <Music className="w-8 h-8 text-primary" />
-                        </div>
-                      )}
-
-                      {/* Song Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-base mb-1 truncate flex items-center gap-2">
-                          <span className="truncate">{song.title}</span>
-                          <AiBadge aiUsage={song.ai_usage} size="sm" />
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {song.artist}
-                        </p>
-                        {song.ticker && (
-                          <p className="text-xs text-neon-green font-mono">
-                            ${song.ticker}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Song Actions */}
-                    <div className="flex items-center gap-4 pt-3 border-t border-border">
-                      <LikeButton 
-                        songId={song.id} 
-                        size="sm" 
-                        showCount={true} 
-                      />
-
-                      <button 
-                        onClick={() => toggleSongComments(song.id)} 
-                        className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{songCommentCounts[song.id] || 0}</span>
-                      </button>
-
-                      {song.token_address && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/song/${song.id}`)}
-                          className="ml-auto"
-                        >
-                          Trade
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Comments Section */}
-                    {expandedSongComments.has(song.id) && (
-                      <div className="mt-4 pt-4 border-t border-primary/10">
-                        <SongComments 
-                          songId={song.id} 
-                          onCommentCountChange={(count) => {
-                            setSongCommentCounts(prev => ({ ...prev, [song.id]: count }));
-                          }}
-                        />
-                      </div>
-                    )}
-                  </Card>
-                ))
+                songs.map(song => <SongCard key={song.id} song={song} />)
               )}
 
               {/* Load More Songs Button */}

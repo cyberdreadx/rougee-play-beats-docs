@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      clientPort: 8080,
+    },
   },
   plugins: [react()].filter(Boolean),
   resolve: {
@@ -14,10 +17,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       'protobufjs/minimal': 'protobufjs/minimal.js',
     },
+    dedupe: ['react', 'react-dom', 'styled-components'],
   },
   optimizeDeps: {
     exclude: ['@xmtp/browser-sdk'],
-    include: ['protobufjs/minimal'],
+    include: ['react', 'react-dom', 'protobufjs/minimal', 'styled-components'],
     esbuildOptions: {
       target: 'esnext',
     },
