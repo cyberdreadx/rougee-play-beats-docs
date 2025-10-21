@@ -876,21 +876,27 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           return;
         }
       } else if (paymentToken === 'USDC') {
+        console.log('💰 Starting USDC purchase flow:', { buyAmount, songTokenAddress });
+        
         // Swap USDC to XRGE first, then buy
         toast({
-          title: "Step 1/3: Approve USDC",
+          title: "Step 1/4: Approve USDC",
           description: "Please approve USDC for swapping",
         });
         
         const usdcTxHash = await approveUSDC(buyAmount);
+        console.log('✅ USDC approved:', usdcTxHash);
         
         toast({
-          title: "Step 2/3: Swapping USDC to XRGE",
+          title: "Step 2/4: Swapping USDC to XRGE",
           description: "Converting your USDC to XRGE...",
         });
         
         const balanceBefore = await getXRGEBalance();
+        console.log('📊 XRGE balance before swap:', balanceBefore);
+        
         const swapTxHash = await buyXRGEWithUSDC(buyAmount, 500);
+        console.log('✅ Swap transaction:', swapTxHash);
         
         let xrgeReceived = "0";
         let attempts = 0;
@@ -905,6 +911,7 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           
           if (balanceDiff > 0) {
             xrgeReceived = balanceDiff.toString();
+            console.log(`✅ XRGE received after ${attempts} attempts:`, xrgeReceived);
             break;
           }
           
@@ -915,26 +922,30 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           throw new Error("USDC to XRGE swap failed - no XRGE received");
         }
         
+        // Use full XRGE amount for approval (not reduced)
+        console.log('💰 XRGE to approve:', xrgeReceived);
+        
         toast({
           title: "Step 3/4: Approving XRGE",
           description: "Approving XRGE for song token purchase...",
         });
         
-        const xrgeApproveTxHash = await approveXRGE(xrgeReceived, BONDING_CURVE_ADDRESS);
+        // Approve using the approve function from useSongBondingCurve
+        await approve(XRGE_TOKEN, xrgeReceived);
+        console.log('✅ XRGE approved for bonding curve');
         
-        if (publicClient && xrgeApproveTxHash) {
-          await publicClient.waitForTransactionReceipt({
-            hash: xrgeApproveTxHash as `0x${string}`,
-            confirmations: 1,
-          });
-        }
+        // Wait a bit for approval to propagate
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         toast({
           title: "Step 4/4: Buying song tokens",
           description: "Purchasing with swapped XRGE...",
         });
         
+        // Use 98% to account for any tiny price movements
         const safeAmount = (parseFloat(xrgeReceived) * 0.98).toString();
+        console.log('💰 Buying with XRGE:', { safeAmount, songTokenAddress });
+        
         await buyWithXRGE(songTokenAddress, safeAmount, "0");
         
         toast({
