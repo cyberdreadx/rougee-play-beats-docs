@@ -1540,8 +1540,84 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
           </Card>
         </div>
 
-        {/* Trading History Section */}
+        {/* Price Charts - All 3 chart types with toggle */}
         <div className="mb-6 md:mb-8">
+          <SongTradingChart 
+            songTokenAddress={songTokenAddress} 
+            priceInXRGE={priceInXRGE}
+            bondingSupply={bondingSupply}
+            trades={recentTrades}
+          />
+        </div>
+
+        {/* Recent Trades */}
+        {recentTrades.length > 0 && (
+          <div className="mb-6 md:mb-8">
+            <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border">
+              <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {recentTrades.slice(-10).reverse().map((trade, i) => {
+                  const coverUrl = song?.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : '/placeholder-cover.png';
+                  const xrgeAmount = trade.xrgeAmount 
+                    ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
+                    : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
+                  const shortAddress = trade.trader 
+                    ? `${trade.trader.slice(0, 4)}...${trade.trader.slice(-4)}`
+                    : 'Unknown';
+                  
+                  return (
+                    <div 
+                      key={i}
+                      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
+                    >
+                      {/* Badge in bottom-left corner */}
+                      <div className={`absolute bottom-2 left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold ${
+                        trade.type === 'buy' 
+                          ? 'bg-green-500/20 text-green-500 border border-green-500/30'
+                          : 'bg-red-500/20 text-red-500 border border-red-500/30'
+                      }`}>
+                        {trade.type === 'buy' ? '↑ BUY' : '↓ SELL'}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                        <img 
+                          src={coverUrl} 
+                          alt={song?.ticker || 'Song'} 
+                          className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/placeholder-cover.png';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs sm:text-sm font-mono text-muted-foreground">
+                              {shortAddress}
+                            </span>
+                          </div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                            {new Date(trade.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right pl-12 sm:pl-0">
+                        <div className="text-xs sm:text-sm font-mono font-bold">
+                          {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${song?.ticker?.toUpperCase()}
+                        </div>
+                        <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
+                          {xrgeAmount} XRGE
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Trading History - Hidden (only used for data loading) */}
+        <div className="hidden">
           {songTokenAddress && song && (
             <SongTradingHistory 
               tokenAddress={songTokenAddress}
@@ -1559,9 +1635,8 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
 
         {/* Main Content */}
         <Tabs defaultValue="trade" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4 md:mb-6 h-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-4 md:mb-6 h-auto">
             <TabsTrigger value="trade" className="text-xs sm:text-sm">TRADE</TabsTrigger>
-            <TabsTrigger value="chart" className="text-xs sm:text-sm">CHART</TabsTrigger>
             <TabsTrigger value="holders" className="text-xs sm:text-sm">HOLDERS</TabsTrigger>
             <TabsTrigger value="comments" className="text-xs sm:text-sm">
               <span className="hidden sm:inline">COMMENTS</span>
@@ -2029,80 +2104,6 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                 )}
               </div>
             )}
-
-            {/* Recent Trades */}
-            {recentTrades.length > 0 && (
-              <Card className="p-3 sm:p-4 md:p-6 console-bg tech-border mt-4">
-                <h3 className="font-mono font-bold text-base sm:text-lg mb-3 sm:mb-4 text-cyan-400">RECENT TRADES</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {recentTrades.slice(-10).reverse().map((trade, i) => {
-                    const coverUrl = song?.cover_cid ? getIPFSGatewayUrl(song.cover_cid) : '/placeholder-cover.png';
-                    const xrgeAmount = trade.xrgeAmount 
-                      ? trade.xrgeAmount.toLocaleString(undefined, {maximumFractionDigits: 2})
-                      : (trade.amount * trade.price).toLocaleString(undefined, {maximumFractionDigits: 2});
-                    const shortAddress = trade.trader 
-                      ? `${trade.trader.slice(0, 4)}...${trade.trader.slice(-4)}`
-                      : 'Unknown';
-                    
-                    return (
-                      <div 
-                        key={i}
-                        className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-background/50 border border-border rounded hover:bg-background/80 transition-colors"
-                      >
-                        {/* Badge in bottom-left corner */}
-                        <div className={`absolute bottom-2 left-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded font-mono text-[10px] sm:text-xs font-bold ${
-                          trade.type === 'buy' 
-                            ? 'bg-green-500/20 text-green-500 border border-green-500/30' 
-                            : trade.type === 'deploy'
-                            ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
-                            : 'bg-red-500/20 text-red-500 border border-red-500/30'
-                        }`}>
-                          {trade.type.toUpperCase()}
-                        </div>
-                        
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 sm:ml-20">
-                          <img 
-                            src={coverUrl} 
-                            alt={song?.ticker || 'Song'} 
-                            className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/placeholder-cover.png';
-                            }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-mono text-xs sm:text-sm font-bold truncate">
-                              {trade.amount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${song?.ticker?.toUpperCase() || 'SONG'}
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-muted-foreground font-mono flex flex-col sm:flex-row sm:items-center gap-0 sm:gap-2 truncate">
-                              <span className="hidden sm:inline">{new Date(trade.timestamp).toLocaleString()}</span>
-                              <span className="sm:hidden">{new Date(trade.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                              <span className="text-cyan-400 truncate">by {shortAddress}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right flex-shrink-0 self-end sm:self-auto">
-                          <div className="font-mono text-xs sm:text-sm font-bold text-neon-green">
-                            ${trade.priceUSD < 0.000001 ? trade.priceUSD.toFixed(10) : trade.priceUSD.toFixed(8)}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground font-mono">
-                            {xrgeAmount} XRGE
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Chart Tab - Bonding Curve */}
-          <TabsContent value="chart" className="mt-0">
-            <SongTradingChart 
-              songTokenAddress={songTokenAddress} 
-              priceInXRGE={priceInXRGE}
-              bondingSupply={bondingSupply}
-            />
           </TabsContent>
 
           {/* Holders Tab */}
