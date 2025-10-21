@@ -84,10 +84,13 @@ export const useXMTPV3 = () => {
     }
   }, [walletClient, authenticated, isInitializing, xmtpClient, createEOASigner]);
 
-  // Auto-initialize on wallet connection
+  // Auto-initialize on wallet connection (only if user has acknowledged XMTP before)
   useEffect(() => {
     if (authenticated && walletClient && !xmtpClient && !isInitializing) {
-      initXMTP();
+      const hasAcknowledgedXMTP = localStorage.getItem('xmtp-acknowledged') === 'true';
+      if (hasAcknowledgedXMTP) {
+        initXMTP();
+      }
     }
   }, [authenticated, walletClient, xmtpClient, isInitializing, initXMTP]);
 

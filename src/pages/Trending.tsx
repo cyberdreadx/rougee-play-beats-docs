@@ -181,6 +181,10 @@ const FeaturedSong = ({ song, playSong, currentSong, isPlaying }: { song: Song; 
   const priceUSD = (parseFloat(priceInXRGE) || 0) * (prices.xrge || 0);
   const volumeUSD = volume24h * (prices.xrge || 0);
   
+  // Market Cap = Fully Diluted Valuation (current price × total supply)
+  const totalSupply = 100_000_000; // 100 million total supply for market cap calculation
+  const marketCap = priceUSD * totalSupply;
+  
   return (
     <div className="mb-6 relative overflow-hidden md:rounded-2xl border border-white/20 bg-white/5 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,255,159,0.15)] p-6 hover:bg-white/8 transition-all duration-300">
       {/* Faded background album cover */}
@@ -241,6 +245,12 @@ const FeaturedSong = ({ song, playSong, currentSong, isPlaying }: { song: Song; 
               <div className="text-xs text-muted-foreground font-mono">PRICE</div>
               <div className="text-sm font-bold font-mono neon-text">
                 ${priceUSD < 0.000001 ? priceUSD.toFixed(10) : priceUSD < 0.01 ? priceUSD.toFixed(8) : priceUSD.toFixed(6)}
+              </div>
+            </div>
+            <div className="bg-black/40 rounded-lg px-3 py-2">
+              <div className="text-xs text-muted-foreground font-mono">MKT CAP</div>
+              <div className="text-sm font-bold font-mono text-green-400">
+                ${marketCap < 1 ? marketCap.toFixed(2) : marketCap.toLocaleString(undefined, {maximumFractionDigits: 2})}
               </div>
             </div>
             <div className="bg-black/40 rounded-lg px-3 py-2">
@@ -488,7 +498,7 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
   const tokensSold = bondingSupply ? (990_000_000 - Number(bondingSupply) / 1e18) : 0;
   
   // Market Cap = Fully Diluted Valuation (current price × total supply)
-  const totalSupply = 1_000_000_000; // 1 billion total supply
+  const totalSupply = 100_000_000; // 100 million total supply for market cap calculation
   const marketCap = priceUSD * totalSupply;
   
   // Use real 24h price change (fetched from blockchain)
@@ -884,7 +894,7 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
   const priceUSD = priceXRGE * (prices.xrge || 0);
   const volumeUSD = volume24h * (prices.xrge || 0);
   // Market Cap = Fully Diluted Valuation (current price × total supply)
-  const totalSupply = 1_000_000_000; // 1 billion total supply
+  const totalSupply = 100_000_000; // 100 million total supply for market cap calculation
   const marketCap = priceUSD * totalSupply;
   const change24h = priceChange24h ?? 0;
   const isPositive = change24h > 0;

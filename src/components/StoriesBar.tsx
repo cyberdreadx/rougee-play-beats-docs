@@ -8,6 +8,20 @@ import StoryUpload from "./StoryUpload";
 import { useWallet } from "@/hooks/useWallet";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
 import { toast } from "@/hooks/use-toast";
+import { useReadContract } from "wagmi";
+import { Address } from "viem";
+
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as Address;
+
+const ERC20_ABI = [
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 interface Story {
   id: string;
@@ -29,16 +43,32 @@ interface StoriesBarProps {
   hasXRGE?: boolean;
 }
 
-const StoriesBar = ({ hasXRGE = false }: StoriesBarProps) => {
+const StoriesBar = ({ hasXRGE }: StoriesBarProps) => {
   const navigate = useNavigate();
-  const { fullAddress } = useWallet();
+  const { fullAddress, isConnected } = useWallet();
   const [stories, setStories] = useState<GroupedStories>({});
   const [profiles, setProfiles] = useState<{ [key: string]: any }>({});
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
 
+  // Check XRGE balance internally if not provided via props
+  const { data: xrgeBalance } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as Address] : undefined,
+    query: {
+      enabled: !!fullAddress && isConnected && hasXRGE === undefined, // Only check if prop not provided
+    },
+  });
+
+  // Use prop if provided, otherwise check balance
+  const effectiveHasXRGE = hasXRGE !== undefined 
+    ? hasXRGE 
+    : (xrgeBalance ? Number(xrgeBalance) > 0 : false);
+
   const handleStoryUploadClick = () => {
-    if (!hasXRGE) {
+    if (!effectiveHasXRGE) {
       toast({
         title: "XRGE Required",
         description: "You need to hold XRGE tokens to post stories",
@@ -174,14 +204,14 @@ const StoriesBar = ({ hasXRGE = false }: StoriesBarProps) => {
                 {/* Plus Badge */}
                 <div
                   className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center z-10 ${
-                    hasXRGE ? 'bg-neon-green' : 'bg-yellow-500'
+                    effectiveHasXRGE ? 'bg-neon-green' : 'bg-yellow-500'
                   }`}
                   onClick={(e) => { e.stopPropagation(); handleStoryUploadClick(); }}
                   aria-label="Add story"
                   role="button"
-                  title={hasXRGE ? "Add story" : "XRGE required to post stories"}
+                  title={effectiveHasXRGE ? "Add story" : "XRGE required to post stories"}
                 >
-                  {hasXRGE ? (
+                  {effectiveHasXRGE ? (
                     <Plus className="w-3 h-3 text-background" />
                   ) : (
                     <Lock className="w-3 h-3 text-background" />

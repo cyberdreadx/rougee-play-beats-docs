@@ -153,10 +153,10 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
   const xrgeUsdPrice = prices.xrge || 0;
   
   // Calculate market cap metrics in USD
-  // Market Cap = Fully Diluted Valuation (current price × total supply)
+  // Market Cap = Fully Diluted Valuation (current price × total supply / 10)
   const tokensSold = activeTradingSupply !== undefined ? (990_000_000 - activeTradingSupply) : undefined;
-  const fullyDilutedValue = currentPrice && totalSupply ? currentPrice * totalSupply : undefined;
-  const marketCapUSD = fullyDilutedValue || 0; // Use fully diluted value as market cap
+  const fullyDilutedValue = currentPrice && totalSupply ? (currentPrice * totalSupply) / 10 : undefined;
+  const marketCapUSD = fullyDilutedValue || 0; // Use fully diluted value as market cap (divided by 10)
   const realizedValueXRGE = xrgeRaised; // Actual XRGE spent by traders
   const realizedValueUSD = xrgeRaised * xrgeUsdPrice; // Convert to USD
   

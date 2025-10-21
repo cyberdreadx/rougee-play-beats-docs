@@ -4,12 +4,22 @@ import { useXMTPV3 } from '@/hooks/useXMTPV3';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, Send, Loader2, Info, Lock, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import { toast } from '@/hooks/use-toast';
 import { useWallet } from '@/hooks/useWallet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ProfileData {
   artist_name: string | null;
@@ -19,11 +29,12 @@ interface ProfileData {
 
 export default function Messages() {
   const [searchParams] = useSearchParams();
-  const { fullAddress } = useWallet();
+  const { fullAddress, isConnected } = useWallet();
   const { 
     xmtpClient,
     isInitializing,
     isReady,
+    initXMTP,
     isIdentityReachable,
     createDMConversation,
     sendMessage,
@@ -46,6 +57,21 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProfileData[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showXMTPInfo, setShowXMTPInfo] = useState(false);
+
+  // Check if user needs to see XMTP info
+  useEffect(() => {
+    const hasAcknowledged = localStorage.getItem('xmtp-acknowledged') === 'true';
+    if (isConnected && !hasAcknowledged && !xmtpClient && !isInitializing) {
+      setShowXMTPInfo(true);
+    }
+  }, [isConnected, xmtpClient, isInitializing]);
+
+  const handleAcknowledgeXMTP = async () => {
+    localStorage.setItem('xmtp-acknowledged', 'true');
+    setShowXMTPInfo(false);
+    await initXMTP();
+  };
 
   // Load conversations from localStorage on mount
   useEffect(() => {
@@ -718,10 +744,73 @@ export default function Messages() {
   }
 
   return (
-    <div className="container mx-auto p-4 pb-20 md:pb-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
-        {/* Conversations List */}
-        <Card className="p-4 overflow-y-auto">
+    <>
+      {/* XMTP Information Dialog */}
+      <AlertDialog open={showXMTPInfo} onOpenChange={setShowXMTPInfo}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-2xl font-mono">
+              <Shield className="w-6 h-6 text-neon-green" />
+              XMTP Messaging
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 font-mono text-sm">
+                <p className="text-foreground">
+                  To enable encrypted messaging, we use <span className="text-neon-green font-bold">XMTP (Extensible Message Transport Protocol)</span> - a secure, decentralized messaging network.
+                </p>
+                
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-2">
+                      <p className="text-blue-300 font-semibold">What is XMTP?</p>
+                      <ul className="text-xs text-blue-200 space-y-1 list-disc list-inside">
+                        <li>End-to-end encrypted messaging</li>
+                        <li>Messages stored on decentralized network</li>
+                        <li>No central server can read your messages</li>
+                        <li>Your wallet = your identity</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <Lock className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-purple-300 font-semibold mb-1">What You're Signing</p>
+                      <p className="text-xs text-purple-200">
+                        You'll be asked to sign a message with your wallet. This creates your XMTP identity and allows encrypted messaging. 
+                        <span className="text-purple-400 font-bold"> No funds are spent.</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  First-time setup may take 10-30 seconds. Your messages will be encrypted and only readable by you and the recipient.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowXMTPInfo(false)} className="font-mono">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleAcknowledgeXMTP} 
+              className="bg-neon-green hover:bg-neon-green/80 text-black font-mono font-bold"
+            >
+              Continue & Sign
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="container mx-auto p-4 pb-20 md:pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+          {/* Conversations List */}
+          <Card className="p-4 overflow-y-auto">
           <h2 className="text-xl font-mono font-bold mb-4 text-neon-green">
             <MessageSquare className="inline mr-2" />
             MESSAGES
@@ -1268,5 +1357,6 @@ export default function Messages() {
         </div>
       </div>
     </div>
+    </>
   );
 }
