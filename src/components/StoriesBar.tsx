@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StoryViewer from "./StoryViewer";
-import { Plus } from "lucide-react";
+import { Plus, Lock } from "lucide-react";
 import StoryUpload from "./StoryUpload";
 import { useWallet } from "@/hooks/useWallet";
 import { getIPFSGatewayUrl } from "@/lib/ipfs";
+import { toast } from "@/hooks/use-toast";
 
 interface Story {
   id: string;
@@ -24,13 +25,29 @@ interface GroupedStories {
   [walletAddress: string]: Story[];
 }
 
-const StoriesBar = () => {
+interface StoriesBarProps {
+  hasXRGE?: boolean;
+}
+
+const StoriesBar = ({ hasXRGE = false }: StoriesBarProps) => {
   const navigate = useNavigate();
   const { fullAddress } = useWallet();
   const [stories, setStories] = useState<GroupedStories>({});
   const [profiles, setProfiles] = useState<{ [key: string]: any }>({});
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+
+  const handleStoryUploadClick = () => {
+    if (!hasXRGE) {
+      toast({
+        title: "XRGE Required",
+        description: "You need to hold XRGE tokens to post stories",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowUpload(true);
+  };
 
   useEffect(() => {
     fetchStories();
@@ -108,7 +125,7 @@ const StoriesBar = () => {
               <div
                 onClick={() => {
                   const hasStories = stories[fullAddress!]?.length > 0;
-                  hasStories ? setSelectedWallet(fullAddress!) : setShowUpload(true);
+                  hasStories ? setSelectedWallet(fullAddress!) : handleStoryUploadClick();
                 }}
                 className="relative w-16 h-16"
               >
@@ -156,12 +173,19 @@ const StoriesBar = () => {
                 </div>
                 {/* Plus Badge */}
                 <div
-                  className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-neon-green border-2 border-background flex items-center justify-center z-10"
-                  onClick={(e) => { e.stopPropagation(); setShowUpload(true); }}
+                  className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center z-10 ${
+                    hasXRGE ? 'bg-neon-green' : 'bg-yellow-500'
+                  }`}
+                  onClick={(e) => { e.stopPropagation(); handleStoryUploadClick(); }}
                   aria-label="Add story"
                   role="button"
+                  title={hasXRGE ? "Add story" : "XRGE required to post stories"}
                 >
-                  <Plus className="w-3 h-3 text-background" />
+                  {hasXRGE ? (
+                    <Plus className="w-3 h-3 text-background" />
+                  ) : (
+                    <Lock className="w-3 h-3 text-background" />
+                  )}
                 </div>
               </div>
               <span className="text-xs font-mono">Your Story</span>

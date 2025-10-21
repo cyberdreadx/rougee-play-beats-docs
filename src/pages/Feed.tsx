@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig, Music, Loader2, Play, Pause } from 'lucide-react';
+import { MessageCircle, Share2, Image as ImageIcon, Send, CheckCircle, Check, CircleCheckBig, Music, Loader2, Play, Pause, Lock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getIPFSGatewayUrl } from '@/lib/ipfs';
 import StoriesBar from '@/components/StoriesBar';
@@ -21,6 +21,19 @@ import gltchLogo from '@/assets/gltch-logo.png';
 import { useSongPrice } from '@/hooks/useSongBondingCurve';
 import { useTokenPrices } from '@/hooks/useTokenPrices';
 import { Address } from 'viem';
+import { useReadContract } from 'wagmi';
+
+const XRGE_TOKEN_ADDRESS = "0x147120faEC9277ec02d957584CFCD92B56A24317" as const;
+
+const ERC20_ABI = [
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function",
+  },
+] as const;
 interface FeedComment {
   id: string;
   wallet_address: string;
@@ -101,6 +114,19 @@ export default function Feed({ playSong, currentSong, isPlaying }: FeedProps = {
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
   const [songCommentCounts, setSongCommentCounts] = useState<Record<string, number>>({});
+
+  // Check if user holds XRGE tokens
+  const { data: xrgeBalance } = useReadContract({
+    address: XRGE_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: fullAddress ? [fullAddress as Address] : undefined,
+    query: {
+      enabled: !!fullAddress && isConnected,
+    },
+  });
+
+  const hasXRGE = xrgeBalance ? Number(xrgeBalance) > 0 : false;
   useEffect(() => {
     loadPosts();
     loadSongs();
@@ -677,7 +703,7 @@ export default function Feed({ playSong, currentSong, isPlaying }: FeedProps = {
     );
   };
   return <>
-      <StoriesBar />
+      <StoriesBar hasXRGE={hasXRGE} />
       <div className="min-h-screen bg-background pt-0 pb-24 md:pb-32 px-0 md:px-4">
         <div className="w-full md:max-w-7xl md:mx-auto">
           <div className="text-center mb-8 md:mb-12 px-4 pt-0 pb-8 md:pb-12">
@@ -695,11 +721,32 @@ export default function Feed({ playSong, currentSong, isPlaying }: FeedProps = {
 
           {/* Post Creator */}
           {isConnected && <Card className="relative z-50 p-4 md:p-6 space-y-4 bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,255,159,0.1)] w-full md:max-w-2xl md:mx-auto mb-6 md:rounded-2xl rounded-none border-x-0 md:border-x">
+              {!hasXRGE && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-mono font-semibold text-yellow-400 mb-1">
+                      XRGE Holder Required
+                    </p>
+                    <p className="text-xs font-mono text-yellow-400/80">
+                      You need to hold XRGE tokens to post on GLTCH.{' '}
+                      <button
+                        onClick={() => navigate('/swap')}
+                        className="underline hover:text-yellow-300 transition-colors"
+                      >
+                        Get XRGE →
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               <TagAutocomplete
                 value={contentText}
                 onChange={setContentText}
                 placeholder="What's on your mind? Use $ to tag artists and songs..."
                 className="min-h-[100px] resize-none w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!hasXRGE}
               />
 
               {mediaPreview && <div className="relative">
@@ -713,17 +760,17 @@ export default function Feed({ playSong, currentSong, isPlaying }: FeedProps = {
                 </div>}
 
               <div className="flex gap-2">
-                <Input type="file" accept="image/*,video/*" onChange={handleMediaChange} className="hidden" id="media-upload" />
+                <Input type="file" accept="image/*,video/*" onChange={handleMediaChange} className="hidden" id="media-upload" disabled={!hasXRGE} />
                 <label htmlFor="media-upload">
-                  <Button variant="outline" size="sm" asChild>
-                    <span className="cursor-pointer">
+                  <Button variant="outline" size="sm" asChild disabled={!hasXRGE}>
+                    <span className={hasXRGE ? "cursor-pointer" : "cursor-not-allowed opacity-50"}>
                       <ImageIcon className="w-4 h-4 mr-2" />
                       Add Media
                     </span>
                   </Button>
                 </label>
 
-                <Button onClick={handlePost} disabled={posting || !contentText && !mediaFile} className="ml-auto">
+                <Button onClick={handlePost} disabled={posting || !contentText && !mediaFile || !hasXRGE} className="ml-auto">
                   <Send className="w-4 h-4 mr-2" />
                   {posting ? 'Posting to IPFS...' : 'Post'}
                 </Button>

@@ -65,11 +65,15 @@ const SONG_TOKEN_ABI = [
 ] as const;
 
 // Component for featured banner with real data
-const FeaturedSong = ({ song }: { song: Song }) => {
+const FeaturedSong = ({ song, playSong, currentSong, isPlaying }: { song: Song; playSong?: (song: any) => void; currentSong?: any; isPlaying?: boolean }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
   const publicClient = usePublicClient();
   const [volume24h, setVolume24h] = useState<number>(0);
+  
+  const isCurrentSong = currentSong?.id === song.id;
+  const isThisSongPlaying = isCurrentSong && isPlaying;
+  
   
   const { price: priceInXRGE } = useSongPrice(song.token_address as Address);
   const { data: xrgeRaised } = useReadContract({
@@ -205,6 +209,23 @@ const FeaturedSong = ({ song }: { song: Song }) => {
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl bg-neon-green/10 flex items-center justify-center">
               <Music className="w-12 h-12 text-neon-green" />
             </div>
+          )}
+          
+          {/* Play button overlay */}
+          {playSong && song.audio_cid && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                playSong(song);
+              }}
+              className="absolute bottom-2 right-2 w-12 h-12 md:w-14 md:h-14 rounded-full bg-neon-green hover:bg-neon-green/80 active:bg-neon-green/70 flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-2xl shadow-neon-green/50 z-20"
+            >
+              {isThisSongPlaying ? (
+                <Pause className="w-6 h-6 md:w-7 md:h-7 text-black fill-black" />
+              ) : (
+                <Play className="w-6 h-6 md:w-7 md:h-7 text-black fill-black ml-0.5" />
+              )}
+            </button>
           )}
         </div>
         <div className="flex-1">
@@ -466,9 +487,9 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
   // Calculate tokens sold
   const tokensSold = bondingSupply ? (990_000_000 - Number(bondingSupply) / 1e18) : 0;
   
-  // Market Cap = Total Value Locked (TVL) = actual XRGE spent (all-time)
-  // NOT currentPrice × tokensSold (incorrect for bonding curves since price increases)
-  const marketCap = xrgeRaisedNum * (prices.xrge || 0);
+  // Market Cap = Fully Diluted Valuation (current price × total supply)
+  const totalSupply = 1_000_000_000; // 1 billion total supply
+  const marketCap = priceUSD * totalSupply;
   
   // Use real 24h price change (fetched from blockchain)
   const change24h = priceChange24h ?? 0;
@@ -859,9 +880,12 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
   }, [publicClient, song.token_address, bondingSupplyStr, priceInXRGE]);
   
   const xrgeRaisedNum = xrgeRaised ? Number(formatEther(xrgeRaised)) : 0;
-  const priceUSD = (priceInXRGE || 0) * (prices.xrge || 0);
+  const priceXRGE = typeof priceInXRGE === 'number' ? priceInXRGE : 0;
+  const priceUSD = priceXRGE * (prices.xrge || 0);
   const volumeUSD = volume24h * (prices.xrge || 0);
-  const marketCap = xrgeRaisedNum * (prices.xrge || 0);
+  // Market Cap = Fully Diluted Valuation (current price × total supply)
+  const totalSupply = 1_000_000_000; // 1 billion total supply
+  const marketCap = priceUSD * totalSupply;
   const change24h = priceChange24h ?? 0;
   const isPositive = change24h > 0;
   
@@ -1215,7 +1239,7 @@ const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
         </div>
 
         {/* Featured/Promoted Banner with Real Data */}
-        {featuredSong && <FeaturedSong song={featuredSong} />}
+        {featuredSong && <FeaturedSong song={featuredSong} playSong={playSong} currentSong={currentSong} isPlaying={isPlaying} />}
 
         <div className="mb-6 px-4 md:px-0">
           <h1 className="text-3xl md:text-4xl font-bold font-mono mb-2 neon-text flex items-center gap-3">

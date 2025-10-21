@@ -65,7 +65,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
       ? [{ name: "MY PROFILE", path: `/artist/${fullAddress}`, icon: User }]
       : [{ name: "BECOME ARTIST", path: "/become-artist", icon: User }]
     ),
-    { name: "PLAYLISTS", path: "/playlists", icon: Music },
+    { name: "PLAYLISTS", path: "/playlists", icon: Music, comingSoon: true },
     { name: "MESSAGES", path: "/messages", icon: MessageSquare },
     { name: "WALLET", path: "/wallet", icon: Wallet },
     { name: "SWAP", path: "/swap", icon: ArrowLeftRight },
@@ -83,6 +83,11 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
   ];
 
   const handleTabClick = (tab: typeof desktopTabs[0]) => {
+    // Don't navigate if coming soon
+    if ((tab as any).comingSoon) {
+      return;
+    }
+    
     if (tab.path !== "/" || location.pathname !== "/") {
       // Always navigate if going to a different path or if we're not on home page
       navigate(tab.path);
@@ -174,25 +179,38 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                 onClick={() => handleTabClick(tab)}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-xl font-mono text-sm transition-all duration-300 group relative
-                  ${active 
+                  ${(tab as any).comingSoon
+                    ? 'text-white/30 cursor-not-allowed border border-transparent opacity-50'
+                    : active 
                     ? 'bg-neon-green/20 text-neon-green border border-neon-green/50 shadow-lg shadow-neon-green/20 font-bold' 
                     : 'text-white/70 hover:text-neon-green hover:bg-neon-green/5 active:bg-neon-green/10 hover:border-neon-green/20 active:scale-[0.98] border border-transparent'
                   }
                   ${isSidebarCollapsed ? 'justify-center' : ''}
                 `}
                 title={isSidebarCollapsed ? tab.name : undefined}
+                disabled={(tab as any).comingSoon}
               >
                 <Icon className={`h-5 w-5 flex-shrink-0 ${active ? 'drop-shadow-[0_0_8px_rgba(0,255,159,0.8)]' : ''}`} />
                 {!isSidebarCollapsed && (
                   <>
                     <span className="truncate">{tab.name}</span>
-                    {active && (
+                    {(tab as any).comingSoon && (
+                      <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                        SOON
+                      </span>
+                    )}
+                    {active && !(tab as any).comingSoon && (
                       <div className="ml-auto w-1 h-1 bg-neon-green rounded-full shadow-[0_0_8px_rgba(0,255,159,1)] animate-pulse" />
                     )}
                   </>
                 )}
-                {isSidebarCollapsed && active && (
+                {isSidebarCollapsed && active && !(tab as any).comingSoon && (
                   <div className="absolute right-1 top-1 w-1 h-1 bg-neon-green rounded-full shadow-[0_0_8px_rgba(0,255,159,1)] animate-pulse" />
+                )}
+                {isSidebarCollapsed && (tab as any).comingSoon && (
+                  <div className="absolute -right-1 -top-1 w-3 h-3 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full flex items-center justify-center text-[8px]">
+                    !
+                  </div>
                 )}
               </button>
             );
