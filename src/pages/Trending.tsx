@@ -819,6 +819,7 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
         const blocksIn24h = 43200;
         const fromBlock = currentBlock - BigInt(blocksIn24h);
         
+        // Fetch song token Transfer events for 24h
         const songTokenLogs = await publicClient.getLogs({
           address: song.token_address as Address,
           event: {
@@ -831,9 +832,10 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
             ]
           },
           fromBlock,
-          toBlock: 'latest'
+          toBlock: currentBlock
         });
 
+        // Fetch XRGE Transfer events for 24h
         const xrgeLogs = await publicClient.getLogs({
           address: XRGE_ADDRESS,
           event: {
@@ -845,41 +847,80 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
               { type: 'uint256', indexed: false, name: 'value' }
             ]
           },
-          args: {
-            from: BONDING_CURVE_ADDRESS
-          },
           fromBlock,
-          toBlock: 'latest'
+          toBlock: currentBlock
         });
 
-        const trades: any[] = [];
-        for (const songLog of songTokenLogs) {
-          if (songLog.args.to === BONDING_CURVE_ADDRESS) {
-            const xrgeLog = xrgeLogs.find(log => log.transactionHash === songLog.transactionHash);
-            if (xrgeLog) {
-              const songAmount = Number(formatEther(songLog.args.value as bigint));
-              const xrgeAmount = Number(formatEther(xrgeLog.args.value as bigint));
-              const priceXRGE = xrgeAmount / songAmount;
-              trades.push({
-                timestamp: Number(songLog.blockNumber),
-                priceXRGE,
-                volumeXRGE: xrgeAmount
-              });
-            }
+        // Build a map of XRGE transfers by transaction hash
+        const xrgeByTx = new Map<string, number>();
+        const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
+        
+        for (const log of xrgeLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
+          const amount = Number(args.value as bigint) / 1e18;
+          
+          // Skip fee transfers
+          if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
+          
+          // Only count XRGE going to or from bonding curve
+          if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const existing = xrgeByTx.get(log.transactionHash) || 0;
+            xrgeByTx.set(log.transactionHash, existing + amount);
           }
         }
 
-        if (trades.length >= 2) {
-          trades.sort((a, b) => a.timestamp - b.timestamp);
-          const firstPrice = trades[0].priceXRGE;
-          const lastPrice = trades[trades.length - 1].priceXRGE;
-          const change = ((lastPrice - firstPrice) / firstPrice) * 100;
-          setPriceChange24h(change);
+        // Calculate 24h volume by correlating song token transfers with XRGE transfers
+        let volume = 0;
+        for (const log of songTokenLogs) {
+          const { args } = log as any;
+          const from = (args.from as string).toLowerCase();
+          const to = (args.to as string).toLowerCase();
           
-          const totalVolume = trades.reduce((sum, t) => sum + t.volumeXRGE, 0);
-          setVolume24h(totalVolume);
-        } else if (priceInXRGE) {
-          setPriceChange24h(0);
+          // Only count transfers involving the bonding curve
+          if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+            const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+            volume += xrgeAmount;
+          }
+        }
+        
+        setVolume24h(volume);
+
+        // Calculate price change from actual trades
+        if (songTokenLogs.length > 0) {
+          // Find first and last trade prices
+          const trades: { timestamp: number; priceXRGE: number }[] = [];
+          
+          for (const log of songTokenLogs) {
+            const { args } = log as any;
+            const from = (args.from as string).toLowerCase();
+            const to = (args.to as string).toLowerCase();
+            const amount = Number(args.value as bigint) / 1e18;
+            
+            if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
+              const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
+              const timestamp = Number(block.timestamp) * 1000;
+              const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
+              const priceXRGE = amount > 0 ? xrgeAmount / amount : 0;
+              
+              if (priceXRGE > 0) {
+                trades.push({ timestamp, priceXRGE });
+              }
+            }
+          }
+          
+          if (trades.length >= 2) {
+            trades.sort((a, b) => a.timestamp - b.timestamp);
+            const firstPrice = trades[0].priceXRGE;
+            const lastPrice = trades[trades.length - 1].priceXRGE;
+            const change = ((lastPrice - firstPrice) / firstPrice) * 100;
+            setPriceChange24h(change);
+          } else if (priceInXRGE) {
+            // If fewer than 2 trades in 24h but token has history,
+            // show 0% (no 24h activity = no change in last 24h)
+            setPriceChange24h(0);
+          }
         }
       } catch (error) {
         console.error('Error fetching 24h data:', error);
@@ -890,7 +931,7 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
   }, [publicClient, song.token_address, bondingSupplyStr, priceInXRGE]);
   
   const xrgeRaisedNum = xrgeRaised ? Number(formatEther(xrgeRaised)) : 0;
-  const priceXRGE = typeof priceInXRGE === 'number' ? priceInXRGE : 0;
+  const priceXRGE = parseFloat(priceInXRGE as any) || 0; // Parse string to number, same as SongRow
   const priceUSD = priceXRGE * (prices.xrge || 0);
   const volumeUSD = volume24h * (prices.xrge || 0);
   // Market Cap = Fully Diluted Valuation (current price × total supply)
@@ -1179,14 +1220,6 @@ const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
   // Featured song is always the top trending song (by trending score)
   const featuredSong = useMemo(() => {
     if (songs.length === 0) return null;
-    
-    // Debug: Log trending scores
-    const songsWithScores = songs.map(song => ({
-      title: song.title,
-      score: calculateTrendingScore(song),
-      stats: songStats.get(song.id)
-    }));
-    console.log('🔥 Trending Scores:', songsWithScores);
     
     return [...songs].sort((a, b) => calculateTrendingScore(b) - calculateTrendingScore(a))[0];
   }, [songs, songStats, calculateTrendingScore]);

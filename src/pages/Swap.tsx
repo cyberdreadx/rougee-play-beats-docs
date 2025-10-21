@@ -104,16 +104,6 @@ const Swap = () => {
     return 0; // Song tokens don't have direct USD price
   };
 
-  // Debug prices
-  useEffect(() => {
-    console.log('💰 Swap Page - Current Prices:', {
-      eth: prices.eth,
-      xrge: prices.xrge,
-      kta: prices.kta,
-      usdc: prices.usdc
-    });
-  }, [prices]);
-
   // Clear USD amount when switching back to token input
   useEffect(() => {
     if (!useUsdInput) {
@@ -255,21 +245,6 @@ const Swap = () => {
   // Combine both approval checks - if either reports approval, consider it approved
   const effectiveHasUSDCApproval = hasUSDCApproval || hasUSDCAllowanceDirect;
   
-  // Debug logging for USDC approval
-  useEffect(() => {
-    if (fromToken === USDC_TOKEN_ADDRESS) {
-      console.log('🔍 USDC Approval Status:', {
-        hasApprovalContract: hasUSDCApproval,
-        hasApprovalDirect: hasUSDCAllowanceDirect,
-        effectiveApproval: effectiveHasUSDCApproval,
-        allowanceContract: usdcAllowance,
-        allowanceDirect: usdcAllowanceDirect,
-        fromAmount,
-        isConnected,
-        fullAddress
-      });
-    }
-  }, [hasUSDCApproval, hasUSDCAllowanceDirect, effectiveHasUSDCApproval, usdcAllowance, usdcAllowanceDirect, fromAmount, fromToken, isConnected, fullAddress]);
   
   const { hasApproval: hasKTAApproval, refetch: refetchKTAApproval } = useKTAApproval(
     fullAddress as any,
@@ -463,9 +438,6 @@ const Swap = () => {
         
         // All deployed songs (for buying)
         setAllSongTokens(songsWithBalance as SongToken[]);
-        
-        console.log(`Found ${tokensWithBalance.length} song tokens with balance (selling)`);
-        console.log(`Found ${songsWithBalance.length} total deployed song tokens (buying)`);
       } catch (error) {
         console.error('Error fetching song tokens:', error);
       } finally {

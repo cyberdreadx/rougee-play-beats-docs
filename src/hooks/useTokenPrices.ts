@@ -30,8 +30,6 @@ export const useTokenPrices = () => {
           );
           const xrgeData = await xrgeResponse.json();
           
-          console.log('🔍 XRGE DEX Screener Response:', xrgeData);
-          
           if (xrgeData.pairs && xrgeData.pairs.length > 0) {
             // Sort pairs by liquidity (highest first) and filter for Base chain
             const basePairs = xrgeData.pairs
@@ -42,27 +40,15 @@ export const useTokenPrices = () => {
                 return bLiq - aLiq;
               });
             
-            console.log('💧 Base pairs sorted by liquidity:', basePairs.map((p: any) => ({
-              pair: p.pairAddress,
-              quote: p.quoteToken?.symbol,
-              price: p.priceUsd,
-              liquidity: p.liquidity?.usd
-            })));
-            
             // Use the pair with highest liquidity on Base
             const bestPair = basePairs[0] || xrgeData.pairs[0];
             
             if (bestPair?.priceUsd) {
               xrgePrice = parseFloat(bestPair.priceUsd);
-              console.log('✅ XRGE Price:', xrgePrice, 'from pair:', bestPair.pairAddress);
-            } else {
-              console.warn('⚠️ No valid price found in pairs');
             }
-          } else {
-            console.warn('⚠️ No pairs found in DEX Screener response');
           }
         } catch (error) {
-          console.error('❌ Failed to fetch XRGE price from DEX Screener:', error);
+          console.error('Failed to fetch XRGE price from DEX Screener:', error);
         }
 
         // Fetch KTA price from DEX Screener
