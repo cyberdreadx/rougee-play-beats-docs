@@ -17,6 +17,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTokenPrices } from "@/hooks/useTokenPrices";
 import { useSongPrice } from "@/hooks/useSongBondingCurve";
+import { useSong24hData } from "@/hooks/useSong24hData";
 import { useReadContract, usePublicClient } from "wagmi";
 import { Address, formatEther } from "viem";
 import { AiBadge } from "@/components/AiBadge";
@@ -298,12 +299,9 @@ const FeaturedSong = ({ song, playSong, currentSong, isPlaying }: { song: Song; 
 const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void; playSong?: (song: any) => void; currentSong?: any; isPlaying?: boolean }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
-  const publicClient = usePublicClient();
   
   const isCurrentSong = currentSong?.id === song.id;
   const isThisSongPlaying = isCurrentSong && isPlaying;
-  const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
-  const [volume24h, setVolume24h] = useState<number>(0); // Track actual 24h volume in XRGE
   
   // Get current price from bonding curve
   const { price: priceInXRGENumber } = useSongPrice(song.token_address as Address);
@@ -327,165 +325,11 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
   // Convert bondingSupply to a stable string value to prevent infinite loops
   const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : null;
   
-  // Fetch 24h price change and volume from blockchain
-  useEffect(() => {
-    const fetch24hData = async () => {
-      if (!publicClient || !song.token_address || !bondingSupplyStr) return;
-      
-      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
-      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
-      
-      try {
-        // Get current block
-        const currentBlock = await publicClient.getBlockNumber();
-        
-        // Base has ~2 second block time, so 24h = ~43,200 blocks
-        const blocksIn24h = 43200;
-        const fromBlock = currentBlock - BigInt(blocksIn24h);
-        
-        // Fetch song token Transfer events for 24h
-        const songTokenLogs = await publicClient.getLogs({
-          address: song.token_address as Address,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { type: 'address', indexed: true, name: 'from' },
-              { type: 'address', indexed: true, name: 'to' },
-              { type: 'uint256', indexed: false, name: 'value' }
-            ]
-          },
-          fromBlock,
-          toBlock: currentBlock
-        });
-        
-        // Fetch XRGE Transfer events for 24h
-        const xrgeLogs = await publicClient.getLogs({
-          address: XRGE_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { type: 'address', indexed: true, name: 'from' },
-              { type: 'address', indexed: true, name: 'to' },
-              { type: 'uint256', indexed: false, name: 'value' }
-            ]
-          },
-          fromBlock,
-          toBlock: currentBlock
-        });
-        
-        // Build a map of XRGE transfers by transaction hash
-        const xrgeByTx = new Map<string, number>();
-        const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
-        
-        for (const log of xrgeLogs) {
-          const { args } = log as any;
-          const from = (args.from as string).toLowerCase();
-          const to = (args.to as string).toLowerCase();
-          const amount = Number(args.value as bigint) / 1e18;
-          
-          // Skip fee transfers
-          if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
-          
-          // Only count XRGE going to or from bonding curve
-          if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
-            const existing = xrgeByTx.get(log.transactionHash) || 0;
-            xrgeByTx.set(log.transactionHash, existing + amount);
-          }
-        }
-        
-        // Calculate 24h volume by correlating song token transfers with XRGE transfers
-        let volume = 0;
-        for (const log of songTokenLogs) {
-          const { args } = log as any;
-          const from = (args.from as string).toLowerCase();
-          const to = (args.to as string).toLowerCase();
-          
-          // Only count transfers involving the bonding curve
-          if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
-            const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
-            volume += xrgeAmount;
-          }
-        }
-        
-        setVolume24h(volume);
-        
-        // Try to get bonding supply from 24h ago for price change (requires archive node)
-        try {
-          const supply24hAgo = await publicClient.readContract({
-            address: song.token_address as Address,
-            abi: SONG_TOKEN_ABI,
-            functionName: 'bondingCurveSupply',
-            blockNumber: fromBlock
-          } as any);
-          
-          if (supply24hAgo) {
-            // Calculate tokens sold then vs now
-            const BONDING_CURVE_TOTAL = 990_000_000;
-            const INITIAL_PRICE = 0.001;
-            const PRICE_INCREMENT = 0.000001;
-            
-            const tokensSold24hAgo = BONDING_CURVE_TOTAL - Number(supply24hAgo) / 1e18;
-            const tokensSoldNow = BONDING_CURVE_TOTAL - Number(bondingSupplyStr) / 1e18;
-            
-            const price24hAgo = INITIAL_PRICE + (tokensSold24hAgo * PRICE_INCREMENT);
-            const priceNow = INITIAL_PRICE + (tokensSoldNow * PRICE_INCREMENT);
-            
-            if (price24hAgo > 0) {
-              const change = ((priceNow - price24hAgo) / price24hAgo) * 100;
-              setPriceChange24h(change);
-            }
-          }
-        } catch (error: any) {
-          // Silently handle historical state query errors (common with basic RPC providers)
-          if (!error?.message?.includes('not supported') && !error?.code) {
-            console.warn('Historical price data not available, calculating from trades');
-          }
-          
-          // Calculate price change from actual trades instead of hardcoded fallback
-          if (songTokenLogs.length > 0) {
-            // Find first and last trade prices
-            const trades: { timestamp: number; priceXRGE: number }[] = [];
-            
-            for (const log of songTokenLogs) {
-              const { args } = log as any;
-              const from = (args.from as string).toLowerCase();
-              const to = (args.to as string).toLowerCase();
-              const amount = Number(args.value as bigint) / 1e18;
-              
-              if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
-                const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
-                const timestamp = Number(block.timestamp) * 1000;
-                const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
-                const priceXRGE = amount > 0 ? xrgeAmount / amount : 0;
-                
-                if (priceXRGE > 0) {
-                  trades.push({ timestamp, priceXRGE });
-                }
-              }
-            }
-            
-            if (trades.length >= 2) {
-              trades.sort((a, b) => a.timestamp - b.timestamp);
-              const firstPrice = trades[0].priceXRGE;
-              const lastPrice = trades[trades.length - 1].priceXRGE;
-              const change = ((lastPrice - firstPrice) / firstPrice) * 100;
-              setPriceChange24h(change);
-            } else if (priceInXRGE) {
-              // If fewer than 2 trades in 24h but token has history,
-              // show 0% (no 24h activity = no change in last 24h)
-              setPriceChange24h(0);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch 24h data:', error);
-      }
-    };
-    
-    fetch24hData();
-  }, [publicClient, song.token_address, bondingSupplyStr]);
+  // Use shared 24h data hook for consistent data between mobile and desktop
+  const { priceChange24h, volume24h } = useSong24hData(song.token_address as Address, bondingSupplyStr);
+  
+  // Debug logging
+  console.log('🔍 SongRow 24h data:', { songId: song.id, priceChange24h, volume24h, bondingSupplyStr });
   
   const priceXRGE = parseFloat(priceInXRGE) || 0;
   const priceUSD = priceXRGE * (prices.xrge || 0);
@@ -780,12 +624,9 @@ const SongRow = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying 
 const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying }: { song: Song; index: number; onStatsUpdate?: (songId: string, volume: number, change: number, marketCap: number, price: number) => void; playSong?: (song: any) => void; currentSong?: any; isPlaying?: boolean }) => {
   const navigate = useNavigate();
   const { prices } = useTokenPrices();
-  const publicClient = usePublicClient();
   
   const isCurrentSong = currentSong?.id === song.id;
   const isThisSongPlaying = isCurrentSong && isPlaying;
-  const [priceChange24h, setPriceChange24h] = useState<number | null>(null);
-  const [volume24h, setVolume24h] = useState<number>(0);
   
   const { price: priceInXRGENumber } = useSongPrice(song.token_address as Address);
   const priceInXRGE = priceInXRGENumber !== null ? priceInXRGENumber : null;
@@ -806,129 +647,11 @@ const SongCard = ({ song, index, onStatsUpdate, playSong, currentSong, isPlaying
   
   const bondingSupplyStr = bondingSupply ? bondingSupply.toString() : null;
   
-  // Same 24h data fetching logic
-  useEffect(() => {
-    const fetch24hData = async () => {
-      if (!publicClient || !song.token_address || !bondingSupplyStr) return;
-      
-      const BONDING_CURVE_ADDRESS = '0xCeE9c18C448487a1deAac3E14974C826142C50b5' as Address;
-      const XRGE_ADDRESS = '0x147120faEC9277ec02d957584CFCD92B56A24317' as Address;
-      
-      try {
-        const currentBlock = await publicClient.getBlockNumber();
-        const blocksIn24h = 43200;
-        const fromBlock = currentBlock - BigInt(blocksIn24h);
-        
-        // Fetch song token Transfer events for 24h
-        const songTokenLogs = await publicClient.getLogs({
-          address: song.token_address as Address,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { type: 'address', indexed: true, name: 'from' },
-              { type: 'address', indexed: true, name: 'to' },
-              { type: 'uint256', indexed: false, name: 'value' }
-            ]
-          },
-          fromBlock,
-          toBlock: currentBlock
-        });
-
-        // Fetch XRGE Transfer events for 24h
-        const xrgeLogs = await publicClient.getLogs({
-          address: XRGE_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { type: 'address', indexed: true, name: 'from' },
-              { type: 'address', indexed: true, name: 'to' },
-              { type: 'uint256', indexed: false, name: 'value' }
-            ]
-          },
-          fromBlock,
-          toBlock: currentBlock
-        });
-
-        // Build a map of XRGE transfers by transaction hash
-        const xrgeByTx = new Map<string, number>();
-        const FEE_ADDRESS = '0xb787433e138893a0ed84d99e82c7da260a940b1e';
-        
-        for (const log of xrgeLogs) {
-          const { args } = log as any;
-          const from = (args.from as string).toLowerCase();
-          const to = (args.to as string).toLowerCase();
-          const amount = Number(args.value as bigint) / 1e18;
-          
-          // Skip fee transfers
-          if (from === FEE_ADDRESS.toLowerCase() || to === FEE_ADDRESS.toLowerCase()) continue;
-          
-          // Only count XRGE going to or from bonding curve
-          if (to === BONDING_CURVE_ADDRESS.toLowerCase() || from === BONDING_CURVE_ADDRESS.toLowerCase()) {
-            const existing = xrgeByTx.get(log.transactionHash) || 0;
-            xrgeByTx.set(log.transactionHash, existing + amount);
-          }
-        }
-
-        // Calculate 24h volume by correlating song token transfers with XRGE transfers
-        let volume = 0;
-        for (const log of songTokenLogs) {
-          const { args } = log as any;
-          const from = (args.from as string).toLowerCase();
-          const to = (args.to as string).toLowerCase();
-          
-          // Only count transfers involving the bonding curve
-          if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
-            const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
-            volume += xrgeAmount;
-          }
-        }
-        
-        setVolume24h(volume);
-
-        // Calculate price change from actual trades
-        if (songTokenLogs.length > 0) {
-          // Find first and last trade prices
-          const trades: { timestamp: number; priceXRGE: number }[] = [];
-          
-          for (const log of songTokenLogs) {
-            const { args } = log as any;
-            const from = (args.from as string).toLowerCase();
-            const to = (args.to as string).toLowerCase();
-            const amount = Number(args.value as bigint) / 1e18;
-            
-            if (from === BONDING_CURVE_ADDRESS.toLowerCase() || to === BONDING_CURVE_ADDRESS.toLowerCase()) {
-              const block = await publicClient.getBlock({ blockNumber: log.blockNumber });
-              const timestamp = Number(block.timestamp) * 1000;
-              const xrgeAmount = xrgeByTx.get(log.transactionHash) || 0;
-              const priceXRGE = amount > 0 ? xrgeAmount / amount : 0;
-              
-              if (priceXRGE > 0) {
-                trades.push({ timestamp, priceXRGE });
-              }
-            }
-          }
-          
-          if (trades.length >= 2) {
-            trades.sort((a, b) => a.timestamp - b.timestamp);
-            const firstPrice = trades[0].priceXRGE;
-            const lastPrice = trades[trades.length - 1].priceXRGE;
-            const change = ((lastPrice - firstPrice) / firstPrice) * 100;
-            setPriceChange24h(change);
-          } else if (priceInXRGE) {
-            // If fewer than 2 trades in 24h but token has history,
-            // show 0% (no 24h activity = no change in last 24h)
-            setPriceChange24h(0);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching 24h data:', error);
-      }
-    };
-
-    fetch24hData();
-  }, [publicClient, song.token_address, bondingSupplyStr, priceInXRGE]);
+  // Use shared 24h data hook for consistent data between mobile and desktop
+  const { priceChange24h, volume24h } = useSong24hData(song.token_address as Address, bondingSupplyStr);
+  
+  // Debug logging
+  console.log('🔍 SongCard 24h data:', { songId: song.id, priceChange24h, volume24h, bondingSupplyStr });
   
   const xrgeRaisedNum = xrgeRaised ? Number(formatEther(xrgeRaised)) : 0;
   const priceXRGE = parseFloat(priceInXRGE as any) || 0; // Parse string to number, same as SongRow
