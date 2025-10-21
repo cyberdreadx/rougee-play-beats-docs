@@ -77,6 +77,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
     { name: "Trending", path: "/", icon: TrendingUp },
     { name: "Feed", path: "/feed", icon: Radio },
     { name: "Discover", path: "/discover", icon: Compass },
+    { name: "Swap", path: "/swap", icon: ArrowLeftRight },
     { name: "Wallet", path: "/wallet", icon: Wallet },
     { name: "Profile", path: isArtist ? `/artist/${fullAddress}` : "/profile/edit", icon: User },
   ];
@@ -226,7 +227,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                 <button
                   key={tab.name}
                   className={`
-                    relative flex flex-col items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl transition-all duration-300 min-w-[64px] group
+                    relative flex flex-col items-center justify-center gap-1 py-2 px-2 rounded-2xl transition-all duration-300 min-w-[56px] group
                     ${active 
                       ? 'text-neon-green scale-105' 
                       : 'text-white/50 hover:text-white/80 active:scale-95'
@@ -249,7 +250,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                   
                   {/* Icon with glow */}
                   <div className="relative">
-                    <Icon className={`h-6 w-6 transition-all duration-300 ${
+                    <Icon className={`h-5 w-5 transition-all duration-300 ${
                       active 
                         ? 'drop-shadow-[0_0_12px_rgba(0,255,159,0.8)] animate-pulse' 
                         : 'group-hover:drop-shadow-[0_0_6px_rgba(0,255,159,0.3)]'
@@ -260,7 +261,7 @@ const Navigation = ({ activeTab = "DISCOVER", onTabChange }: NavigationProps) =>
                   </div>
                   
                   {/* Label */}
-                  <span className={`relative text-[9px] font-mono tracking-wider uppercase ${
+                  <span className={`relative text-[8px] font-mono tracking-wider uppercase ${
                     active 
                       ? 'font-bold drop-shadow-[0_0_8px_rgba(0,255,159,0.6)]' 
                       : 'font-medium group-hover:text-neon-green/80'

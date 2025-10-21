@@ -1772,25 +1772,14 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                         Amount ({paymentToken})
                       </label>
                       {wagmiAddress && (
-                        <button
-                          onClick={() => {
-                            const balance = paymentToken === 'ETH' ? ethBalance :
-                                          paymentToken === 'XRGE' ? xrgeBalance :
-                                          paymentToken === 'KTA' ? ktaBalance :
-                                          usdcBalance;
-                            if (balance?.formatted) {
-                              setBuyAmount(balance.formatted);
-                            }
-                          }}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-mono"
-                        >
+                        <span className="text-xs text-muted-foreground font-mono">
                           Balance: {
                             paymentToken === 'ETH' ? (ethBalance?.formatted ? parseFloat(ethBalance.formatted).toFixed(4) : '0') :
                             paymentToken === 'XRGE' ? (xrgeBalance?.formatted ? parseFloat(xrgeBalance.formatted).toFixed(2) : '0') :
                             paymentToken === 'KTA' ? (ktaBalance?.formatted ? parseFloat(ktaBalance.formatted).toFixed(2) : '0') :
                             (usdcBalance?.formatted ? parseFloat(usdcBalance.formatted).toFixed(2) : '0')
-                          } (MAX)
-                        </button>
+                          }
+                        </span>
                       )}
                     </div>
                     <Input
@@ -1800,6 +1789,38 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                       onChange={(e) => setBuyAmount(e.target.value)}
                       className="font-mono"
                     />
+                    
+                    {/* Percentage Selector Buttons */}
+                    {wagmiAddress && (
+                      <div className="grid grid-cols-5 gap-1.5 mt-2">
+                        {[
+                          { label: '10%', value: 0.1 },
+                          { label: '25%', value: 0.25 },
+                          { label: '50%', value: 0.5 },
+                          { label: '75%', value: 0.75 },
+                          { label: 'MAX', value: 1 },
+                        ].map((option) => (
+                          <Button
+                            key={option.label}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const balance = paymentToken === 'ETH' ? ethBalance :
+                                            paymentToken === 'XRGE' ? xrgeBalance :
+                                            paymentToken === 'KTA' ? ktaBalance :
+                                            usdcBalance;
+                              if (balance?.formatted) {
+                                const amount = (parseFloat(balance.formatted) * option.value).toFixed(4);
+                                setBuyAmount(amount);
+                              }
+                            }}
+                            className="font-mono text-[10px] py-1 h-7 border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50"
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="console-bg p-3 md:p-4 rounded-lg border border-border">
@@ -1912,12 +1933,9 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                         Amount (${song?.ticker ? song.ticker.toUpperCase() : 'Tokens'})
                       </label>
                       {userBalance && parseFloat(userBalance) > 0 && (
-                        <button
-                          onClick={() => setSellAmount(userBalance)}
-                          className="text-xs text-blue-400 hover:text-blue-300 font-mono"
-                        >
-                          Balance: {parseFloat(userBalance).toFixed(2)} (MAX)
-                        </button>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          Balance: {parseFloat(userBalance).toFixed(2)}
+                        </span>
                       )}
                     </div>
                     <Input
@@ -1927,6 +1945,32 @@ const SongTrade = ({ playSong, currentSong, isPlaying }: SongTradeProps) => {
                       onChange={(e) => setSellAmount(e.target.value)}
                       className="font-mono"
                     />
+                    
+                    {/* Percentage Selector Buttons */}
+                    {userBalance && parseFloat(userBalance) > 0 && (
+                      <div className="grid grid-cols-5 gap-1.5 mt-2">
+                        {[
+                          { label: '10%', value: 0.1 },
+                          { label: '25%', value: 0.25 },
+                          { label: '50%', value: 0.5 },
+                          { label: '75%', value: 0.75 },
+                          { label: 'MAX', value: 1 },
+                        ].map((option) => (
+                          <Button
+                            key={option.label}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const amount = (parseFloat(userBalance) * option.value).toFixed(4);
+                              setSellAmount(amount);
+                            }}
+                            className="font-mono text-[10px] py-1 h-7 border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50"
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="console-bg p-3 md:p-4 rounded-lg border border-border">

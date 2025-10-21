@@ -791,7 +791,7 @@ const Swap = () => {
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground font-mono mb-2">
                     <span>Balance: {
                       fromToken === 'ETH' ? ethBalanceFormatted :
                       fromToken === XRGE_TOKEN_ADDRESS ? xrgeBalanceFormatted :
@@ -800,22 +800,38 @@ const Swap = () => {
                       fromTokenType === 'song' && fromSongToken ? formatUnits(fromSongToken.balance || BigInt(0), 18) :
                       '0.00'
                     }</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => {
-                        if (fromToken === 'ETH') setFromAmount(ethBalanceFormatted);
-                        else if (fromToken === XRGE_TOKEN_ADDRESS) setFromAmount(xrgeBalanceFormatted);
-                        else if (fromToken === KTA_TOKEN_ADDRESS) setFromAmount(ktaBalanceFormatted);
-                        else if (fromToken === USDC_TOKEN_ADDRESS) setFromAmount(usdcBalanceFormatted);
-                        else if (fromTokenType === 'song' && fromSongToken) {
-                          setFromAmount(formatUnits(fromSongToken.balance || BigInt(0), 18));
-                        }
-                      }}
-                    >
-                      MAX
-                    </Button>
+                  </div>
+                  
+                  {/* Percentage Selector Buttons */}
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { label: '10%', value: 0.1 },
+                      { label: '25%', value: 0.25 },
+                      { label: '50%', value: 0.5 },
+                      { label: '75%', value: 0.75 },
+                      { label: 'MAX', value: 1 },
+                    ].map((option) => (
+                      <Button
+                        key={option.label}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          let balance = '0';
+                          if (fromToken === 'ETH') balance = ethBalanceFormatted;
+                          else if (fromToken === XRGE_TOKEN_ADDRESS) balance = xrgeBalanceFormatted;
+                          else if (fromToken === KTA_TOKEN_ADDRESS) balance = ktaBalanceFormatted;
+                          else if (fromToken === USDC_TOKEN_ADDRESS) balance = usdcBalanceFormatted;
+                          else if (fromTokenType === 'song' && fromSongToken) {
+                            balance = formatUnits(fromSongToken.balance || BigInt(0), 18);
+                          }
+                          const amount = (parseFloat(balance) * option.value).toFixed(6);
+                          setFromAmount(amount);
+                        }}
+                        className="font-mono text-[10px] py-1 h-7 border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50"
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </Card>

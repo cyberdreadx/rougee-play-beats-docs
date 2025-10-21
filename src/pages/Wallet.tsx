@@ -886,6 +886,35 @@ const Wallet = () => {
                   ? formatXrgeBalance()
                   : formatKtaBalance()} {sendType}
               </p>
+              
+              {/* Percentage Selector Buttons */}
+              <div className="grid grid-cols-5 gap-1.5 mt-2">
+                {[
+                  { label: '10%', value: 0.1 },
+                  { label: '25%', value: 0.25 },
+                  { label: '50%', value: 0.5 },
+                  { label: '75%', value: 0.75 },
+                  { label: 'MAX', value: 1 },
+                ].map((option) => (
+                  <Button
+                    key={option.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const availableBalance = sendType === 'ETH' 
+                        ? (balance ? parseFloat(balance.formatted) : 0)
+                        : sendType === 'XRGE'
+                        ? parseFloat(formatXrgeBalance())
+                        : parseFloat(formatKtaBalance());
+                      const amount = (availableBalance * option.value).toFixed(4);
+                      setSendForm({ ...sendForm, amount });
+                    }}
+                    className="font-mono text-[10px] py-1 h-7 border-neon-green/30 hover:bg-neon-green/10 hover:border-neon-green/50"
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             <Button
