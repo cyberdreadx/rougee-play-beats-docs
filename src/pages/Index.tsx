@@ -7,8 +7,10 @@ import TopSongs, { TopSongsRef } from "@/components/TopSongs";
 import StoriesBar from "@/components/StoriesBar";
 import LandingHero from "@/components/LandingHero";
 import MusicBars from "@/components/MusicBars";
+import GenresList from "@/components/GenresList";
 import logo from "@/assets/logo.png";
 import { RadioToggle } from "@/components/RadioToggle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Song {
   id: string;
@@ -105,18 +107,50 @@ const Index = ({ playSong, currentSong, isPlaying, isRadioMode, onToggleRadio }:
         <div className="px-2 md:px-0">
           <StoriesBar />
         </div>
-        <div className="px-2 md:px-0">
-          <TrendingArtists />
-        </div>
-        <div className="px-2 md:px-0">
-          <TopSongs 
-            ref={topSongsRef}
-            onPlaySong={playSong}
-            currentSong={currentSong}
-            isPlaying={isPlaying}
-            onPlayCountUpdate={handlePlayCountUpdate}
-          />
-        </div>
+        
+        {/* Tabs for different discovery sections */}
+        <Tabs defaultValue="artists" className="w-full">
+          <div className="px-4 md:px-6 mb-4">
+            <TabsList className="grid w-full grid-cols-3 max-w-md mx-auto bg-white/5 backdrop-blur-xl border border-white/10">
+              <TabsTrigger 
+                value="artists" 
+                className="font-mono data-[state=active]:bg-neon-green data-[state=active]:text-black"
+              >
+                ARTISTS
+              </TabsTrigger>
+              <TabsTrigger 
+                value="songs" 
+                className="font-mono data-[state=active]:bg-neon-green data-[state=active]:text-black"
+              >
+                SONGS
+              </TabsTrigger>
+              <TabsTrigger 
+                value="genres" 
+                className="font-mono data-[state=active]:bg-neon-green data-[state=active]:text-black"
+              >
+                GENRES
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="artists" className="px-2 md:px-0 mt-0">
+            <TrendingArtists />
+          </TabsContent>
+
+          <TabsContent value="songs" className="px-2 md:px-0 mt-0">
+            <TopSongs 
+              ref={topSongsRef}
+              onPlaySong={playSong}
+              currentSong={currentSong}
+              isPlaying={isPlaying}
+              onPlayCountUpdate={handlePlayCountUpdate}
+            />
+          </TabsContent>
+
+          <TabsContent value="genres" className="px-2 md:px-0 mt-0">
+            <GenresList />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

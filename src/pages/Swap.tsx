@@ -10,6 +10,7 @@ import {
   useETHQuote, 
   useXRGEApproval,
   useUSDCApproval,
+  useUSDCAllowance,
   useKTAApproval,
   useKTAAllowance,
   useXRGEQuoteFromKTA,
@@ -200,10 +201,35 @@ const Swap = () => {
     fromToken === XRGE_TOKEN_ADDRESS ? fromAmount : "0"
   );
   
-  const { hasApproval: hasUSDCApproval, refetch: refetchUSDCApproval } = useUSDCApproval(
+  const { hasApproval: hasUSDCApproval, refetch: refetchUSDCApproval, currentAllowance: usdcAllowance } = useUSDCApproval(
     fullAddress as any,
     fromToken === USDC_TOKEN_ADDRESS ? fromAmount : "0"
   );
+  
+  // Direct USDC allowance check (more reliable fallback)
+  const { hasApproval: hasUSDCAllowanceDirect, refetch: refetchUSDCAllowance, currentAllowance: usdcAllowanceDirect } = useUSDCAllowance(
+    fullAddress as any,
+    fromToken === USDC_TOKEN_ADDRESS ? fromAmount : "0"
+  );
+  
+  // Combine both approval checks - if either reports approval, consider it approved
+  const effectiveHasUSDCApproval = hasUSDCApproval || hasUSDCAllowanceDirect;
+  
+  // Debug logging for USDC approval
+  useEffect(() => {
+    if (fromToken === USDC_TOKEN_ADDRESS) {
+      console.log('🔍 USDC Approval Status:', {
+        hasApprovalContract: hasUSDCApproval,
+        hasApprovalDirect: hasUSDCAllowanceDirect,
+        effectiveApproval: effectiveHasUSDCApproval,
+        allowanceContract: usdcAllowance,
+        allowanceDirect: usdcAllowanceDirect,
+        fromAmount,
+        isConnected,
+        fullAddress
+      });
+    }
+  }, [hasUSDCApproval, hasUSDCAllowanceDirect, effectiveHasUSDCApproval, usdcAllowance, usdcAllowanceDirect, fromAmount, fromToken, isConnected, fullAddress]);
   
   const { hasApproval: hasKTAApproval, refetch: refetchKTAApproval } = useKTAApproval(
     fullAddress as any,
@@ -221,6 +247,7 @@ const Swap = () => {
       // Refetch approval states immediately when transaction confirms
       refetchXRGEApproval();
       refetchUSDCApproval();
+      refetchUSDCAllowance();
       refetchKTAApproval();
       refetchKTAAllowance();
       
@@ -509,7 +536,7 @@ const Swap = () => {
           }
           await buyXRGEWithKTA(fromAmount, slippageBps);
         } else if (fromToken === USDC_TOKEN_ADDRESS) {
-          if (!hasUSDCApproval) {
+          if (!effectiveHasUSDCApproval) {
             toast({ title: "Approval Required", description: "Please approve USDC first", variant: "destructive" });
             return;
           }
@@ -1058,7 +1085,7 @@ const Swap = () => {
                     )}
                   </Button>
                 )}
-                {fromToken === USDC_TOKEN_ADDRESS && !hasUSDCApproval && toToken === XRGE_TOKEN_ADDRESS && (
+                {fromToken === USDC_TOKEN_ADDRESS && !effectiveHasUSDCApproval && toToken === XRGE_TOKEN_ADDRESS && (
                   <Button
                     onClick={handleApprove}
                     disabled={isPending || isConfirming}
@@ -1105,7 +1132,11 @@ const Swap = () => {
                 isQuoteLoading ||
                 isPending ||
                 isConfirming ||
-                isProcessing
+                isProcessing ||
+                // Disable if approval is needed
+                (fromToken === USDC_TOKEN_ADDRESS && toToken === XRGE_TOKEN_ADDRESS && !effectiveHasUSDCApproval) ||
+                (fromToken === KTA_TOKEN_ADDRESS && toToken === XRGE_TOKEN_ADDRESS && !effectiveHasKTAApproval) ||
+                (fromToken === XRGE_TOKEN_ADDRESS && (toToken === 'ETH' || toToken === KTA_TOKEN_ADDRESS || toToken === USDC_TOKEN_ADDRESS) && !hasXRGEApproval)
               }
               className="w-full font-mono text-lg h-14"
               variant="neon"

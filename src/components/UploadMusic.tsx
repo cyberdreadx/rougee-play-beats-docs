@@ -12,6 +12,21 @@ import { useCreateSong } from "@/hooks/useSongBondingCurve";
 import { useUploadSlots } from "@/hooks/useUploadSlots";
 import { UploadSlotsCard } from "@/components/UploadSlotsCard";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -21,6 +36,190 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Predefined list of music genres (sorted alphabetically)
+const MUSIC_GENRES = [
+  "8-Bit",
+  "A Cappella",
+  "Acoustic",
+  "Afro House",
+  "Afrobeat",
+  "Afrobeats",
+  "Alternative R&B",
+  "Alternative Rock",
+  "Ambient",
+  "Americana",
+  "Amapiano",
+  "Animecore",
+  "Azonto",
+  "Bachata",
+  "Baile Funk",
+  "Baroque",
+  "Bass House",
+  "Bebop",
+  "Bedroom Pop",
+  "Bitcrush",
+  "Black Metal",
+  "Blues",
+  "Blues Rock",
+  "Bluegrass",
+  "Boom Bap",
+  "Bossa Nova",
+  "Breakbeat",
+  "Breakcore",
+  "Brostep",
+  "Chill Trap",
+  "Chillhop",
+  "Chillwave",
+  "Chiptune",
+  "Christian Rock",
+  "Classical",
+  "Cloud Rap",
+  "Conscious Rap",
+  "Contemporary Classical",
+  "Contemporary Gospel",
+  "Contemporary R&B",
+  "Corridos Tumbados",
+  "Country",
+  "Country Pop",
+  "Cumbia",
+  "Cybergrind",
+  "Dancehall",
+  "Dark Ambient",
+  "Darkwave",
+  "Death Metal",
+  "Deathcore",
+  "Deep House",
+  "Dembow",
+  "Detroit Techno",
+  "Digicore",
+  "Disco",
+  "Djent",
+  "Doom Metal",
+  "Downtempo",
+  "Dream Pop",
+  "Drift Phonk",
+  "Drill",
+  "Drone",
+  "Drum & Bass",
+  "Dub",
+  "Dubstep",
+  "EDM",
+  "Electropop",
+  "Electronic",
+  "Emo",
+  "Emo Rap",
+  "Ethereal",
+  "Ethereal Wave",
+  "Experimental",
+  "Folk",
+  "Folk Rock",
+  "Funk",
+  "Funk Rock",
+  "Future Bass",
+  "Future House",
+  "Gabber",
+  "Gangsta Rap",
+  "Garage Rock",
+  "Glitch",
+  "Glitch Hop",
+  "Glitchcore",
+  "Gospel",
+  "Gqom",
+  "Grunge",
+  "Hard Techno",
+  "Hard Tekk",
+  "Hardcore",
+  "Hardcore Punk",
+  "Hardstyle",
+  "Heavy Metal",
+  "Highlife",
+  "Hip Hop",
+  "House",
+  "Hyperpop",
+  "Hyperpop Rap",
+  "IDM",
+  "Indie Folk",
+  "Indie Pop",
+  "Indie Rock",
+  "Instrumental",
+  "J-Pop",
+  "Jazz",
+  "Jazz Fusion",
+  "Jazzhop",
+  "Jungle",
+  "K-Pop",
+  "Kwaito",
+  "Latin",
+  "Liquid DnB",
+  "Lo-Fi",
+  "Lo-Fi Hip Hop",
+  "Math Rock",
+  "Merengue",
+  "Metal",
+  "Metalcore",
+  "Minimal Techno",
+  "Mumble Rap",
+  "Musique Concrète",
+  "Neo-Soul",
+  "Neurofunk",
+  "New Wave",
+  "Nightcore",
+  "Noise",
+  "Nu-Disco",
+  "Opera",
+  "Orchestral",
+  "P-Funk",
+  "Phonk",
+  "Pop",
+  "Pop Punk",
+  "Post-Hardcore",
+  "Post-Punk",
+  "Post-Rock",
+  "Power Metal",
+  "Progressive House",
+  "Progressive Metal",
+  "Progressive Rock",
+  "Progressive Trance",
+  "Psychedelic Rock",
+  "Psytrance",
+  "Punk",
+  "R&B",
+  "Reggae",
+  "Reggaeton",
+  "Riddim",
+  "Rock",
+  "Romantic",
+  "Roots Reggae",
+  "Salsa",
+  "Samba",
+  "Score",
+  "Screamo",
+  "Shoegaze",
+  "Ska",
+  "Ska Punk",
+  "Smooth Jazz",
+  "Soul",
+  "Sound Collage",
+  "Soundtrack",
+  "Speedcore",
+  "Swing",
+  "Synth Pop",
+  "Synthwave",
+  "Tango",
+  "Tech House",
+  "Techno",
+  "Thrash Metal",
+  "Trance",
+  "Trap",
+  "Trap (EDM)",
+  "UK Garage",
+  "Vaporwave",
+  "Video Game Music",
+  "Webcore",
+  "Witch House",
+  "Worship",
+].sort(); // Ensure alphabetical order
 
 export default function UploadMusic() {
   const navigate = useNavigate();
@@ -32,6 +231,7 @@ export default function UploadMusic() {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
+  const [genreOpen, setGenreOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [ticker, setTicker] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -309,13 +509,49 @@ export default function UploadMusic() {
 
           <div>
             <Label htmlFor="genre">Genre</Label>
-            <Input
-              id="genre"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              placeholder="e.g., Hip Hop, Electronic"
-              disabled={uploading || scanning}
-            />
+            <Popover open={genreOpen} onOpenChange={setGenreOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="genre"
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={genreOpen}
+                  className="w-full justify-between font-normal"
+                  disabled={uploading || scanning}
+                >
+                  {genre || "Select a genre..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search genres..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No genre found.</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-auto">
+                      {MUSIC_GENRES.map((genreOption) => (
+                        <CommandItem
+                          key={genreOption}
+                          value={genreOption}
+                          onSelect={(currentValue) => {
+                            setGenre(currentValue === genre ? "" : currentValue);
+                            setGenreOpen(false);
+                          }}
+                        >
+                          {genreOption}
+                          <Check
+                            className={cn(
+                              "ml-auto h-4 w-4",
+                              genre === genreOption ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div>

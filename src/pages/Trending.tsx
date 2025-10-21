@@ -1079,7 +1079,7 @@ const Trending = ({ playSong, currentSong, isPlaying }: TrendingProps = {}) => {
               .from("songs")
               .select("id, title, artist, wallet_address, audio_cid, cover_cid, play_count, ticker, genre, created_at, token_address, ai_usage")
               .not("token_address", "is", null) // Only show deployed songs
-              .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%`)
+              .or(`title.ilike.%${searchQuery}%,artist.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%,ticker.ilike.%${searchQuery}%`)
               .order("play_count", { ascending: false })
               .limit(50)
           ]);

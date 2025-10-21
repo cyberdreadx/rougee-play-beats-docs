@@ -60,8 +60,8 @@ const SearchBar = () => {
         // Search songs
         const { data: songs } = await supabase
           .from("songs")
-          .select("id, title, artist, wallet_address, audio_cid, cover_cid")
-          .or(`title.ilike.%${searchTerm}%,artist.ilike.%${searchTerm}%`)
+          .select("id, title, artist, wallet_address, audio_cid, cover_cid, genre, ticker")
+          .or(`title.ilike.%${searchTerm}%,artist.ilike.%${searchTerm}%,genre.ilike.%${searchTerm}%,ticker.ilike.%${searchTerm}%`)
           .limit(5);
 
         const artistResults: SearchResult[] = (artists || []).map((a) => ({
@@ -119,7 +119,7 @@ const SearchBar = () => {
         <div className="flex space-x-2 md:space-x-4">
           <Input
             type="text"
-            placeholder="Search artists, songs, albums..."
+            placeholder="Search artists, songs, genres..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 glass text-foreground placeholder:text-muted-foreground font-mono border-neon-green/30"

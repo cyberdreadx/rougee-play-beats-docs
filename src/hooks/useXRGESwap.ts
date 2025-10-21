@@ -742,20 +742,24 @@ export const useETHQuote = (xrgeAmount: string) => {
 
 // Hook to check XRGE approval status
 export const useXRGEApproval = (userAddress: Address | undefined, amount: string) => {
-  const value = amount ? parseEther(amount) : BigInt(0);
+  const value = amount ? parseEther(amount) : parseEther("0.000001"); // Use minimal amount if empty
 
   const { data, isLoading, refetch } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
     functionName: "checkXRGEApproval",
-    args: userAddress && value ? [userAddress, value] : undefined,
+    args: userAddress ? [userAddress, value] : undefined,
     query: {
-      enabled: !!userAddress && !!amount && Number(amount) > 0,
+      enabled: !!userAddress, // Always check if user is connected
+      refetchInterval: 2000, // Auto-refetch every 2 seconds
     },
   });
 
+  // If checking with actual amount, use that; otherwise just check if there's ANY approval
+  const hasApproval = amount && Number(amount) > 0 ? (data?.[0] ?? false) : (data?.[1] ? Number(data[1]) > 0 : false);
+
   return {
-    hasApproval: data?.[0] ?? false,
+    hasApproval,
     currentAllowance: data?.[1] ? formatEther(data[1]) : "0",
     isLoading,
     refetch,
@@ -764,20 +768,24 @@ export const useXRGEApproval = (userAddress: Address | undefined, amount: string
 
 // Hook to check USDC approval for buying XRGE
 export const useUSDCApproval = (userAddress: Address | undefined, amount: string) => {
-  const value = amount ? parseUnits(amount, 6) : BigInt(0); // USDC has 6 decimals
+  const value = amount ? parseUnits(amount, 6) : parseUnits("0.000001", 6); // USDC has 6 decimals, use minimal amount if empty
 
   const { data, isLoading, refetch } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
     functionName: "checkUSDCApproval",
-    args: userAddress && value ? [userAddress, value] : undefined,
+    args: userAddress ? [userAddress, value] : undefined,
     query: {
-      enabled: !!userAddress && !!amount && Number(amount) > 0,
+      enabled: !!userAddress, // Always check if user is connected, regardless of amount
+      refetchInterval: 2000, // Auto-refetch every 2 seconds to detect approval changes
     },
   });
 
+  // If checking with actual amount, use that; otherwise just check if there's ANY approval
+  const hasApproval = amount && Number(amount) > 0 ? (data?.[0] ?? false) : (data?.[1] ? Number(data[1]) > 0 : false);
+
   return {
-    hasApproval: data?.[0] ?? false,
+    hasApproval,
     currentAllowance: data?.[1] ? (Number(data[1]) / 1e6).toFixed(6) : "0", // USDC has 6 decimals
     isLoading,
     refetch,
@@ -790,22 +798,30 @@ export const useKTAApproval = (userAddress: Address | undefined, amount: string)
     address: KTA_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: "decimals",
-    query: { enabled: !!amount && Number(amount) > 0 },
+    query: { enabled: true }, // Always fetch decimals
   });
-  const value = amount && ktaDecimals !== undefined ? parseUnits(amount, Number(ktaDecimals)) : BigInt(0);
+  
+  // Use actual amount or minimal amount for checking
+  const value = ktaDecimals !== undefined 
+    ? (amount && Number(amount) > 0 ? parseUnits(amount, Number(ktaDecimals)) : parseUnits("0.000001", Number(ktaDecimals)))
+    : BigInt(0);
 
   const { data, isLoading, refetch } = useReadContract({
     address: XRGE_SWAPPER_ADDRESS,
     abi: XRGE_SWAPPER_ABI,
     functionName: "checkKTAApproval",
-    args: userAddress && value ? [userAddress, value] : undefined,
+    args: userAddress && ktaDecimals !== undefined ? [userAddress, value] : undefined,
     query: {
-      enabled: !!userAddress && !!amount && Number(amount) > 0 && ktaDecimals !== undefined,
+      enabled: !!userAddress && ktaDecimals !== undefined, // Check whenever user is connected and decimals are known
+      refetchInterval: 2000, // Auto-refetch every 2 seconds
     },
   });
 
+  // If checking with actual amount, use that; otherwise just check if there's ANY approval
+  const hasApproval = amount && Number(amount) > 0 ? (data?.[0] ?? false) : (data?.[1] ? Number(data[1]) > 0 : false);
+
   return {
-    hasApproval: data?.[0] ?? false,
+    hasApproval,
     currentAllowance: data?.[1] ? formatEther(data[1]) : "0",
     isLoading,
     refetch,
@@ -837,6 +853,36 @@ export const useKTAAllowance = (userAddress: Address | undefined, amount: string
   return {
     hasApproval,
     currentAllowance: allowance ? allowance.toString() : "0",
+    isLoading,
+    refetch,
+  };
+};
+
+// Direct USDC allowance check (fallback - more reliable)
+export const useUSDCAllowance = (userAddress: Address | undefined, amount: string) => {
+  const enabledBase = !!userAddress;
+  
+  // USDC has 6 decimals
+  const scaledAmount = amount && Number(amount) > 0 ? parseUnits(amount, 6) : parseUnits("0.000001", 6);
+
+  const { data: allowance, isLoading, refetch } = useReadContract({
+    address: USDC_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: enabledBase ? [userAddress as Address, XRGE_SWAPPER_ADDRESS] : undefined,
+    query: { 
+      enabled: enabledBase,
+      refetchInterval: 2000, // Auto-refetch every 2 seconds
+    },
+  });
+
+  const hasApproval = amount && Number(amount) > 0 
+    ? (allowance !== undefined && (allowance as bigint) >= scaledAmount)
+    : (allowance !== undefined && (allowance as bigint) > BigInt(0));
+
+  return {
+    hasApproval,
+    currentAllowance: allowance ? (Number(allowance) / 1e6).toFixed(6) : "0",
     isLoading,
     refetch,
   };

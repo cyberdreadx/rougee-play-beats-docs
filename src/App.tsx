@@ -29,6 +29,7 @@ import HowItWorks from "./pages/HowItWorks";
 import Tiers from "./pages/Tiers";
 import TermsOfService from "./pages/TermsOfService";
 import Messages from "./pages/Messages";
+import Genre from "./pages/Genre";
 import NotFound from "./pages/NotFound";
 
 const AppContent = () => {
@@ -100,6 +101,7 @@ const AppContent = () => {
           <Route path="/artist/:walletAddress" element={<Artist playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/song/:songId" element={<SongTrade playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
+          <Route path="/genre/:genreName" element={<Genre playSong={handlePlaySong} currentSong={activeSong} isPlaying={activeIsPlaying} />} />
           <Route path="/playlists" element={<Playlists />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
