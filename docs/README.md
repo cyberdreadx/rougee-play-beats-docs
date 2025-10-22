@@ -1,6 +1,22 @@
-# 🎵 ROUGEE.PLAY Documentation
+# ⚡ ROUGEE CYBERDOCS ⚡
 
-Welcome to the comprehensive documentation for ROUGEE.PLAY - the decentralized music platform where artists launch their music as tradeable assets and fans become stakeholders.
+```
+██████╗  ██████╗ ██╗   ██╗ ██████╗ ███████╗███████╗
+██╔══██╗██╔═══██╗██║   ██║██╔════╝ ██╔════╝██╔════╝
+██████╔╝██║   ██║██║   ██║██║  ███╗█████╗  █████╗  
+██╔══██╗██║   ██║██║   ██║██║   ██║██╔══╝  ██╔══╝  
+██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝███████╗███████╗
+╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚══════╝╚══════╝
+
+> NEURAL INTERFACE ACTIVATED
+> ACCESSING DECENTRALIZED MUSIC PROTOCOL...
+> CONNECTION ESTABLISHED ✓
+> WELCOME TO THE DIGITAL MUSIC ECONOMY
+```
+
+**STATUS:** `SYSTEM ONLINE` | **SECURITY:** `MAXIMUM` | **ACCESS:** `GRANTED`
+
+Jack into the neon-soaked digital realm where music transcends sound to become liquid currency. Artists are cyber-entrepreneurs minting sonic assets, while fans hack the economy by staking their digital souls in the beats they love.
 
 ## 📚 Documentation Structure
 
@@ -49,7 +65,7 @@ Welcome to the comprehensive documentation for ROUGEE.PLAY - the decentralized m
 ## 🎯 Quick Navigation
 
 ### For Users
-- [How to Use ROUGEE.PLAY](./guides/user-guide.md)
+- [How to Use ROUGEE](./guides/user-guide.md)
 - [Trading Music Tokens](./features/trading-system.md)
 - [Creating Artist Profile](./guides/artist-guide.md)
 
@@ -67,9 +83,8 @@ Welcome to the comprehensive documentation for ROUGEE.PLAY - the decentralized m
 
 ## 🔗 External Links
 
-- **Live App**: [Coming Soon]
+- **Live App**: https://rougee.app
 - **GitHub Repository**: https://github.com/cyberdreadx/rougee-play-beats
-- **Lovable Project**: https://lovable.dev/projects/edbd29f5-fe8e-435d-b3d2-8111ac95287a
 
 ---
 
@@ -83,7 +98,7 @@ For questions or support:
 ---
 
 <div align="center">
-  <strong>Built with 💚 using Lovable</strong>
+  <strong>Built with 💚 using Lovable and Cursor</strong>
   
   Stream music. Own music. Be music.
 </div>

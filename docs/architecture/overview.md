@@ -1,6 +1,6 @@
 # 🏗️ System Architecture Overview
 
-ROUGEE.PLAY is built as a modern, decentralized music platform that combines traditional web technologies with Web3 infrastructure to create a unique music trading ecosystem.
+ROUGEE is built as a modern, decentralized music platform that combines traditional web technologies with Web3 infrastructure to create a unique music trading ecosystem.
 
 ## 🎯 Architecture Principles
 
@@ -317,5 +317,5 @@ Wallet Connection → JWT Token → Edge Function → Database
 <div align="center">
   <strong>Built for Scale, Designed for Users</strong>
   
-  ROUGEE.PLAY's architecture ensures reliability, performance, and user experience.
+  ROUGEE's architecture ensures reliability, performance, and user experience.
 </div>

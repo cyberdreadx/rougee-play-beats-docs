@@ -1,6 +1,6 @@
-# 🔌 API Reference
+# � API Reference
 
-Complete API reference for ROUGEE.PLAY development, including Supabase functions, hooks, and external integrations.
+Complete API reference for ROUGEE development, including Supabase functions, hooks, and external integrations.
 
 ## 📚 Table of Contents
 

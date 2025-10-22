@@ -1,6 +1,6 @@
-# 🛠️ Installation Guide
+# � Installation Guide
 
-Complete setup guide for ROUGEE.PLAY development environment.
+Complete setup guide for ROUGEE development environment.
 
 ## 📋 System Requirements
 
@@ -435,5 +435,5 @@ Your development environment is now set up! Next steps:
 <div align="center">
   <strong>Happy Coding! 🚀</strong>
   
-  Your ROUGEE.PLAY development environment is ready.
+  Your ROUGEE development environment is ready.
 </div>

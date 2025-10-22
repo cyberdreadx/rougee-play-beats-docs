@@ -1,6 +1,6 @@
 # 🚀 Quick Start Guide
 
-Get up and running with ROUGEE.PLAY in just a few minutes!
+Get up and running with ROUGEE in just a few minutes!
 
 ## 📋 Prerequisites
 
@@ -198,7 +198,7 @@ The app automatically detects your network:
 
 ## 🎉 You're Ready!
 
-You now have ROUGEE.PLAY running locally! Here's what to do next:
+You now have ROUGEE running locally! Here's what to do next:
 
 ### Immediate Next Steps
 1. **Connect your wallet**
@@ -223,5 +223,5 @@ You now have ROUGEE.PLAY running locally! Here's what to do next:
 <div align="center">
   <strong>Welcome to the Future of Music! 🎵</strong>
   
-  Start your journey with ROUGEE.PLAY today.
+  Start your journey with ROUGEE today.
 </div>

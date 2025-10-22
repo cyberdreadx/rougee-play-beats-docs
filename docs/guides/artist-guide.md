@@ -1,6 +1,6 @@
-# 🎤 Artist Guide
+# � Artist Guide
 
-Welcome to ROUGEE.PLAY! This guide will help you launch your music career on the platform, from uploading your first track to building a community of fans and investors.
+Welcome to ROUGEE! This guide will help you launch your music career on the platform, from uploading your first track to building a community of fans and investors.
 
 ## 🚀 Getting Started as an Artist
 
@@ -87,7 +87,7 @@ When you upload a song, the platform creates:
 
 ### Social Media Integration
 - **Link Accounts**: Connect your social media
-- **Cross-Promote**: Share ROUGEE.PLAY links
+- **Cross-Promote**: Share ROUGEE links
 - **Engage**: Respond to fans on all platforms
 - **Consistency**: Regular posting schedule
 
@@ -140,7 +140,7 @@ When you upload a song, the platform creates:
 ## 📈 Marketing Your Music
 
 ### Platform Promotion
-- **Share Links**: Share your ROUGEE.PLAY profile
+- **Share Links**: Share your ROUGEE profile
 - **Trading Updates**: Post about trading activity
 - **Fan Engagement**: Encourage fans to trade tokens
 - **Community Building**: Build a loyal fan base
@@ -290,5 +290,5 @@ When you upload a song, the platform creates:
 <div align="center">
   <strong>Start Your Artist Journey Today! 🎤</strong>
   
-  Upload your first song and begin building your community on ROUGEE.PLAY.
+  Upload your first song and begin building your community on ROUGEE.
 </div>

@@ -1,6 +1,6 @@
 # 💰 Trading System
 
-ROUGEE.PLAY's revolutionary trading system allows fans to buy and sell shares of their favorite songs, creating a new way to support artists and potentially profit from their success.
+ROUGEE's revolutionary trading system allows fans to buy and sell shares of their favorite songs, creating a new way to support artists and potentially profit from their success.
 
 ## 🎯 How Trading Works
 
@@ -16,7 +16,7 @@ Instead of just streaming music, fans can now **own shares** of songs they love.
 ## 🔄 Trading Mechanics
 
 ### Bonding Curves
-ROUGEE.PLAY uses **bonding curves** for fair price discovery:
+ROUGEE uses **bonding curves** for fair price discovery:
 
 ```
 Price = Initial Price + (Tokens Sold × Price Increment)
@@ -37,7 +37,7 @@ Price = Initial Price + (Tokens Sold × Price Increment)
 ## 💎 XRGE Token
 
 ### What is XRGE?
-XRGE is the native token of ROUGEE.PLAY, used for all trading operations.
+XRGE is the native token of ROUGEE, used for all trading operations.
 
 ### Token Details
 - **Name**: RougeCoin

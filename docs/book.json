@@ -1,7 +1,7 @@
 {
-  "title": "ROUGEE.PLAY Documentation",
-  "description": "Complete documentation for the decentralized music platform",
-  "author": "ROUGEE.PLAY Team",
+  "title": "⚡ ROUGEE CYBERDOCS ⚡",
+  "description": ">> DECENTRALIZED MUSIC PLATFORM NEURAL INTERFACE << Access granted to digital music economy protocols",
+  "author": "ROUGEE CyberTeam",
   "language": "en",
   "gitbook": "3.2.3",
   "structure": {
@@ -16,7 +16,10 @@
     "livereload",
     "lunr",
     "search-pro",
-    "theme-default"
+    "theme-default",
+    "terminal",
+    "prism",
+    "emoji"
   ],
   "pluginsConfig": {
     "theme-default": {
@@ -38,12 +41,22 @@
       ]
     },
     "fontsettings": {
-      "theme": "white",
-      "family": "sans",
+      "theme": "night",
+      "family": "mono",
       "size": 2
     },
     "highlight": {
-      "theme": "github"
+      "theme": "monokai"
+    },
+    "prism": {
+      "css": [
+        "prism-themes/themes/prism-material-dark.css"
+      ]
+    },
+    "terminal": {
+      "copyButtons": true,
+      "fade": false,
+      "style": "flat"
     }
   },
   "pdf": {

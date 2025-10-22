@@ -1,6 +1,6 @@
 # 🛠️ Troubleshooting Guide
 
-Comprehensive troubleshooting guide for ROUGEE.PLAY, covering common issues, debugging techniques, and solutions.
+Comprehensive troubleshooting guide for ROUGEE, covering common issues, debugging techniques, and solutions.
 
 ## 🚨 Common Issues
 
@@ -789,5 +789,5 @@ Any other relevant information
 <div align="center">
   <strong>We're Here to Help! 🛠️</strong>
   
-  Use this guide to resolve issues and get the most out of ROUGEE.PLAY.
+  Use this guide to resolve issues and get the most out of ROUGEE.
 </div>

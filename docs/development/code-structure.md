@@ -1,6 +1,6 @@
 # 🏗️ Code Structure
 
-Comprehensive guide to ROUGEE.PLAY's codebase structure, organization, and development patterns.
+Comprehensive guide to ROUGEE's codebase structure, organization, and development patterns.
 
 ## 📁 Project Structure
 
@@ -740,5 +740,5 @@ export default [
 <div align="center">
   <strong>Clean, Scalable, Maintainable! 🏗️</strong>
   
-  ROUGEE.PLAY's codebase is organized for long-term success and developer productivity.
+  ROUGEE's codebase is organized for long-term success and developer productivity.
 </div>

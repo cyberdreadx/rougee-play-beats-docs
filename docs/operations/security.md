@@ -1,6 +1,6 @@
 # 🔐 Security Guide
 
-Comprehensive security guide for ROUGEE.PLAY, covering authentication, data protection, smart contract security, and best practices.
+Comprehensive security guide for ROUGEE, covering authentication, data protection, smart contract security, and best practices.
 
 ## 🛡️ Security Overview
 
@@ -715,5 +715,5 @@ const securityMonitor = {
 <div align="center">
   <strong>Secure by Design! 🔐</strong>
   
-  ROUGEE.PLAY implements comprehensive security measures to protect users and data.
+  ROUGEE implements comprehensive security measures to protect users and data.
 </div>

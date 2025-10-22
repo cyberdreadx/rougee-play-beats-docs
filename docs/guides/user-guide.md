@@ -1,6 +1,6 @@
-# 👤 User Guide
+# 🎵 User Guide
 
-Welcome to ROUGEE.PLAY! This comprehensive guide will help you get the most out of the platform, whether you're a music fan, aspiring artist, or trader.
+Welcome to ROUGEE! This comprehensive guide will help you get the most out of the platform, whether you're a music fan, aspiring artist, or trader.
 
 ## 🎵 Getting Started
 
@@ -48,7 +48,7 @@ The home page shows trending music and new releases:
 ## 💰 Trading Music Shares
 
 ### Understanding Song Shares
-Each song on ROUGEE.PLAY is divided into **1,000,000 tokens** that can be bought and sold.
+Each song on ROUGEE is divided into **1,000,000 tokens** that can be bought and sold.
 
 #### **Why Buy Shares?**
 - **Support Artists**: Your investment directly supports the artist
@@ -138,7 +138,7 @@ Each song on ROUGEE.PLAY is divided into **1,000,000 tokens** that can be bought
 ## 💎 XRGE Token
 
 ### What is XRGE?
-XRGE is the native token of ROUGEE.PLAY, used for all trading operations.
+XRGE is the native token of ROUGEE, used for all trading operations.
 
 ### Getting XRGE
 1. **Buy on DEX**: Purchase on decentralized exchanges
@@ -253,7 +253,7 @@ XRGE is the native token of ROUGEE.PLAY, used for all trading operations.
 - **Community**: Join trading discussions
 - **Leaderboards**: See top performers
 
-## 🎉 Getting the Most Out of ROUGEE.PLAY
+## 🎉 Getting the Most Out of ROUGEE
 
 ### Daily Routine
 1. **Check Trending**: See what's popular today
@@ -278,5 +278,5 @@ XRGE is the native token of ROUGEE.PLAY, used for all trading operations.
 <div align="center">
   <strong>Welcome to the Future of Music! 🎵</strong>
   
-  Start your journey with ROUGEE.PLAY today.
+  Start your journey with ROUGEE today.
 </div>

@@ -1,22 +1,41 @@
-# 🎵 ROUGEE.PLAY - Introduction
+# ⚡ NEURAL INTERFACE BOOT SEQUENCE ⚡
 
-## What is ROUGEE.PLAY?
+```
+> INITIALIZING ROUGEE PROTOCOL...
+> LOADING CYBERPUNK MUSIC MATRIX...
+> ESTABLISHING BLOCKCHAIN CONNECTION...
+> NEURAL INTERFACE READY ✓
+```
 
-ROUGEE.PLAY is a revolutionary decentralized music platform that transforms how artists and fans interact with music. Built on blockchain technology, it allows artists to launch their music as tradeable assets while giving fans the opportunity to become stakeholders in their favorite artists' success.
+## >> SYSTEM OVERVIEW
 
-## 🌟 Core Concept
+**ROUGEE** is a next-generation decentralized music protocol that shatters the traditional music industry's corporate stranglehold. In this neon-lit digital realm, artists become cyber-entrepreneurs minting sonic assets, while fans jack into the economy as stakeholders in the sounds that define their digital souls.
 
-### For Artists
-- **Launch Music as NFTs**: Upload tracks and create tradeable music tokens
-- **Direct Fan Engagement**: Build a community of stakeholders
-- **Revenue Sharing**: Earn from trading activity and fan support
-- **Decentralized Storage**: Your music is stored on IPFS, truly decentralized
+<div class="cyber-card">
+<strong>🔴 LIVE STATUS:</strong> <span class="cyber-badge">SYSTEM ONLINE</span><br>
+<strong>⚡ NETWORK:</strong> <span class="cyber-badge">BLOCKCHAIN ACTIVE</span><br>
+<strong>🌐 ACCESS:</strong> <span class="cyber-badge">UNRESTRICTED</span>
+</div>
 
-### For Fans
-- **Own Music Shares**: Buy and trade shares of your favorite songs
-- **Support Artists Directly**: Wallet-to-wallet support without intermediaries
-- **Discover New Music**: Explore trending artists and songs
-- **Build Portfolio**: Create a music investment portfolio
+## 🌟 >> CORE PROTOCOL MODULES
+
+<div class="cyber-terminal">
+<h3>>> ARTIST ACCESS LEVEL</h3>
+
+- **🎵 SONIC NFT MINTING**: Transform audio into tradeable digital assets
+- **👥 STAKEHOLDER NETWORK**: Build a community of digital investors  
+- **💰 REVENUE ALGORITHMS**: Automated profit distribution from trading activity
+- **🔒 DECENTRALIZED VAULT**: IPFS storage ensures true digital ownership
+</div>
+
+<div class="cyber-terminal">
+<h3>>> FAN ACCESS LEVEL</h3>
+
+- **📈 MUSIC EQUITY TRADING**: Own fractional shares of sonic assets
+- **🔗 DIRECT ARTIST PIPELINE**: Wallet-to-wallet support bypassing corporate middlemen
+- **🎧 DISCOVERY ENGINE**: Explore rising artists in the digital underground
+- **💼 SONIC PORTFOLIO**: Build a diversified music investment matrix
+</div>
 
 ## 🎯 Key Features
 
@@ -62,19 +81,33 @@ ROUGEE.PLAY is a revolutionary decentralized music platform that transforms how 
 - **viem** for blockchain interactions
 - **Web3Modal** for wallet connections
 
-## 🎨 Design Philosophy
+## 🎨 >> CYBERPUNK DESIGN MATRIX
 
-ROUGEE.PLAY embraces a **cyberpunk/neon aesthetic** that reflects the future of music:
+The ROUGEE interface channels the raw energy of a **neon-soaked cyberpunk future**:
 
-- **Neon Green Accent** (`#00FF41`) - The signature color
-- **Dark Theme** - Easy on the eyes for long listening sessions
-- **Glowing Effects** - Interactive elements with neon glows
-- **Glass Morphism** - Translucent UI elements
-- **Monospace Fonts** - Retro-futuristic typography
+```css
+/* SIGNATURE CYBER-PALETTE */
+--primary-neon:     #00FF41  /* Matrix Green */
+--secondary-cyan:   #00FFFF  /* Electric Blue */  
+--accent-magenta:   #FF006E  /* Neon Pink */
+--terminal-black:   #000000  /* Void Background */
+--code-dark:        #0d1117  /* Terminal Matrix */
+```
+
+<div class="hologram">
+
+**🔴 VISUAL PROTOCOLS:**
+- **⚡ NEON GLOWS** → Interactive elements pulse with electric energy
+- **🌑 VOID THEME** → Dark interface for extended neural sessions  
+- **✨ HOLOGRAPHIC FX** → Translucent UI elements with depth
+- **🔤 MONO-SPACE FONTS** → Retro-terminal typography matrix
+- **📟 SCANLINE OVERLAY** → Authentic CRT monitor simulation
+
+</div>
 
 ## 🌍 Vision
 
-ROUGEE.PLAY envisions a future where:
+ROUGEE envisions a future where:
 
 1. **Artists Own Their Music**: No more label dependency
 2. **Fans Are Investors**: Support artists you believe in
@@ -121,7 +154,7 @@ Ready to dive in? Here's how to get started:
 
 ---
 
-## 💡 Why ROUGEE.PLAY?
+## 💡 Why ROUGEE?
 
 ### Traditional Music Industry Problems
 - ❌ Artists get minimal revenue from streaming
@@ -130,7 +163,7 @@ Ready to dive in? Here's how to get started:
 - ❌ Geographic restrictions limit access
 - ❌ Centralized platforms can censor content
 
-### ROUGEE.PLAY Solutions
+### ROUGEE Solutions
 - ✅ Artists keep majority of revenue
 - ✅ Decentralized distribution and discovery
 - ✅ Fans can own shares in music
