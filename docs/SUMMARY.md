@@ -72,9 +72,8 @@ Welcome to the comprehensive documentation for ROUGEE.PLAY - the decentralized m
 
 ## 🔗 External Links
 
-- **Live App**: [Coming Soon]
+- **Live App**: https://rougee.app
 - **GitHub Repository**: https://github.com/cyberdreadx/rougee-play-beats
-- **Lovable Project**: https://lovable.dev/projects/edbd29f5-fe8e-435d-b3d2-8111ac95287a
 
 ---
 
@@ -88,7 +87,7 @@ For questions or support:
 ---
 
 <div align="center">
-  <strong>Built with 💚 using Lovable</strong>
+  <strong>Built with 💚 using Lovable and Cursor</strong>
   
   Stream music. Own music. Be music.
 </div>
